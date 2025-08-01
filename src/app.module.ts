@@ -11,7 +11,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       host: 'localhost',
       port: 3306,
       username: 'root',
-      password: 'aB5defghijK',
+      password: '123',
       database: 'cgh_database',
       autoLoadEntities: true,
       synchronize: true,
