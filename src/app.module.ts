@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrincipalModule } from './principal/principal.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AssociateModule } from './associates/associates.module';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule],
+    PrincipalModule, AssociateModule],
   controllers: [AppController],
   providers: [AppService],
 })
