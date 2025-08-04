@@ -9,6 +9,7 @@ import { FaqModule } from './faq/faq.module';
 import { AssociateModule } from './associates/associates.module';
 import { ServicesInformativeModule } from './servicesInformative/servicesInformative.module';
 import { AboutUsModule } from './aboutUs/aboutUs.module';
+import { EventModule } from './event/event.module';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { AboutUsModule } from './aboutUs/aboutUs.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule, AboutUsModule],
+    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule, AboutUsModule, EventModule],
   controllers: [AppController],
   providers: [AppService],
 })
