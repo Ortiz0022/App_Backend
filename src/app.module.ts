@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VolunteersModule } from './volunteers/volunteers.module';
 import { PersonalModule } from './personal/personal.module';
 import { FaqModule } from './faq/faq.module';
+import { AssociateModule } from './associates/associates.module';
+import { ServicesInformativeModule } from './servicesInformative/servicesInformative.module';
 
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { FaqModule } from './faq/faq.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule, VolunteersModule, PersonalModule, FaqModule],
+    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule],
   controllers: [AppController],
   providers: [AppService],
 })
