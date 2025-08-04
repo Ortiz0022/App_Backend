@@ -8,6 +8,7 @@ import { PersonalModule } from './personal/personal.module';
 import { FaqModule } from './faq/faq.module';
 import { AssociateModule } from './associates/associates.module';
 import { ServicesInformativeModule } from './servicesInformative/servicesInformative.module';
+import { AboutUsModule } from './aboutUs/aboutUs.module';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { ServicesInformativeModule } from './servicesInformative/servicesInforma
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule],
+    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule, AboutUsModule],
   controllers: [AppController],
   providers: [AppService],
 })
