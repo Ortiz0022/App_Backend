@@ -10,6 +10,7 @@ import { AssociateModule } from './associates/associates.module';
 import { ServicesInformativeModule } from './servicesInformative/servicesInformative.module';
 import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -23,7 +24,12 @@ import { EventModule } from './event/event.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule, VolunteersModule, PersonalModule, FaqModule, AssociateModule, ServicesInformativeModule, AboutUsModule, EventModule],
+    PrincipalModule, VolunteersModule, 
+    PersonalModule, FaqModule, 
+    AssociateModule, ServicesInformativeModule, 
+    AboutUsModule, EventModule,
+    UsersModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
