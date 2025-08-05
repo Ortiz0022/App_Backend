@@ -1,10 +1,12 @@
 export class PersonalDto {
   IDE: string;
   name: string;
-  lastname: string;
-  birthdayDate: string;
+  lastname1: string;
+  lastname2: string;
+  birthDate: string;
   phone: string;
   email: string;
   direction: string;
-  ocupation: string;
+  occupation: string;
+  IsActive: boolean;
 }
