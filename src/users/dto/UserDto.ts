@@ -6,4 +6,5 @@ export class UserDto {
   phone: string;
   email: string;
   direction: string;
+  roleId: number;
 }
