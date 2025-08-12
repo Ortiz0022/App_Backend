@@ -12,6 +12,7 @@ import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
 import { UsersModule } from './users/users.module';
 import { RoleModule } from './role/role.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { RoleModule } from './role/role.module';
     PersonalModule, FaqModule, 
     AssociateModule, ServicesInformativeModule, 
     AboutUsModule, EventModule,
-    UsersModule, RoleModule
+    UsersModule, RoleModule, AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
