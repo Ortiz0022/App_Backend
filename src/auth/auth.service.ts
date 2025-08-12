@@ -5,21 +5,23 @@ import { Repository } from "typeorm";
 import { RoleDto } from "src/role/dto/RoleDto";
 import { JwtService } from "@nestjs/jwt";
 import { LoginAuthDto } from "./dto/login-auth.dto";
-import { hash, compare } from 'bcrypt'
+import { hash, compare } from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+import { User } from "src/users/entities/user.entity";
 
 @Injectable()
 export class AuthService{
 constructor(
- @InjectRepository(UserDto)
-    private readonly userRepo: Repository<UserDto>,
+ @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(RoleDto)
     private readonly roleRepo: Repository<RoleDto>,
     private jwtService: JwtService
 ){}
-
+// ...existing code...
 async login(userObjectLogin: LoginAuthDto) {
     const { email, password } = userObjectLogin;
-    const findUser = await this.userRepo.findOne({ where: { email }, relations: ['roles'] });
+    const findUser = await this.userRepo.findOne({ where: { email }, relations: ['role'] });
 
     if (!findUser) throw new HttpException('Usuario no encontrado', 404);
 
@@ -27,11 +29,11 @@ async login(userObjectLogin: LoginAuthDto) {
 
     if (!isPasswordValid) throw new HttpException('Contraseña invalida', 403);
 
-    const rolesNames = findUser.roles?.map((role) => role.name);
+    const roleName = findUser.role?.name; // <-- Cambiado: accede directamente a la propiedad 'name'
 
     const payload = { 
-      id: findUser.Id,
-      roles: rolesNames,
+      id: findUser.id,
+      role: roleName, // <-- Cambiado: usa 'role' y 'roleName'
       jti: uuidv4()
     };
 
@@ -43,7 +45,8 @@ async login(userObjectLogin: LoginAuthDto) {
     };
 
     return data;
-  }
+}
+// ...existing code...
 
 }
 
