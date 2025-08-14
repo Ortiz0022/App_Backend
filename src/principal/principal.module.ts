@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Principal } from './entities/principal.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Principal])],
+  imports: [TypeOrmModule.forFeature([Principal, Event])],
   controllers: [PrincipalController],
   providers: [PrincipalService],
 })

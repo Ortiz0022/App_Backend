@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Event } from 'src/event/entities/event.entity';
 
 @Entity()
 export class Principal {
@@ -11,4 +12,7 @@ export class Principal {
   @Column({ nullable: false })
   description: string;
 
+  @OneToOne(() => Event, (event) => event.principal, { eager: true, nullable: false })
+  @JoinColumn()
+  event: Event;
 }
