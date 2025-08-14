@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne } from 'typeorm';
 import { Role } from 'src/role/entities/role.entity';
+import { Personal } from 'src/personal/entities/personal.entity';
 
 @Entity()
 export class User {
@@ -20,5 +21,8 @@ export class User {
 
   @ManyToOne(() => Role, (role) => role.users, { eager: false, nullable: false })
   role: Role;
+
+  // @OneToOne(() => Personal, (personal) => personal.user, { nullable: false })
+  // personal: Personal;
 }
 

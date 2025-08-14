@@ -3,10 +3,11 @@ export class PersonalDto {
   name: string;
   lastname1: string;
   lastname2: string;
-  birthDate: string;
+  birthDate: string;    
   phone: string;
   email: string;
   direction: string;
-  occupation: string;
+  occupation: string;    
   IsActive: boolean;
+  UserId?: number; 
 }
