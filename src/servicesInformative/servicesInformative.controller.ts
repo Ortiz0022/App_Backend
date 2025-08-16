@@ -9,26 +9,26 @@ export class ServicesInformativeController {
 
     @Post()
     create(@Body() createServicesInformativeDto: ServicesInformativeDto) {
-        return this.servicesInformativeService.createServicesInformative(createServicesInformativeDto);
+        return this.servicesInformativeService.create(createServicesInformativeDto);
     }
 
     @Get()
     findAll() {
-        return this.servicesInformativeService.findAllServicesInformative();
+        return this.servicesInformativeService.findAll();
     }
 
     @Get(':id')
     findOne(@Param('id') id: number) {
-        return this.servicesInformativeService.findOneServicesInformative(id);      
-    }   
+        return this.servicesInformativeService.findOne(id);
+    }
 
     @Put(':id')
     update(@Param('id') id: number, @Body() updateServicesInformativeDto: ServicesInformativeDto) {
-        return this.servicesInformativeService.updateServicesInformative(id, updateServicesInformativeDto);
+        return this.servicesInformativeService.update(id, updateServicesInformativeDto);
     }
 
     @Delete(':id')
     remove(@Param('id') id: number) {
-        return this.servicesInformativeService.deleteServicesInformative(id);
+        return this.servicesInformativeService.delete(id);
     }   
 }

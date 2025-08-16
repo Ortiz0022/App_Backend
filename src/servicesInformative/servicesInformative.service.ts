@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ServicesInformative } from "./entities/servicesInformative.entity";
 import { Repository } from "typeorm";
+import { ServicesInformativeDto } from "./dto/ServicesInformativeDto";
 
 @Injectable()
 export class ServicesInformativeService {
@@ -11,25 +12,25 @@ export class ServicesInformativeService {
   ) {}
 
     // Métodos para ServicesInformative
-    findAllServicesInformative() {
+    findAll() {
         return this.servicesInformativeRepository.find();
     }
 
-    findOneServicesInformative(id: number) {
+    findOne(id: number) {
         return this.servicesInformativeRepository.findOneBy({ id });
     }
 
-    async createServicesInformative(servicesInformativeDto: any) {
+    async create(servicesInformativeDto: ServicesInformativeDto) {
         const newService = this.servicesInformativeRepository.create(servicesInformativeDto);
         await this.servicesInformativeRepository.save(newService);
         return newService;
     }
 
-    deleteServicesInformative(id: number) {
+    delete(id: number) {
         return this.servicesInformativeRepository.delete(id);
     }
 
-    updateServicesInformative(id: number, servicesInformativeDto: any) {
+    update(id: number, servicesInformativeDto: ServicesInformativeDto) {
         return this.servicesInformativeRepository.update(id, servicesInformativeDto);
     }
 }
