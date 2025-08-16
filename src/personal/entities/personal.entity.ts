@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 
 @Entity()
 export class Personal {
@@ -12,10 +13,13 @@ export class Personal {
   name: string;
 
   @Column({ nullable: false })
-  lastname: string;
+  lastname1: string;
 
-  @Column({ nullable: false, type: 'date' })
-  birthdayDate: string;
+  @Column({ nullable: false })
+  lastname2: string;
+
+  @Column({ nullable: false})
+  birthDate: string;
 
   @Column({ nullable: false })
   phone: string;
@@ -27,5 +31,10 @@ export class Personal {
   direction: string;
 
   @Column({ nullable: false })
-  ocupation: string;
+  occupation: string;
+
+  // @OneToOne(() => User, (user) => user.personal, { nullable: true })
+  // @JoinColumn()
+  // user: User;
+
 }
