@@ -22,6 +22,9 @@ export class User {
   @ManyToOne(() => Role, (role) => role.users, { eager: false, nullable: false })
   role: Role;
 
+  @Column({ type:'uuid', unique: true, name: 'reset_password_token', nullable: true })
+  resetPasswordToken: string | null;
+
   // @OneToOne(() => Personal, (personal) => personal.user, { nullable: false })
   // personal: Personal;
 }
