@@ -8,7 +8,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 
 @Controller('faq')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'JUNTA') // Define roles that can access this controller
+@Roles('ADMIN') // Define roles that can access this controller
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 
@@ -17,6 +17,7 @@ export class FaqController {
     return this.faqService.createFaq(createFaqDto);
   }
 
+  @Roles('JUNTA')
   @Get()
   findAll() {
     return this.faqService.findAllFaqs();
