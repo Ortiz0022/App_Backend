@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { FaqService } from './faq.service';
 import { FaqDto } from './dto/FAQDto';
+import { Roles } from 'src/auth/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
 
 
 @Controller('faq')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN', 'JUNTA') // Define roles that can access this controller
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 
