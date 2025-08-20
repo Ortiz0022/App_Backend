@@ -9,12 +9,13 @@ import { JwtService } from '@nestjs/jwt';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { compare, hash } from 'bcrypt';
 import { v4 as uuidv4, v4 } from 'uuid';
-
 import { User } from 'src/users/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
 import { RequestResetPasswordDto } from './dto/request-reset-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import {EmailService} from 'src/email/email.service'
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { EncoderService } from 'src/auth/encoder.service';
 @Injectable()
 export class AuthService {
   constructor(
@@ -26,6 +27,7 @@ export class AuthService {
 
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly encoderService: EncoderService,
   ) {}
 
   /**
@@ -110,4 +112,22 @@ export class AuthService {
     user.resetPasswordToken = null;
     await this.userRepo.save(user);
   }
+
+   //Cambiar contraseña
+   async changePassword(dto: ChangePasswordDto, authUser: { userId: number }): Promise<void> {
+  const { oldPassword, newPassword } = dto;
+
+  const user = await this.userRepo.findOne({
+    where: { id: authUser.userId },
+    select: ['id', 'password'], // asegúrate de traer el hash
+  });
+  if (!user) throw new NotFoundException('Usuario no encontrado');
+
+  const ok = await this.encoderService.checkPassword(oldPassword, user.password);
+  if (!ok) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+  user.password = await this.encoderService.encodePassword(newPassword);
+  await this.userRepo.save(user);
+}
+
 }

@@ -9,6 +9,7 @@ import { User } from 'src/users/entities/user.entity';
 import { RoleDto } from 'src/role/dto/RoleDto'; // Idealmente aquí debería ir la entidad Role, no el DTO
 import { Role } from 'src/role/entities/role.entity';
 import {EmailModule} from 'src/email/email.module'
+import { EncoderService } from './encoder.service';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import {EmailModule} from 'src/email/email.module'
     EmailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, EncoderService],
 })
 export class AuthModule {}
