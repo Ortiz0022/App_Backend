@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrincipalModule } from './principal/principal.module';
@@ -17,9 +20,16 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    // ✅ Throttler BIEN colocado
+    ThrottlerModule.forRoot([
+      {
+        ttl: 120_000, // 120s = 2 min (usa 300_000 para 5 min)
+        limit: 5,
+      },
+    ]),
+
+    ConfigModule.forRoot({ isGlobal: true }),
+
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -30,13 +40,25 @@ import { ConfigModule } from '@nestjs/config';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    PrincipalModule, VolunteersModule, 
-    PersonalModule, FaqModule, 
-    AssociateModule, ServicesInformativeModule, 
-    AboutUsModule, EventModule,
-    UsersModule, RoleModule, AuthModule
+
+    // 👇 cada módulo es un elemento independiente del array
+    PrincipalModule,
+    VolunteersModule,
+    PersonalModule,
+    FaqModule,
+    AssociateModule,
+    ServicesInformativeModule,
+    AboutUsModule,
+    EventModule,
+    UsersModule,
+    RoleModule,    // ← aquí, sin .forRoot() y sin el objeto { ttl, limit } pegado
+    AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // ✅ activa el rate‑limit global
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

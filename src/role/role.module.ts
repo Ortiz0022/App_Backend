@@ -10,4 +10,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
     providers: [RoleService]
 })
 
-export class RoleModule {}
+export class RoleModule {
+  static forRoot(arg0: { ttl: number; limit: number; }[]): import("@nestjs/common").Type<any> | import("@nestjs/common").DynamicModule | Promise<import("@nestjs/common").DynamicModule> | import("@nestjs/common").ForwardReference<any> {
+    throw new Error('Method not implemented.');
+  }
+}
