@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -20,11 +20,12 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    // ✅ Throttler BIEN colocado
+    // Throttler lo implementaremos luego como en los formularios 
     ThrottlerModule.forRoot([
       {
-        ttl: 120_000, // 120s = 2 min (usa 300_000 para 5 min)
-        limit: 5,
+        name: 'login',    // política con nombre
+        ttl: 120_000,     // ✅ 2 minutos en MILISEGUNDOS
+        limit: 5,         // 5 intentos por ventana
       },
     ]),
 
@@ -56,9 +57,7 @@ import { ConfigModule } from '@nestjs/config';
   ],
   controllers: [AppController],
   providers: [
-    AppService,
-    // ✅ activa el rate‑limit global
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    AppService
   ],
 })
 export class AppModule {}
