@@ -33,6 +33,15 @@ export class Personal {
   @Column({ nullable: false })
   occupation: string;
 
+  @Column({
+  type: 'tinyint',
+  width: 1,
+  default: true,
+  transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number) => !!v },
+})
+isActive: boolean;
+
+
   // @OneToOne(() => User, (user) => user.personal, { nullable: true })
   // @JoinColumn()
   // user: User;

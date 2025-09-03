@@ -1,3 +1,5 @@
+import { IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 export class PersonalDto {
   IDE: string;
   name: string;
@@ -8,6 +10,8 @@ export class PersonalDto {
   email: string;
   direction: string;
   occupation: string;    
-  IsActive: boolean;
+  @IsBoolean()
+  @Type(() => Boolean)
+  isActive: boolean;
   UserId?: number; 
 }
