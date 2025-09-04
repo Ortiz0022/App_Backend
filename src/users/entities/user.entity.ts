@@ -25,6 +25,8 @@ export class User {
   @Column({ type:'uuid', unique: true, name: 'reset_password_token', nullable: true })
   resetPasswordToken: string | null;
 
+  @Column({ type: 'datetime', nullable: true })
+  resetPasswordTokenExpiresAt: Date | null;
   // @OneToOne(() => Personal, (personal) => personal.user, { nullable: false })
   // personal: Personal;
 }

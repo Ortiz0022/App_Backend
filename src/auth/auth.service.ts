@@ -91,6 +91,11 @@ export class AuthService {
       throw new NotFoundException('Usuario no encontrado');
     }
     user.resetPasswordToken = uuidv4();
+    
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 15); //Válido por 15 minutos
+    user.resetPasswordTokenExpiresAt = expires;
+    
     this.userRepo.save(user);
 
     //link al front
@@ -108,26 +113,36 @@ export class AuthService {
       throw new NotFoundException('Token inválido');
     }
 
-    user.password = await hash(password, 10);
+    if(!user.resetPasswordTokenExpiresAt || user.resetPasswordTokenExpiresAt.getTime() < Date.now())
+    {
+      user.resetPasswordToken = null;
+      user.resetPasswordTokenExpiresAt = null;
+      await this.userRepo.save(user);
+      throw new UnauthorizedException('Token expirado');
+    }
+
+    user.password = await hash(password, 10); //hashear la nueva contraseña
     user.resetPasswordToken = null;
+    user.resetPasswordTokenExpiresAt = null;
     await this.userRepo.save(user);
   }
 
+
    //Cambiar contraseña
    async changePassword(dto: ChangePasswordDto, authUser: { userId: number }): Promise<void> {
-  const { oldPassword, newPassword } = dto;
+      const { oldPassword, newPassword } = dto;
 
-  const user = await this.userRepo.findOne({
-    where: { id: authUser.userId },
-    select: ['id', 'password'], // asegúrate de traer el hash
-  });
-  if (!user) throw new NotFoundException('Usuario no encontrado');
+      const user = await this.userRepo.findOne({
+        where: { id: authUser.userId },
+        select: ['id', 'password'], // asegúrate de traer el hash
+      });
+      if (!user) throw new NotFoundException('Usuario no encontrado');
 
-  const ok = await this.encoderService.checkPassword(oldPassword, user.password);
-  if (!ok) throw new UnauthorizedException('Contraseña actual incorrecta');
+      const ok = await this.encoderService.checkPassword(oldPassword, user.password);
+      if (!ok) throw new UnauthorizedException('Contraseña actual incorrecta');
 
-  user.password = await this.encoderService.encodePassword(newPassword);
-  await this.userRepo.save(user);
-}
+      user.password = await this.encoderService.encodePassword(newPassword);
+      await this.userRepo.save(user);
+    }
 
 }
