@@ -12,7 +12,7 @@ export class Principal {
   @Column({ nullable: false })
   description: string;
 
-  @OneToOne(() => Event, (event) => event.principal, { eager: true, nullable: false })
+  @OneToOne(() => Event, (event) => event.principal, { eager: true, nullable: true })
   @JoinColumn()
   event: Event;
 }

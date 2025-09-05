@@ -3,6 +3,7 @@ import { AboutUsService } from "./aboutUs.service";
 import { AboutUs } from "./entities/aboutUs.entity";
 import { AboutUsDto } from "./dto/AboutUsDto";
 import { AboutUsPatchDto } from "./dto/AboutUsPatchDto";
+import { Public } from "src/auth/public.decorator";
 
 
 @Controller('aboutUs')
@@ -15,11 +16,13 @@ export class AboutUsController {
         return this.aboutUsService.create(createAboutUsDto);
     }
 
+    @Public()
     @Get()
     findAll() {
         return this.aboutUsService.findAll();
     }
 
+    @Public()
     @Get(':id')
     findOne(@Param('id') id: number) {
         return this.aboutUsService.findOne(id);
