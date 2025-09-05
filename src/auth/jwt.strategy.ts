@@ -15,6 +15,18 @@ export class JwtStrategy extends PassportStrategy(Strategy){
     }
 
   async validate(payload: any) {
-    return { userId: payload.id, userRole: payload.role }; 
+    // Ajusta estos mapeos a tu payload real:
+    const singleRole =
+    payload.role ||
+    payload.rol ||
+    payload.roleName ||
+    (Array.isArray(payload.roles) ? payload.roles[0] : undefined) ||
+    payload?.role?.name;
+
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      role: singleRole, // 👈 NECESARIO para RolesGuard
+    };
   }
 }

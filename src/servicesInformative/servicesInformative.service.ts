@@ -3,12 +3,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ServicesInformative } from "./entities/servicesInformative.entity";
 import { Repository } from "typeorm";
 import { ServicesInformativeDto } from "./dto/ServicesInformativeDto";
+import { RealtimeGateway } from "src/realtime/realtime.gateway";
 
 @Injectable()
 export class ServicesInformativeService {
   constructor(
     @InjectRepository(ServicesInformative)
     private servicesInformativeRepository: Repository<ServicesInformative>,
+    private readonly rt: RealtimeGateway,
   ) {}
 
     // Métodos para ServicesInformative
@@ -21,16 +23,23 @@ export class ServicesInformativeService {
     }
 
     async create(servicesInformativeDto: ServicesInformativeDto) {
-        const newService = this.servicesInformativeRepository.create(servicesInformativeDto);
-        await this.servicesInformativeRepository.save(newService);
-        return newService;
+        const created = this.servicesInformativeRepository.create(servicesInformativeDto);
+        await this.servicesInformativeRepository.save(created);
+        this.rt.emitServiceUpdated({ action: 'created', data: created });
+        return created;
     }
 
-    delete(id: number) {
-        return this.servicesInformativeRepository.delete(id);
+    async delete(id: number) {
+        const idNum = Number(id);
+        await this.servicesInformativeRepository.delete(idNum);    
+        this.rt.emitServiceUpdated({ action: 'deleted', id: idNum });   
+        return { ok: true };
     }
 
-    update(id: number, servicesInformativeDto: ServicesInformativeDto) {
-        return this.servicesInformativeRepository.update(id, servicesInformativeDto);
+    async update(id: number, servicesInformativeDto: ServicesInformativeDto) {
+        await this.servicesInformativeRepository.update(id, servicesInformativeDto);
+        const updated = await this.servicesInformativeRepository.findOneBy({ id });
+        this.rt.emitServiceUpdated({ action: 'updated', data: updated });
+        return updated;
     }
 }

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { EventService } from './event.service';
 import { EventDto } from './dto/EventDto';
+import { Public } from 'src/auth/public.decorator';
 
 @Controller('event')
 export class EventController {
@@ -11,11 +12,13 @@ export class EventController {
     return this.eventService.createEvent(createEventDto);
   }
 
+  @Public()
   @Get()
   findAll() {
     return this.eventService.findAllEvents();
   }
 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: number) {
     return this.eventService.findOneEvent(id);

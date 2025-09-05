@@ -4,12 +4,14 @@ import { Repository } from "typeorm";
 import { AboutUs } from "./entities/aboutUs.entity";
 import { AboutUsDto } from "./dto/AboutUsDto";
 import { AboutUsPatchDto } from "./dto/AboutUsPatchDto";
+import { RealtimeGateway } from "src/realtime/realtime.gateway";
 
 @Injectable()
 export class AboutUsService {
   constructor(
     @InjectRepository(AboutUs)
     private aboutUsRepository: Repository<AboutUs>,
+    private readonly rt: RealtimeGateway,
   ) {}
 
     findAll() {
@@ -35,15 +37,23 @@ export class AboutUsService {
       }
 
         await this.aboutUsRepository.update(id, dto);
+        await this.aboutUsRepository.save(exists);
         return this.aboutUsRepository.findOneBy({ id });
     }
 
-    delete(id: number) {
-        return this.aboutUsRepository.delete(id);
+    async delete(id: number) {
+      const idNum = Number(id);
+      await this.aboutUsRepository.delete(idNum);
+      this.rt.emitAboutUsUpdated({ action: 'deleted', id: idNum }); // <= número garantizado
+      return { ok: true };
     }
 
-    update(id: number, aboutUsDto: AboutUs) {
-        return this.aboutUsRepository.update(id, aboutUsDto);
-    }   
+   
+      async update(id: number, dto: AboutUsDto) {
+        await this.aboutUsRepository.update(id, dto);
+        const updated = await this.aboutUsRepository.findOneBy({ id });
+        this.rt.emitAboutUsUpdated({ action: 'updated', data: updated });
+        return updated;
+      } 
 
 }

@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { PrincipalDto } from './dto/PrincipalDto';
 import { PrincipalService } from './principal.service';
+import { Public } from 'src/auth/public.decorator';
 
 @Controller('principal')
 export class PrincipalController {
@@ -12,11 +13,13 @@ export class PrincipalController {
     return this.principalService.createPrincipal(createPrincipalDto);
   }
 
+  @Public()
   @Get()
   findAll() {
     return this.principalService.findAllPrincipal();
   }
 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: number) {
     return this.principalService.findOnePrincipal(id);
