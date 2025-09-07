@@ -1,5 +1,4 @@
-import { User } from 'src/users/entities/user.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity()
 export class Personal {
@@ -18,7 +17,7 @@ export class Personal {
   @Column({ nullable: false })
   lastname2: string;
 
-  @Column({ nullable: false})
+  @Column({ nullable: false })
   birthDate: string;
 
   @Column({ nullable: false })
@@ -34,16 +33,21 @@ export class Personal {
   occupation: string;
 
   @Column({
-  type: 'tinyint',
-  width: 1,
-  default: true,
-  transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number) => !!v },
-})
-isActive: boolean;
+    type: 'tinyint',
+    width: 1,
+    default: true,
+    transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number) => !!v },
+  })
+  isActive: boolean;
 
+  // ✅ Nuevos campos (opcionales). Con type:'date' la DB guarda DATE y TypeORM te da string 'YYYY-MM-DD'
+  @Column({ type: 'date', nullable: true })
+  startWorkDate: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  endWorkDate: string | null;
 
   // @OneToOne(() => User, (user) => user.personal, { nullable: true })
   // @JoinColumn()
   // user: User;
-
 }
