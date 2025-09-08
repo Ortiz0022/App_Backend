@@ -1,8 +1,6 @@
-
-import { ProjectionState } from "../entities/projection.entity";
+import { IsNumberString, IsOptional } from 'class-validator';
 
 export class UpdateProjectionDto {
-  year?: number;
-  total_amount?: string;     // "0.00"
-  state?: ProjectionState;       // 'OPEN' | 'CLOSED'
+  @IsOptional() @IsNumberString()
+  total_amount?: string;
 }

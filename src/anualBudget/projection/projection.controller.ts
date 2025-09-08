@@ -19,6 +19,8 @@ export class ProjectionController {
     return this.service.findAll();
   }
 
+  
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);

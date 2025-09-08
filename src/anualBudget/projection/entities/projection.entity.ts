@@ -1,28 +1,20 @@
-
+// src/anualBudget/projection/entities/projection.entity.ts
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, Unique, JoinColumn } from 'typeorm';
 import { Category } from 'src/anualBudget/category/entities/category.entity';
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeorm';
-
-
-export enum ProjectionState {
-  OPEN = 'OPEN',
-  CLOSED = 'CLOSED',
-}
+import { FiscalYear } from '../../fiscalYear/entities/fiscal-year.entity';
 
 @Entity({ name: 'projections' })
-@Unique(['year']) // un presupuesto por año
+@Unique(['fiscalYear']) // una proyección por año
 export class Projection {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int' })
-  year: number;
+  @OneToOne(() => FiscalYear, (fy) => fy.projection, { eager: true, nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'fiscalYearId' })
+  fiscalYear: FiscalYear;
 
-  // Por ahora se almacena (luego podrás recalcularlo con ingresos)
   @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
   total_amount: string;
-
-  @Column({ type: 'enum', enum: ProjectionState, default: ProjectionState.OPEN })
-  state: ProjectionState;
 
   @OneToMany(() => Category, (c) => c.projection)
   categories: Category[];
