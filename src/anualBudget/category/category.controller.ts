@@ -14,8 +14,8 @@ export class CategoryController {
   }
 
   @Get()
-  findAll(@Query('budgetId') budgetId?: string) {
-    return this.service.findAll(budgetId ? Number(budgetId) : undefined);
+  findAll(@Query('projectionId') projectionId?: string) {
+    return this.service.findAll(projectionId ? Number(projectionId) : undefined);
   }
 
   @Get(':id')

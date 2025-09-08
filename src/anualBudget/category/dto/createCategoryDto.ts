@@ -18,5 +18,5 @@ export class CreateCategoryDto {
   // relación obligatoria: a qué presupuesto pertenece
   @IsInt()
   @Min(1)
-  budgetId: number;
+  projectionId: number;
 }

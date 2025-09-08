@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
-import { Budget } from '../budget/entities/budget.entity';
+import { Projection } from '../projection/entities/projection.entity';
 import { CreateCategoryDto } from './dto/createCategoryDto';
 import { UpdateCategoryDto } from './dto/updateCategoryDto';
 
@@ -11,42 +11,42 @@ import { UpdateCategoryDto } from './dto/updateCategoryDto';
 export class CategoryService {
   constructor(
     @InjectRepository(Category) private repo: Repository<Category>,
-    @InjectRepository(Budget) private budgetRepo: Repository<Budget>,
+    @InjectRepository(Projection) private projectionRepo: Repository<Projection>,
   ) {}
 
   async create(dto: CreateCategoryDto) {
-    const budget = await this.budgetRepo.findOne({ where: { id: dto.budgetId } });
-    if (!budget) throw new NotFoundException('Budget not found');
+    const projection = await this.projectionRepo.findOne({ where: { id: dto.projectionId } });
+    if (!projection) throw new NotFoundException('projection not found');
 
     const entity = this.repo.create({
       name: dto.name,
       description: dto.description,
       category_amount: dto.category_amount ?? undefined, // default 0 en BD
-      budget,
+      projection: projection,
     });
 
     return this.repo.save(entity);
   }
 
-  findAll(budgetId?: number) {
-    if (budgetId) {
+  findAll(projectionId?: number) {
+    if (projectionId) {
       return this.repo.find({
-        where: { budget: { id: budgetId } },
-        relations: ['budget'],
+        where: { projection: { id: projectionId } },
+        relations: ['projection'],
         order: { name: 'ASC' },
       });
     }
-    return this.repo.find({ relations: ['budget'], order: { name: 'ASC' } });
+    return this.repo.find({ relations: ['projection'], order: { name: 'ASC' } });
   }
 
   async findOne(id: number) {
-    const cat = await this.repo.findOne({ where: { id }, relations: ['budget'] });
-    if (!cat) throw new NotFoundException('Category not found');
+    const cat = await this.repo.findOne({ where: { id }, relations: ['projection'] });
+    if (!cat) throw new NotFoundException('projection not found');
     return cat;
   }
 
   async update(id: number, dto: UpdateCategoryDto) {
-    const cat = await this.repo.findOne({ where: { id }, relations: ['budget'] });
+    const cat = await this.repo.findOne({ where: { id }, relations: ['projection'] });
     if (!cat) throw new NotFoundException('Category not found');
 
     Object.assign(cat, dto);

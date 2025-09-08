@@ -5,10 +5,10 @@ import { CategoryService } from './category.service';
 import { CategoryController } from './category.controller';
 
 import { Category } from './entities/category.entity';
-import { Budget } from '../budget/entities/budget.entity';
+import { Projection } from '../projection/entities/projection.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Category, Budget])],
+  imports: [TypeOrmModule.forFeature([Category, Projection])],
   controllers: [CategoryController],
   providers: [CategoryService],
   exports: [CategoryService],

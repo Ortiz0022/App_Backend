@@ -18,7 +18,7 @@ import { RoleModule } from './role/role.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
-import { BudgetModule } from './anualBudget/budget/budget.module';
+import { ProjectModule } from './anualBudget/projection/projection.module';
 import { CategoryModule } from './anualBudget/category/category.module';
 
 @Module({
@@ -58,7 +58,7 @@ import { CategoryModule } from './anualBudget/category/category.module';
     UsersModule,
     RoleModule,    // ← aquí, sin .forRoot() y sin el objeto { ttl, limit } pegado
     AuthModule,
-    BudgetModule,
+    ProjectModule,
     CategoryModule,
   ],
   controllers: [AppController],

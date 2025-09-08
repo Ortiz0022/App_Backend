@@ -1,8 +1,8 @@
 import { IsEnum, IsInt, IsNumberString, IsOptional, Min } from 'class-validator';
-import { BudgetState } from '../entities/budget.entity';
+import { ProjectionState } from '../entities/projection.entity';
 
 
-export class CreateBudgetDto {
+export class CreateProjectionDto {
   @IsInt()
   @Min(2000)
   year: number;
@@ -13,6 +13,6 @@ export class CreateBudgetDto {
   total_amount?: string;
 
   @IsOptional()
-  @IsEnum(BudgetState)
-  state?: BudgetState;
+  @IsEnum(ProjectionState)
+  state?: ProjectionState;
 }
