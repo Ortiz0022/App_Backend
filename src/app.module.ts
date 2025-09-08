@@ -20,6 +20,7 @@ import { ConfigModule } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
 import { ProjectModule } from './anualBudget/projection/projection.module';
 import { CategoryModule } from './anualBudget/category/category.module';
+import { SpendRegisterModule } from './anualBudget/spendRegister/spend-register.module';
 
 @Module({
   imports: [
@@ -56,10 +57,11 @@ import { CategoryModule } from './anualBudget/category/category.module';
     AboutUsModule,
     EventModule,
     UsersModule,
-    RoleModule,    // ← aquí, sin .forRoot() y sin el objeto { ttl, limit } pegado
+    RoleModule,    
     AuthModule,
     ProjectModule,
     CategoryModule,
+    SpendRegisterModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,6 +1,7 @@
 // src/anualBudget/category/entities/category.entity.ts
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { Projection } from '../../projection/entities/projection.entity';
+import { SpendRegister } from 'src/anualBudget/spendRegister/entities/spendRegister.entity';
 
 @Entity({ name: 'categories' })
 @Unique(['name', 'projection'])
@@ -18,5 +19,8 @@ export class Category {
   category_amount: string;
 
   @ManyToOne(() => Projection, (p: Projection) => p.categories, { nullable: false, onDelete: 'CASCADE' })
-  projection: Projection; // ✅ FK será projectionId
+  projection: Projection; 
+
+  @OneToMany(() => SpendRegister, (s: SpendRegister) => s.category)
+  spends: SpendRegister[];
 }
