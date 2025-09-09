@@ -21,6 +21,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { ProjectModule } from './anualBudget/projection/projection.module';
 import { CategoryModule } from './anualBudget/category/category.module';
 import { SpendRegisterModule } from './anualBudget/spendRegister/spend-register.module';
+import { ExtraordinaryModule } from './anualBudget/extraordinary/extraodinary.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { SpendRegisterModule } from './anualBudget/spendRegister/spend-register.
     ProjectModule,
     CategoryModule,
     SpendRegisterModule,
+    ExtraordinaryModule,
   ],
   controllers: [AppController],
   providers: [
