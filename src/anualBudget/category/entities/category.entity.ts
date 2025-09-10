@@ -23,5 +23,4 @@ export class Category {
 
   @OneToMany(() => SpendRegister, (s: SpendRegister) => s.category)
   spends: SpendRegister[];
-
 }
