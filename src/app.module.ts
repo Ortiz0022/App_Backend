@@ -18,6 +18,12 @@ import { RoleModule } from './role/role.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
+import { DepartmentModule } from './anualBudget/department/department.module';
+import { FiscalYearModule } from './anualBudget/fiscalYear/fiscal-year.module';
+import { IncomeTypeModule } from './anualBudget/incomeType/income-type.module';
+import { IncomeSubTypeModule } from './anualBudget/incomeSubType/income-sub-type.module';
+import { IncomeTypeByDepartmentModule } from './anualBudget/incomeTypeByDeparment/income-type-by-department.module';
+import { DepartmentSumModule } from './anualBudget/departmentSum/department-sum.module';
 
 
 @Module({
@@ -55,7 +61,13 @@ import { RealtimeModule } from './realtime/realtime.module';
     AboutUsModule,
     EventModule,
     UsersModule,
-    RoleModule,    
+    RoleModule,  
+    DepartmentModule,  
+    FiscalYearModule,
+    IncomeTypeModule,
+    IncomeSubTypeModule,
+    IncomeTypeByDepartmentModule,
+    DepartmentSumModule,
   ],
   controllers: [AppController],
   providers: [
