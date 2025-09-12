@@ -1,7 +1,7 @@
 // src/spendType/entities/spend-type.entity.ts
 import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Department } from 'src/anualBudget/department/entities/department.entity';
 
 @Entity()
 export class SpendType {
@@ -18,6 +18,7 @@ export class SpendType {
   @OneToMany(() => SpendSubType, (sub) => sub.spendType, { cascade: false })
   spendSubTypes: SpendSubType[];
 
-  // @OneToMany(() => SpendTypeByDepartment, (std) => std.spendType, { cascade: false })
-  // spendTypeByDepartments: SpendTypeByDepartment[];
+  @ManyToOne(() => Department, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'id_Department' }) // crea la columna exacta id_Department
+  department: Department;
 }

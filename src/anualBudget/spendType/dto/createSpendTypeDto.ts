@@ -8,4 +8,7 @@ export class CreateSpendTypeDto {
   @IsOptional()
   @IsNumber()
   amountSpend?: number;
+
+  @IsNotEmpty()
+  id_Department: number;
 }

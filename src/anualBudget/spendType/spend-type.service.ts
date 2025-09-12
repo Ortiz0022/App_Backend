@@ -1,41 +1,65 @@
-import { Injectable } from '@nestjs/common';
+// src/spendType/spend-type.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SpendType } from './entities/spend-type.entity'; // ajusta a 'spent-type.entity' si así lo tienes
+import { SpendType } from './entities/spend-type.entity';
+import { SpendSubType } from '../spendSubType/entities/spend-sub-type.entity';
 import { CreateSpendTypeDto } from './dto/createSpendTypeDto';
 import { UpdateSpendTypeDto } from './dto/updateSpendTypeDto';
-import { SpendSubType } from '../spendSubType/entities/spend-sub-type.entity';
+import { Department } from '../department/entities/department.entity';
 
 @Injectable()
 export class SpendTypeService {
   constructor(
     @InjectRepository(SpendType) private readonly typeRepo: Repository<SpendType>,
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
+    @InjectRepository(Department) private readonly deptRepo: Repository<Department>,
   ) {}
 
-  create(dto: CreateSpendTypeDto) {
-    const type = this.typeRepo.create({ name: dto.name }); // amountSpend NO se setea por API
+  async create(dto: CreateSpendTypeDto) {
+    const dept = await this.deptRepo.findOne({
+      where: { id: dto.id_Department }, // 👈 nombre correcto
+    });
+    if (!dept) throw new NotFoundException('Department not found');
+  
+    const type = this.typeRepo.create({
+      name: dto.name,
+      department: dept, // asignación del department
+    });
     return this.typeRepo.save(type);
   }
 
   findAll() {
     return this.typeRepo.find({
-      relations: ['spendSubTypes'], // pedir solo relaciones que existen
+      relations: ['spendSubTypes', 'department'], // 👈 incluir department en las lecturas
     });
   }
 
   findOne(id: number) {
     return this.typeRepo.findOne({
       where: { id_SpendType: id },
-      relations: ['spendSubTypes'],
+      relations: ['spendSubTypes', 'department'],
     });
   }
 
   // Evitar que sobreescriban amountSpend por API
   async update(id: number, dto: UpdateSpendTypeDto) {
-    await this.typeRepo.update(id, { name: dto.name });
-    // opcional: recalcular por si cambias nombre? no afecta el total
+    const entity = await this.typeRepo.findOne({ where: { id_SpendType: id }, relations: ['department'] });
+    if (!entity) throw new NotFoundException('SpendType not found');
+
+    if (dto.name !== undefined) entity.name = dto.name;
+
+    // Permitir moverlo a otro Department (opcional)
+    if (dto.id_Department !== undefined && dto.id_Department !== entity.department?.id) {
+      const dept = await this.deptRepo.findOne({
+        where: { id: dto.id_Department },
+      });
+      if (!dept) throw new NotFoundException('Department not found');
+      entity.department = dept;
+    }
+
+    await this.typeRepo.save(entity);
     return this.findOne(id);
   }
 
@@ -48,7 +72,7 @@ export class SpendTypeService {
     const row = await this.subRepo
       .createQueryBuilder('s')
       .select('COALESCE(SUM(s.amount), 0)', 'total')
-      .where('s.id_SpendType = :id', { id: spendTypeId }) // usar la FK real
+      .where('s.id_SpendType = :id', { id: spendTypeId })
       .getRawOne<{ total: string | number }>();
 
     const total = Number(row?.total ?? 0);
