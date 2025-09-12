@@ -24,6 +24,7 @@ import { IncomeTypeModule } from './anualBudget/incomeType/income-type.module';
 import { IncomeSubTypeModule } from './anualBudget/incomeSubType/income-sub-type.module';
 import { IncomeTypeByDepartmentModule } from './anualBudget/incomeTypeByDeparment/income-type-by-department.module';
 import { DepartmentSumModule } from './anualBudget/departmentSum/department-sum.module';
+import { HomeModule } from './anualBudget/home/home.module';
 
 
 @Module({
@@ -68,6 +69,7 @@ import { DepartmentSumModule } from './anualBudget/departmentSum/department-sum.
     IncomeSubTypeModule,
     IncomeTypeByDepartmentModule,
     DepartmentSumModule,
+    HomeModule
   ],
   controllers: [AppController],
   providers: [
