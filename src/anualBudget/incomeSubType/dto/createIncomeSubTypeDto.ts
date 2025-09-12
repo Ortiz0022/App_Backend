@@ -1,6 +1,16 @@
+import { IsNotEmpty, IsNumberString, IsOptional, IsString } from 'class-validator';
+
 export class CreateIncomeSubTypeDto {
+  @IsString() @IsNotEmpty()
   name: string;
-  amount: string;       // "12345.67"
-  date?: string;        // ISO string; si no viene -> now()
-  incomeTypeId: number; // FK
+
+  // viene como string porque la columna es DECIMAL
+  @IsNumberString()
+  amount: string;           // ej: "12345.67"
+
+  @IsOptional() @IsString()
+  date?: string;            // ISO; si no viene -> now()
+
+  @IsNumberString()
+  incomeTypeId: number;     // FK
 }
