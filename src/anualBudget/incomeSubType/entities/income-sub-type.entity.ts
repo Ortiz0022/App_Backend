@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { IncomeType } from '../../incomeType/entities/income-type.entity';
 
 @Entity({ name: 'income_sub_types' })
@@ -15,6 +15,8 @@ export class IncomeSubType {
   @Column({ type: 'datetime' })
   date: Date;
 
-  @ManyToOne(() => IncomeType, (t: IncomeType) => t.subTypes, { nullable: false, onDelete: 'CASCADE' })
-  incomeType: IncomeType; // FK: incomeTypeId
+  @ManyToOne(() => IncomeType, (t) => t.subTypes, { onDelete: 'CASCADE' })
+@JoinColumn({ name: 'id_IncomeType' }) // <-- así el query usa s.id_IncomeType
+incomeType: IncomeType;
+
 }

@@ -1,22 +1,23 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
-import { Department } from '../../department/entities/department.entity';
-import { IncomeType } from '../../incomeType/entities/income-type.entity';
-import { FiscalYear } from '../../fiscalYear/entities/fiscal-year.entity';
+// src/anualBudget/incomeTypeByDeparment/entities/income-type-by-department.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Department } from 'src/anualBudget/department/entities/department.entity';
+import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
 
-@Entity({ name: 'income_type_by_department' })
-@Unique([ 'department', 'incomeType'])
+@Entity()
 export class IncomeTypeByDepartment {
   @PrimaryGeneratedColumn()
-  id: number;
+  id_IncomeTypeByDepartment: number;
 
-  // Suma de amountIncome de TODOS los IncomeType ligados a (FY, Dept) para este tipo
-  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
+  // TOTAL del departamento en ingresos (suma de todos los IncomeType.amountIncome)
+  @Column('decimal', { precision: 18, scale: 2, default: 0 })
   amountDepIncome: string;
 
   @ManyToOne(() => Department, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'Id_Department' })
   department: Department;
 
-  @ManyToOne(() => IncomeType, { nullable: false, onDelete: 'RESTRICT' })
-  incomeType: IncomeType;
-
+  // Para la fila de TOTAL dejamos esta FK en NULL
+  @ManyToOne(() => IncomeType, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'Id_TypeIncome' })
+  incomeType?: IncomeType | null;
 }

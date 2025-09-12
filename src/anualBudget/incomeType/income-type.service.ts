@@ -4,13 +4,15 @@ import { Repository } from 'typeorm';
 import { IncomeType } from './entities/income-type.entity';
 import { CreateIncomeTypeDto } from './dto/createIncomeTypeDto';
 import { UpdateIncomeTypeDto } from './dto/updateIncomeTypeDto';
+import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
 import { IncomeTypeByDepartmentService } from '../incomeTypeByDeparment/income-type-by-department.service';
 
 @Injectable()
 export class IncomeTypeService {
   constructor(
-    @InjectRepository(IncomeType) private repo: Repository<IncomeType>,
-    private itbdService: IncomeTypeByDepartmentService,
+    @InjectRepository(IncomeType) private readonly repo: Repository<IncomeType>,
+    @InjectRepository(IncomeSubType) private readonly subRepo: Repository<IncomeSubType>,
+    private readonly itbdService: IncomeTypeByDepartmentService, // debe exponer recalcDepartmentTotal
   ) {}
 
   async create(dto: CreateIncomeTypeDto) {
@@ -18,31 +20,21 @@ export class IncomeTypeService {
       throw new BadRequestException('departmentId is required for IncomeType');
     }
 
-    // setear relación por id (sin query extra)
+    // setear relación por id (sin leer Department)
     const entity = this.repo.create({
       name: dto.name,
       department: { id: dto.departmentId } as any,
-      // amountIncome queda 0 por default
     });
 
     const saved = await this.repo.save(entity);
 
-    // asegurar el cache por (department, incomeType)
-    await this.itbdService.upsert?.({
-      departmentId: dto.departmentId,
-      incomeTypeId: saved.id,
-      // opcional: amountDepIncome = '0'
-    }) ?? await this.itbdService.create({
-      departmentId: dto.departmentId,
-      incomeTypeId: saved.id,
-      // amountDepIncome por defecto 0 en la entity
-    });
+    // recalcular el total del departamento (ingresos)
+    await this.itbdService.recalcDepartmentTotal(dto.departmentId);
 
     return saved;
   }
 
   findAll() {
-    // útil tener el department a la mano
     return this.repo.find({
       relations: ['department'],
       order: { name: 'ASC' },
@@ -50,55 +42,55 @@ export class IncomeTypeService {
   }
 
   async findOne(id: number) {
-    const row = await this.repo.findOne({
-      where: { id },
-      relations: ['department'],
-    });
+    const row = await this.repo.findOne({ where: { id }, relations: ['department'] });
     if (!row) throw new NotFoundException('IncomeType not found');
     return row;
   }
 
   async update(id: number, dto: UpdateIncomeTypeDto) {
     const row = await this.findOne(id);
+    const prevDeptId = row.department?.id;
 
-    // manejar cambio de department (si viene)
-    const prevDepartmentId = row.department?.id;
-    const nextDepartmentId = dto.departmentId ?? prevDepartmentId;
-
-    // actualizar campos simples
     if (dto.name !== undefined) row.name = dto.name;
-
-    // si cambia el departamento, reasignar la relación
-    if (nextDepartmentId !== prevDepartmentId) {
-      row.department = { id: nextDepartmentId } as any;
+    if (dto.departmentId !== undefined && dto.departmentId !== prevDeptId) {
+      row.department = { id: dto.departmentId } as any;
     }
 
     const saved = await this.repo.save(row);
 
-    // mantener coherencia de IncomeTypeByDepartment
-    if (nextDepartmentId !== prevDepartmentId) {
-      // crear/asegurar el nuevo vínculo
-      await this.itbdService.upsert?.({
-        departmentId: nextDepartmentId!,
-        incomeTypeId: saved.id,
-      }) ?? await this.itbdService.create({
-        departmentId: nextDepartmentId!,
-        incomeTypeId: saved.id,
-      });
-
-      // eliminar el vínculo anterior si existía
-      if (prevDepartmentId) {
-        await this.itbdService.removeByComposite?.(prevDepartmentId, saved.id);
-        // Si no tienes removeByComposite, agrega un método en el service ITBD para borrar por (departmentId, incomeTypeId)
-      }
+    // Recalcular totales por departamento si cambió
+    if (dto.departmentId !== undefined && dto.departmentId !== prevDeptId) {
+      await this.itbdService.recalcDepartmentTotal(dto.departmentId);
+      if (prevDeptId) await this.itbdService.recalcDepartmentTotal(prevDeptId);
     }
 
     return saved;
   }
 
   async remove(id: number) {
-    // limpiar cache (o confiar en cascada si está configurado)
-    await this.itbdService.removeByIncomeType?.(id);
+    const row = await this.findOne(id);
+    const deptId = row.department?.id;
     await this.repo.delete(id);
+    if (deptId) await this.itbdService.recalcDepartmentTotal(deptId);
+  }
+
+  /** Recalcula y persiste SUM(IncomeSubType.amount) -> IncomeType.amountIncome
+   *  y luego actualiza el total del departamento correspondiente. */
+  async recalcAmount(incomeTypeId: number) {
+    const raw = await this.subRepo
+      .createQueryBuilder('s')
+      .select('COALESCE(SUM(s.amount), 0)', 'total')
+      .where('s.id_IncomeType = :id', { id: incomeTypeId }) // usa el nombre real de tu FK
+      .getRawOne<{ total: string | number }>();
+
+    const total = Number(raw?.total ?? 0).toFixed(2);
+    await this.repo.update(incomeTypeId, { amountIncome: total });
+
+    const type = await this.repo.findOne({ where: { id: incomeTypeId }, relations: ['department'] });
+    if (type?.department?.id) {
+      await this.itbdService.recalcDepartmentTotal(type.department.id);
+    }
+
+    return this.findOne(incomeTypeId);
   }
 }

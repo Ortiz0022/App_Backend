@@ -1,5 +1,10 @@
+// dto/createIncomeTypeDto.ts
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+
 export class CreateIncomeTypeDto {
+  @IsString() @IsNotEmpty()
   name: string;
-  departmentId?: number; 
-  fiscalYearId?: number; // si no viene, se usa el FY activo
+
+  @IsNumber()
+  departmentId: number;   // requerido
 }

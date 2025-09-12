@@ -5,7 +5,7 @@ import { Repository, IsNull } from 'typeorm';
 import { DepartmentSum } from './entities/department-sum.entity';
 import { FiscalYear } from 'src/anualBudget/fiscalYear/entities/fiscal-year.entity';
 import { SpendTypeByDepartment } from 'src/anualBudget/spendTypeByDepartment/entities/spend-type-by-department.entity';
-import { CreateDepartmentSumDto } from './dto/createDepartmentSum';
+import { IncomeTypeByDepartment } from 'src/anualBudget/incomeTypeByDeparment/entities/income-type-by-department.entity'; // 👈 NUEVO
 
 @Injectable()
 export class DepartmentSumService {
@@ -16,41 +16,44 @@ export class DepartmentSumService {
     private readonly fyRepo: Repository<FiscalYear>,
     @InjectRepository(SpendTypeByDepartment)
     private readonly stdRepo: Repository<SpendTypeByDepartment>,
+    @InjectRepository(IncomeTypeByDepartment)                        // 👈 NUEVO
+    private readonly itbdRepo: Repository<IncomeTypeByDepartment>,  // 👈 NUEVO
   ) {}
 
-  /** Crea o actualiza el snapshot para un año fiscal */
-  async upsert(dto: CreateDepartmentSumDto) {
-    const fy = await this.fyRepo.findOne({ where: { id: dto.fiscalYearId } }); // ajusta a id_FiscalYear si tu PK se llama así
+  /** Crea/actualiza snapshot para el año fiscal con totalSpend y totalIncome */
+  async upsert(dto: { fiscalYearId: number }) {
+    const fy = await this.fyRepo.findOne({ where: { id: dto.fiscalYearId } });
     if (!fy) throw new NotFoundException('FiscalYear not found');
 
-    // Suma de TODOS los departamentos (filas TOTAL: spendType IS NULL)
-    const raw = await this.stdRepo
-      .createQueryBuilder('d')
-      .select('COALESCE(SUM(d.amountDepSpend), 0)', 'totalSpend')
-      .where('d.Id_TypeSpend IS NULL') // usamos la fila "total por depto"
-      .getRawOne<{ totalSpend: string | number }>();
+    // Sumar TOTALES por departamento:
+    //  - Gastos: SpendTypeByDepartment.amountDepSpend donde Id_TypeSpend IS NULL
+    //  - Ingresos: IncomeTypeByDepartment.amountDepIncome donde Id_TypeIncome IS NULL
+    const [spendRaw, incomeRaw] = await Promise.all([
+      this.stdRepo
+        .createQueryBuilder('s')
+        .select('COALESCE(SUM(s.amountDepSpend), 0)', 'totalSpend')
+        .where('s.Id_TypeSpend IS NULL')
+        .getRawOne<{ totalSpend: string | number }>(),
+      this.itbdRepo
+        .createQueryBuilder('i')
+        .select('COALESCE(SUM(i.amountDepIncome), 0)', 'totalIncome')
+        .where('i.Id_TypeIncome IS NULL')
+        .getRawOne<{ totalIncome: string | number }>(),
+    ]);
 
-    const totalSpend = Number(raw?.totalSpend ?? 0).toFixed(2);
-
-    // (Opcional) totalIncome: por ahora lo dejamos a 0.00
-    const totalIncome = Number(0).toFixed(2);
+    const totalSpend  = Number(spendRaw?.totalSpend  ?? 0).toFixed(2);
+    const totalIncome = Number(incomeRaw?.totalIncome ?? 0).toFixed(2);
 
     let snapshot = await this.sumRepo.findOne({ where: { fiscalYear: { id: fy.id } } as any });
     if (!snapshot) {
-      snapshot = this.sumRepo.create({
-        fiscalYear: fy,
-        totalIncome: totalIncome,
-        totalSpend: totalSpend,
-      });
+      snapshot = this.sumRepo.create({ fiscalYear: fy, totalIncome, totalSpend });
     } else {
       snapshot.totalIncome = totalIncome;
-      snapshot.totalSpend = totalSpend;
+      snapshot.totalSpend  = totalSpend;
     }
-
     return this.sumRepo.save(snapshot);
   }
 
-  /** Recalcula (solo totalSpend) para el año fiscal indicado */
   recalc(fiscalYearId: number) {
     return this.upsert({ fiscalYearId });
   }

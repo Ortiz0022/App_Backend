@@ -1,4 +1,11 @@
+// dto/updateIncomeTypeDto.ts
+import { CreateIncomeTypeDto } from './createIncomeTypeDto';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
+
 export class UpdateIncomeTypeDto {
-   name?: string;
-  departmentId?: number; // <- agrega esto para permitir mover de departamento
+  @IsOptional() @IsString()
+  name?: string;
+
+  @IsOptional() @IsNumber()
+  departmentId?: number;  // mover a otro departamento (opcional)
 }

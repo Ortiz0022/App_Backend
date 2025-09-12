@@ -1,102 +1,95 @@
 // src/anualBudget/incomeTypeByDeparment/income-type-by-department.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { IncomeTypeByDepartment } from './entities/income-type-by-department.entity';
-import { CreateIncomeTypeByDepartmentDto } from './dto/createIncomeTypeByDepartmentDto';
-import { UpdateIncomeTypeByDepartmentDto } from './dto/updateIncomeTypeByDepartmentDto';
+import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
 
 @Injectable()
 export class IncomeTypeByDepartmentService {
   constructor(
     @InjectRepository(IncomeTypeByDepartment)
     private readonly repo: Repository<IncomeTypeByDepartment>,
+    @InjectRepository(IncomeType)
+    private readonly typeRepo: Repository<IncomeType>,
   ) {}
 
-  async create(dto: CreateIncomeTypeByDepartmentDto) {
-    const entity = this.repo.create({
-      department: { id: dto.departmentId } as any,
-      incomeType: { id: dto.incomeTypeId } as any,
-      amountDepIncome: dto.amountDepIncome ?? '0',
-    });
-    return this.repo.save(entity);
-  }
+  /** Asegura fila TOTAL (incomeType = NULL) y la recalcula */
+  async recalcDepartmentTotal(departmentId: number) {
+    // SUM de todos los IncomeType.amountIncome del depto
+    const raw = await this.typeRepo
+      .createQueryBuilder('t')
+      .select('COALESCE(SUM(t.amountIncome), 0)', 'total')
+      .where('t.id_Department = :id', { id: departmentId })
+      .getRawOne<{ total: string | number }>();
 
-  // ✅ requerido por tu controller
-  findAll(p0: number | undefined) {
-    return this.repo.find({
-      relations: ['department', 'incomeType'],
-      order: { id: 'ASC' },
-    });
-  }
+    const total = Number(raw?.total ?? 0).toFixed(2);
 
-  // ✅ requerido por tu controller
-  async findOne(id: number) {
-    const row = await this.repo.findOne({
-      where: { id },
+    // upsert de la fila TOTAL
+    let row = await this.repo.findOne({
+      where: { department: { id: departmentId } as any, incomeType: IsNull() } as any,
       relations: ['department', 'incomeType'],
     });
-    if (!row) throw new NotFoundException('IncomeTypeByDepartment not found');
-    return row;
-  }
 
-  // ✅ requerido por tu controller
-  async update(id: number, dto: UpdateIncomeTypeByDepartmentDto) {
-    const row = await this.findOne(id);
-
-    if (dto.amountDepIncome !== undefined) {
-      row.amountDepIncome = dto.amountDepIncome;
-    }
-    if (dto.departmentId) {
-      row.department = { id: dto.departmentId } as any;
-    }
-    if (dto.incomeTypeId) {
-      row.incomeType = { id: dto.incomeTypeId } as any;
+    if (!row) {
+      row = this.repo.create({
+        department: { id: departmentId } as any,
+        incomeType: null,
+        amountDepIncome: total,
+      });
+    } else {
+      row.amountDepIncome = total;
     }
 
     return this.repo.save(row);
   }
 
-  // ✅ requerido por tu controller
- async getTotal(departmentId: number) {
-  const row = await this.repo
-    .createQueryBuilder('itbd')
-    .select('COALESCE(SUM(itbd.amountDepIncome), 0)', 'total')
-    .where('itbd.departmentId = :departmentId', { departmentId })
-    .getRawOne<{ total: string }>(); // <- puede ser undefined
+  /** Recalcula TODOS los departamentos que tengan IncomeTypes */
+  async recalcAll() {
+    const ids = await this.typeRepo
+      .createQueryBuilder('t')
+      .select('DISTINCT t.id_Department', 'id')
+      .getRawMany<{ id: number }>();
 
-  const total = row?.total ?? '0';   // <- fallback seguro
-  return { departmentId, total };    // total queda string (DECIMAL)
-}
-
-
-  // Helpers opcionales (por si los usas en otros servicios)
-  async findByComposite(departmentId: number, incomeTypeId: number) {
-    return this.repo.findOne({
-      where: {
-        department: { id: departmentId },
-        incomeType: { id: incomeTypeId },
-      },
-    });
+    const out: IncomeTypeByDepartment[] = [];
+    for (const r of ids) out.push(await this.recalcDepartmentTotal(Number(r.id)));
+    return out;
   }
 
-  async upsert(dto: CreateIncomeTypeByDepartmentDto) {
-    const found = await this.findByComposite(dto.departmentId, dto.incomeTypeId);
-    if (!found) return this.create(dto);
-    if (dto.amountDepIncome !== undefined) {
-      found.amountDepIncome = dto.amountDepIncome;
-      return this.repo.save(found);
+  /** Helpers que tu IncomeTypeService ya invoca */
+  async upsert(payload: { departmentId: number; incomeTypeId: number }) {
+    // este upsert mantiene (dept, incomeType) si decides usar filas por par; no toca el TOTAL
+    let row = await this.repo.findOne({
+      where: {
+        department: { id: payload.departmentId } as any,
+        incomeType: { id: payload.incomeTypeId } as any,
+      } as any,
+      relations: ['department', 'incomeType'],
+    });
+
+    if (!row) {
+      row = this.repo.create({
+        department: { id: payload.departmentId } as any,
+        incomeType: { id: payload.incomeTypeId } as any,
+        amountDepIncome: '0.00',
+      });
+      await this.repo.save(row);
     }
-    return found;
+    return row;
+  }
+
+  async create(payload: { departmentId: number; incomeTypeId: number }) {
+    return this.upsert(payload);
   }
 
   async removeByComposite(departmentId: number, incomeTypeId: number) {
-    const row = await this.findByComposite(departmentId, incomeTypeId);
-    if (row) await this.repo.remove(row);
+    await this.repo.delete({
+      department: { id: departmentId } as any,
+      incomeType: { id: incomeTypeId } as any,
+    } as any);
   }
 
   async removeByIncomeType(incomeTypeId: number) {
-    const rows = await this.repo.find({ where: { incomeType: { id: incomeTypeId } } });
-    if (rows.length) await this.repo.remove(rows);
+    await this.repo.delete({ incomeType: { id: incomeTypeId } } as any);
   }
 }
