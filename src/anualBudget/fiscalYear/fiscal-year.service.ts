@@ -1,7 +1,8 @@
+// src/anualBudget/fiscalYear/fiscal-year.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FiscalYear } from './entities/fiscal-year.entity';
+import { Between, Repository } from 'typeorm';
+import { FiscalYear, FiscalState } from './entities/fiscal-year.entity';
 import { CreateFiscalYearDto } from './dto/createFiscalYearDto';
 import { UpdateFiscalYearDto } from './dto/updateFiscalYearDto';
 
@@ -38,8 +39,23 @@ export class FiscalYearService {
   }
 
   async getActiveId(): Promise<number> {
-  const fy = await this.repo.findOne({ where: { is_active: true } });
-  if (!fy) throw new BadRequestException('No hay año fiscal activo');
-  return fy.id;
-}
+    const fy = await this.repo.findOne({ where: { is_active: true } });
+    if (!fy) throw new BadRequestException('No hay año fiscal activo');
+    return fy.id;
+  }
+
+  async findByDate(date: string): Promise<FiscalYear | null> {
+    return this.repo.findOne({
+      where: { start_date: Between('0000-01-01', date), end_date: Between(date, '9999-12-31') } as any,
+    });
+  }
+
+  async assertOpenByDate(date: string) {
+    const fy = await this.findByDate(date);
+    if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+    if (fy.state === FiscalState.CLOSED) {
+      throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+    }
+    return fy;
+  }
 }

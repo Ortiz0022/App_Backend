@@ -1,3 +1,5 @@
+// src/anualBudget/department/dto/createDepartmentDto.ts
+import { IsNotEmpty, MaxLength } from 'class-validator';
 export class CreateDepartmentDto {
-  name: string; // max 50 (lo limita la entidad)
+  @IsNotEmpty() @MaxLength(100) name: string;
 }

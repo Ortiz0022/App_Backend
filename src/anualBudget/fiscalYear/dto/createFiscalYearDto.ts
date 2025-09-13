@@ -1,9 +1,10 @@
+// src/anualBudget/fiscalYear/dto/createFiscalYearDto.ts
+import { IsDateString, IsEnum, IsInt, IsOptional } from 'class-validator';
 import { FiscalState } from '../entities/fiscal-year.entity';
-
 export class CreateFiscalYearDto {
-  year: number;
-  start_date?: string;
-  end_date?: string;
-  state?: FiscalState;  // 'OPEN' | 'CLOSED'
-  is_active?: boolean;
+  @IsInt() year: number;
+  @IsDateString() start_date: string;
+  @IsDateString() end_date: string;
+  @IsOptional() @IsEnum(FiscalState) state?: FiscalState;
+  @IsOptional() is_active?: boolean;
 }

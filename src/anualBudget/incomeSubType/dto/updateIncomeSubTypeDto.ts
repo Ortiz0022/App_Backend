@@ -1,15 +1,6 @@
-import { IsOptional, IsString, IsNumberString } from 'class-validator';
-
+// src/anualBudget/incomeSubType/dto/updateIncomeSubTypeDto.ts
+import { IsInt, IsOptional, IsString } from 'class-validator';
 export class UpdateIncomeSubTypeDto {
-  @IsOptional() @IsString()
-  name?: string;
-
-  @IsOptional() @IsNumberString()
-  amount?: string;
-
-  @IsOptional() @IsString()
-  date?: string;
-
-  @IsOptional() @IsNumberString()
-  incomeTypeId?: number;
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsInt() incomeTypeId?: number;
 }

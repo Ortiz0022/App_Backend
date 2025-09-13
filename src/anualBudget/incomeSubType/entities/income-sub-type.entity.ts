@@ -1,22 +1,20 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { IncomeType } from '../../incomeType/entities/income-type.entity';
+// src/anualBudget/incomeSubType/entities/income-sub-type.entity.ts
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
+import { Income } from 'src/anualBudget/income/entities/income.entity';
 
-@Entity({ name: 'income_sub_types' })
+
+@Entity({ name: 'income_sub_type' })
 export class IncomeSubType {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 50 })
+  @Column({ length: 120 })
   name: string;
 
-  @Column({ type: 'decimal', precision: 14, scale: 2 })
-  amount: string;
+  @ManyToOne(() => IncomeType, (it) => it.subTypes, { eager: true })
+  incomeType: IncomeType;
 
-  @Column({ type: 'datetime' })
-  date: Date;
-
-  @ManyToOne(() => IncomeType, (t) => t.subTypes, { onDelete: 'CASCADE' })
-@JoinColumn({ name: 'id_IncomeType' }) // <-- así el query usa s.id_IncomeType
-incomeType: IncomeType;
-
+  @OneToMany(() => Income, (inc) => inc.incomeSubType)
+  incomes: Income[];
 }
