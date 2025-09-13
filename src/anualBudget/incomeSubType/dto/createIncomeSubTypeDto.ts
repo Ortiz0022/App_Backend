@@ -1,16 +1,6 @@
-import { IsNotEmpty, IsNumberString, IsOptional, IsString } from 'class-validator';
-
+// src/anualBudget/incomeSubType/dto/createIncomeSubTypeDto.ts
+import { IsInt, IsNotEmpty } from 'class-validator';
 export class CreateIncomeSubTypeDto {
-  @IsString() @IsNotEmpty()
-  name: string;
-
-  // viene como string porque la columna es DECIMAL
-  @IsNumberString()
-  amount: string;           // ej: "12345.67"
-
-  @IsOptional() @IsString()
-  date?: string;            // ISO; si no viene -> now()
-
-  @IsNumberString()
-  incomeTypeId: number;     // FK
+  @IsNotEmpty() name: string;
+  @IsInt() incomeTypeId: number;
 }

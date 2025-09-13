@@ -6,8 +6,8 @@ import { FiscalYearController } from './fiscal-year.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([FiscalYear])],
-  controllers: [FiscalYearController],
+  controllers: [FiscalYearController],   // 👈 expone /fiscal-year
   providers: [FiscalYearService],
-  exports: [FiscalYearService, TypeOrmModule],
+  exports: [TypeOrmModule, FiscalYearService],
 })
 export class FiscalYearModule {}

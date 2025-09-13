@@ -1,95 +1,104 @@
 // src/anualBudget/incomeTypeByDeparment/income-type-by-department.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
+
 import { IncomeTypeByDepartment } from './entities/income-type-by-department.entity';
-import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
+import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+import { Department } from '../department/entities/department.entity';
+import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
+import { Income } from '../income/entities/income.entity';
 
 @Injectable()
 export class IncomeTypeByDepartmentService {
-  constructor(
-    @InjectRepository(IncomeTypeByDepartment)
-    private readonly repo: Repository<IncomeTypeByDepartment>,
-    @InjectRepository(IncomeType)
-    private readonly typeRepo: Repository<IncomeType>,
-  ) {}
+constructor(
+  @InjectRepository(IncomeTypeByDepartment) private readonly repo: Repository<IncomeTypeByDepartment>,
+  @InjectRepository(FiscalYear)             private readonly fyRepo: Repository<FiscalYear>,
+  @InjectRepository(Department)             private readonly deptRepo: Repository<Department>,
+  @InjectRepository(Income)                 private readonly incRepo: Repository<Income>, // 👈
+) {}
 
-  /** Asegura fila TOTAL (incomeType = NULL) y la recalcula */
-  async recalcDepartmentTotal(departmentId: number) {
-    // SUM de todos los IncomeType.amountIncome del depto
-    const raw = await this.typeRepo
-      .createQueryBuilder('t')
-      .select('COALESCE(SUM(t.amountIncome), 0)', 'total')
-      .where('t.id_Department = :id', { id: departmentId })
-      .getRawOne<{ total: string | number }>();
+  /**
+   * Recalcula el total por departamento (amountDepIncome)
+   * para TODO el año fiscal indicado.
+   */
+  async recalcAllForFiscalYear(fiscalYearId: number): Promise<IncomeTypeByDepartment[]> {
+  const fy = await this.fyRepo.findOne({ where: { id: fiscalYearId } });
+  if (!fy) throw new NotFoundException('FiscalYear not found');
 
-    const total = Number(raw?.total ?? 0).toFixed(2);
+  const rows = await this.incRepo
+    .createQueryBuilder('i')
+    .innerJoin('i.incomeSubType', 's')
+    .innerJoin('s.incomeType', 't')
+    .innerJoin('t.department', 'd')
+    .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
+    .select('d.id', 'departmentId')
+    .addSelect('COALESCE(SUM(i.amount),0)', 'total')
+    .groupBy('d.id')
+    .getRawMany<{ departmentId: number; total: string }>();
 
-    // upsert de la fila TOTAL
-    let row = await this.repo.findOne({
-      where: { department: { id: departmentId } as any, incomeType: IsNull() } as any,
-      relations: ['department', 'incomeType'],
-    });
-
-    if (!row) {
-      row = this.repo.create({
-        department: { id: departmentId } as any,
-        incomeType: null,
-        amountDepIncome: total,
-      });
-    } else {
-      row.amountDepIncome = total;
-    }
-
-    return this.repo.save(row);
-  }
-
-  /** Recalcula TODOS los departamentos que tengan IncomeTypes */
-  async recalcAll() {
-    const ids = await this.typeRepo
-      .createQueryBuilder('t')
-      .select('DISTINCT t.id_Department', 'id')
-      .getRawMany<{ id: number }>();
-
-    const out: IncomeTypeByDepartment[] = [];
-    for (const r of ids) out.push(await this.recalcDepartmentTotal(Number(r.id)));
-    return out;
-  }
-
-  /** Helpers que tu IncomeTypeService ya invoca */
-  async upsert(payload: { departmentId: number; incomeTypeId: number }) {
-    // este upsert mantiene (dept, incomeType) si decides usar filas por par; no toca el TOTAL
-    let row = await this.repo.findOne({
+  // Upsert de departamentos con movimientos
+  for (const r of rows) {
+    const deptId = Number(r.departmentId);
+    let snap = await this.repo.findOne({
       where: {
-        department: { id: payload.departmentId } as any,
-        incomeType: { id: payload.incomeTypeId } as any,
+        department: { id: deptId } as any,
+        fiscalYear: { id: fy.id } as any,
       } as any,
-      relations: ['department', 'incomeType'],
     });
 
-    if (!row) {
-      row = this.repo.create({
-        department: { id: payload.departmentId } as any,
-        incomeType: { id: payload.incomeTypeId } as any,
+    if (!snap) {
+      snap = this.repo.create({
+        department: { id: deptId } as any,
+        fiscalYear: { id: fy.id } as any,
         amountDepIncome: '0.00',
       });
-      await this.repo.save(row);
     }
-    return row;
+
+    snap.amountDepIncome = r.total ?? '0';
+    await this.repo.save(snap);
   }
 
-  async create(payload: { departmentId: number; incomeTypeId: number }) {
-    return this.upsert(payload);
+  // Asegurar filas en 0 para departamentos sin movimientos
+  const allDepts = await this.deptRepo.find();
+  for (const d of allDepts) {
+    const exist = await this.repo.findOne({
+      where: {
+        department: { id: d.id } as any,
+        fiscalYear: { id: fy.id } as any,
+      } as any,
+    });
+
+    if (!exist) {
+      await this.repo.save(
+        this.repo.create({
+          department: { id: d.id } as any,
+          fiscalYear: { id: fy.id } as any,
+          amountDepIncome: '0.00',
+        }),
+      );
+    }
   }
 
-  async removeByComposite(departmentId: number, incomeTypeId: number) {
-    await this.repo.delete({
-      department: { id: departmentId } as any,
-      incomeType: { id: incomeTypeId } as any,
-    } as any);
+  return this.findByFiscalYear(fiscalYearId);
+}
+
+
+  /** Lista los snapshots por año fiscal */
+  findByFiscalYear(fiscalYearId: number): Promise<IncomeTypeByDepartment[]> {
+    return this.repo.find({
+      where: { fiscalYear: { id: fiscalYearId } as any },
+      order: { id: 'ASC' },
+    });
   }
 
-  async removeByIncomeType(incomeTypeId: number) {
-    await this.repo.delete({ incomeType: { id: incomeTypeId } } as any);
+  /** Obtiene un snapshot (departamento, año fiscal) */
+  findOne(departmentId: number, fiscalYearId: number): Promise<IncomeTypeByDepartment | null> {
+    return this.repo.findOne({
+      where: {
+        department: { id: departmentId } as any,
+        fiscalYear: { id: fiscalYearId } as any,
+      } as any,
+    });
   }
 }

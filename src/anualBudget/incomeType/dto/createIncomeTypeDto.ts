@@ -1,10 +1,6 @@
-// dto/createIncomeTypeDto.ts
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
-
+// src/anualBudget/incomeType/dto/createIncomeTypeDto.ts
+import { IsInt, IsNotEmpty } from 'class-validator';
 export class CreateIncomeTypeDto {
-  @IsString() @IsNotEmpty()
-  name: string;
-
-  @IsNumber()
-  departmentId: number;   // requerido
+  @IsNotEmpty() name: string;
+  @IsInt() departmentId: number;
 }

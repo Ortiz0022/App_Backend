@@ -1,25 +1,35 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, Patch, Delete, Query } from '@nestjs/common';
+// src/anualBudget/incomeSubType/income-sub-type.controller.ts
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { IncomeSubTypeService } from './income-sub-type.service';
 import { CreateIncomeSubTypeDto } from './dto/createIncomeSubTypeDto';
 import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
 
 @Controller('income-sub-type')
 export class IncomeSubTypeController {
-  constructor(private readonly service: IncomeSubTypeService) {}
+  constructor(private readonly svc: IncomeSubTypeService) {}
 
-  @Post() create(@Body() dto: CreateIncomeSubTypeDto) { return this.service.create(dto); }
-
-  @Get()
-  findAll(@Query('incomeTypeId') incomeTypeId?: string) {
-    return this.service.findAll(incomeTypeId ? Number(incomeTypeId) : undefined);
+  @Post()
+  create(@Body() dto: CreateIncomeSubTypeDto) {
+    return this.svc.create(dto);
   }
 
-  @Get(':id') findOne(@Param('id', ParseIntPipe) id: number) { return this.service.findOne(id); }
+  @Get()
+  list(@Query('incomeTypeId') incomeTypeId?: number) {
+    return this.svc.findAll(incomeTypeId ? Number(incomeTypeId) : undefined);
+  }
+
+  @Get(':id')
+  get(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.findOne(id);
+  }
 
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIncomeSubTypeDto) {
-    return this.service.update(id, dto);
+    return this.svc.update(id, dto);
   }
 
-  @Delete(':id') remove(@Param('id', ParseIntPipe) id: number) { return this.service.remove(id); }
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.remove(id);
+  }
 }
