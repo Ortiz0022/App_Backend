@@ -15,7 +15,6 @@ import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
 import { UsersModule } from './users/users.module';
 import { RoleModule } from './role/role.module';
-import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
 import { DepartmentModule } from './anualBudget/department/department.module';

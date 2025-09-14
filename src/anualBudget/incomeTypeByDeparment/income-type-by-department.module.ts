@@ -1,4 +1,3 @@
-// src/anualBudget/incomeTypeByDeparment/income-type-by-department.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IncomeTypeByDepartment } from './entities/income-type-by-department.entity';
