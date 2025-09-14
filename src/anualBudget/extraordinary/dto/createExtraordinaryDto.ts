@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Max, MaxLength } from 'class-validator';
 
 export class CreateExtraordinaryDto {
   @IsString()
@@ -8,9 +8,9 @@ export class CreateExtraordinaryDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
+  @Max(999_999_999_999_999.99)
   amount: number;
 
-  @IsOptional()
   @IsDateString()
   date?: string; // yyyy-mm-dd
 }

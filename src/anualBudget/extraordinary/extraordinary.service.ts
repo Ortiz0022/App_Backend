@@ -24,7 +24,7 @@ export class ExtraordinaryService {
       name: dto.name.trim(),
       amount: dto.amount.toFixed(2),
       used: '0.00',
-      date: dto.date ?? null,
+      date: dto.date ?? new Date().toISOString().slice(0, 10),
     });
     return this.repo.save(e);
   }
