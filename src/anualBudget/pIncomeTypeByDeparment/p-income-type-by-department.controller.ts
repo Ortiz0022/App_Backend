@@ -1,12 +1,12 @@
-// src/anualBudget/incomeTypeByDeparment/income-type-by-department.controller.ts
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
-import { IncomeTypeByDepartmentService } from './income-type-by-department.service';
+import { PIncomeTypeByDepartmentService } from './p-income-type-by-department.service';
 
-@Controller('income-type-by-department')
-export class IncomeTypeByDepartmentController {
-  constructor(private readonly svc: IncomeTypeByDepartmentService) {}
+@Controller('p-income-type-by-department')
+export class PIncomeTypeByDepartmentController {
+  constructor(private readonly svc: PIncomeTypeByDepartmentService) {}
 
-
+  // ✅ Recalcula y persiste los totales por departamento para el FY dado
+  // GET /income-type-by-department/sync?fiscalYearId=1
   @Get('sync')
   sync(@Query('fiscalYearId') fiscalYearId: string) {
     return this.svc.recalcAllForFiscalYear(Number(fiscalYearId));

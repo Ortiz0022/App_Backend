@@ -1,5 +1,5 @@
 import { IsInt, IsOptional, IsString } from 'class-validator';
-export class UpdateIncomeTypeDto {
+export class UpdatePIncomeTypeDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsInt() departmentId?: number;
 }

@@ -16,4 +16,5 @@ export class Department {
 
   @OneToMany(() => IncomeTypeByDepartment, (itbd) => itbd.department)
   totals: IncomeTypeByDepartment[];
+    pIncomeTypes: any;
 }
