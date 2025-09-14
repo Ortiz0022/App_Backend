@@ -1,24 +1,22 @@
-// src/spendType/entities/spend-type.entity.ts
-import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Department } from 'src/anualBudget/department/entities/department.entity';
+import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
 
-@Entity()
+@Entity({ name: 'spend_type' })
 export class SpendType {
   @PrimaryGeneratedColumn()
-  id_SpendType: number;
+  id: number;
 
-  @Column({ length: 50 })
+  @Column({ length: 120 })
   name: string;
 
-  // total = suma de todos los SpendSubType.amount
-  @Column({ type: 'double precision', default: 0 })
-  amountSpend: number;
-
-  @OneToMany(() => SpendSubType, (sub) => sub.spendType, { cascade: false })
-  spendSubTypes: SpendSubType[];
-
-  @ManyToOne(() => Department, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'id_Department' }) // crea la columna exacta id_Department
+  @ManyToOne(() => Department, (d) => d.id, { eager: true })
   department: Department;
+
+  // SUM de sus subtipos (spends)
+  @Column('decimal', { precision: 18, scale: 2, default: 0 })
+  amountSpend: string;
+
+  @OneToMany(() => SpendSubType, (s) => s.spendType)
+  subTypes: SpendSubType[];
 }

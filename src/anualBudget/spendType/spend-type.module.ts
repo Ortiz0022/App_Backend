@@ -1,16 +1,15 @@
-// src/spendType/spend-type.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SpendType } from './entities/spend-type.entity';
 import { SpendTypeService } from './spend-type.service';
 import { SpendTypeController } from './spend-type.controller';
-import { SpendType } from './entities/spend-type.entity';
-import { SpendSubType } from '../spendSubType/entities/spend-sub-type.entity';
-import { Department } from '../department/entities/department.entity';
+import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
+import { Spend } from 'src/anualBudget/spend/entities/spend.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SpendType, SpendSubType, Department])],
+  imports: [TypeOrmModule.forFeature([SpendType, SpendSubType, Spend])],
   controllers: [SpendTypeController],
   providers: [SpendTypeService],
-  exports: [SpendTypeService],
+  exports: [TypeOrmModule, SpendTypeService],
 })
 export class SpendTypeModule {}

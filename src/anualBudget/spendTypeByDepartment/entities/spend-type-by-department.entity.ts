@@ -1,24 +1,20 @@
-// src/anualBudget/spendTypeByDepartment/entities/spend-type-by-department.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { Department } from 'src/anualBudget/department/entities/department.entity';
+import { FiscalYear } from 'src/anualBudget/fiscalYear/entities/fiscal-year.entity';
 
-@Entity()
+@Entity({ name: 'spend_type_by_department' })
+@Unique(['department', 'fiscalYear']) // snapshot único por (departamento, año)
 export class SpendTypeByDepartment {
   @PrimaryGeneratedColumn()
-  id_SpendTypeByDepartment: number;
+  id: number;
 
-  // TOTAL del departamento (suma de todos los SpendType.amountSpend del depto)
-  @Column({ type: 'double precision', default: 0 })
-  amountDepSpend: number;
-
-  // Departamento (obligatorio)
-  @ManyToOne(() => Department, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'Id_Department' })
+  @ManyToOne(() => Department, (d) => d.id, { eager: true })
   department: Department;
 
-  // FK opcional a SpendType (para compatibilidad). En la fila TOTAL debe ser NULL.
-  @ManyToOne(() => SpendType, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'Id_TypeSpend' })
-  spendType?: SpendType | null;
+  @ManyToOne(() => FiscalYear, (fy) => fy.id, { eager: true })
+  fiscalYear: FiscalYear;
+
+  // total de EGRESOS del departamento en ese año fiscal
+  @Column('decimal', { precision: 18, scale: 2, default: 0 })
+  amountDepSpend: string;
 }

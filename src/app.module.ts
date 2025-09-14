@@ -29,6 +29,7 @@ import { SpendSubTypeModule } from './anualBudget/spendSubType/spend-sub-type.mo
 import { SpendTypeByDepartmentModule } from './anualBudget/spendTypeByDepartment/spend-type-by-department.module';
 import { TotalSumModule } from './anualBudget/totalSum/total-sum.module';
 import { IncomeModule } from './anualBudget/income/income.module';
+import { SpendModule } from './anualBudget/spend/spend.module';
 
 
 @Module({
@@ -78,6 +79,7 @@ import { IncomeModule } from './anualBudget/income/income.module';
     SpendTypeByDepartmentModule,
     TotalSumModule,
     IncomeModule,
+    SpendModule,
   ],
   controllers: [AppController],
   providers: [
