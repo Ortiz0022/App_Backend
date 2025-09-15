@@ -1,108 +1,102 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
+
 import { SpendTypeByDepartment } from './entities/spend-type-by-department.entity';
-import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity';
-import { Department } from 'src/anualBudget/department/entities/department.entity';
-import { CreateSpendTypeByDepartmentDto } from './dto/createSpendTypeByDto';
+import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+import { Department } from '../department/entities/department.entity';
+import { Spend } from '../spend/entities/spend.entity';
 
 @Injectable()
 export class SpendTypeByDepartmentService {
   constructor(
-    @InjectRepository(SpendTypeByDepartment)
-    private readonly stdRepo: Repository<SpendTypeByDepartment>,
-    @InjectRepository(SpendType)
-    private readonly spendTypeRepo: Repository<SpendType>,
-    @InjectRepository(Department)
-    private readonly deptRepo: Repository<Department>,
+    @InjectRepository(SpendTypeByDepartment) private readonly repo: Repository<SpendTypeByDepartment>,
+    @InjectRepository(FiscalYear)            private readonly fyRepo: Repository<FiscalYear>,
+    @InjectRepository(Department)            private readonly deptRepo: Repository<Department>,
+    @InjectRepository(Spend)                 private readonly spendRepo: Repository<Spend>,
   ) {}
 
-  /** Crea (si no existe) la fila TOTAL del depto y la deja calculada */
-  async create(dto: CreateSpendTypeByDepartmentDto) {
-    const dept = await this.deptRepo.findOne({ where: { id: dto.id_Department } });
-    if (!dept) throw new NotFoundException('Department not found');
+  /**
+   * Recalcula y persiste el total de egresos por departamento (amountDepSpend)
+   * para TODO el año fiscal indicado.
+   */
+  async recalcAllForFiscalYear(fiscalYearId: number): Promise<SpendTypeByDepartment[]> {
+    const fy = await this.fyRepo.findOne({ where: { id: fiscalYearId } });
+    if (!fy) throw new NotFoundException('FiscalYear not found');
 
-    // ¿Ya existe la fila TOTAL? (spendType = NULL)
-    const row = await this.stdRepo.findOne({
-      where: {
-        department: { id: dto.id_Department } as any,
-        spendType: IsNull(),
-      } as any,
-      relations: ['department', 'spendType'],
-    });
+    // Sumatoria por Department usando spend -> spendSubType -> spendType -> department
+    const rows = await this.spendRepo
+      .createQueryBuilder('sp')
+      .innerJoin('sp.spendSubType', 'sst')
+      .innerJoin('sst.spendType', 'st')
+      .innerJoin('st.department', 'd')
+      .where('sp.date >= :start AND sp.date <= :end', { start: fy.start_date, end: fy.end_date })
+      .select('d.id', 'departmentId')
+      .addSelect('COALESCE(SUM(sp.amount),0)', 'total')
+      .groupBy('d.id')
+      .getRawMany<{ departmentId: number; total: string }>();
 
-    // recalcular total y guardar (firma acepta null/undefined)
-    return this.recalcDepartmentTotal(dto.id_Department, row ?? null);
-  }
-
-  /** Recalcula y guarda el TOTAL del departamento (spendType = NULL) */
-  async recalcDepartmentTotal(
-    departmentId: number,
-    existing?: SpendTypeByDepartment | null, // 👈 acepta null
-  ): Promise<SpendTypeByDepartment> {
-    // suma de TODOS los spendType.amountSpend del depto
-    const raw = await this.spendTypeRepo
-      .createQueryBuilder('t')
-      .select('COALESCE(SUM(t.amountSpend), 0)', 'total')
-      .where('t.id_Department = :id', { id: departmentId }) // FK en tabla SpendType
-      .getRawOne<{ total: string | number }>();
-
-    const total = Number(raw?.total ?? 0);
-
-    let row: SpendTypeByDepartment | null =
-      existing ??
-      (await this.stdRepo.findOne({
+    // Upsert de departamentos con movimientos
+    for (const r of rows) {
+      const deptId = Number(r.departmentId);
+      let snap = await this.repo.findOne({
         where: {
-          department: { id: departmentId } as any,
-          spendType: IsNull(),
+          department: { id: deptId } as any,
+          fiscalYear: { id: fy.id } as any,
         } as any,
-        relations: ['department', 'spendType'],
-      }));
-
-    if (!row) {
-      row = this.stdRepo.create({
-        department: { id: departmentId } as any,
-        spendType: null,            // fila TOTAL
-        amountDepSpend: total,
       });
-    } else {
-      row.amountDepSpend = total;
+
+      if (!snap) {
+        snap = this.repo.create({
+          department: { id: deptId } as any,
+          fiscalYear: { id: fy.id } as any,
+          amountDepSpend: '0.00',
+        });
+      }
+
+      snap.amountDepSpend = r.total ?? '0';
+      await this.repo.save(snap);
     }
 
-    return this.stdRepo.save(row);
-  }
+    // Asegurar filas en 0 para departamentos sin movimientos en el FY
+    const allDepts = await this.deptRepo.find();
+    for (const d of allDepts) {
+      const exist = await this.repo.findOne({
+        where: {
+          department: { id: d.id } as any,
+          fiscalYear: { id: fy.id } as any,
+        } as any,
+      });
 
-  /** Recalcula todos los departamentos que tengan SpendTypes */
-  async recalcAll(): Promise<SpendTypeByDepartment[]> {
-    const ids = await this.spendTypeRepo
-      .createQueryBuilder('t')
-      .select('DISTINCT t.id_Department', 'id')
-      .getRawMany<{ id: number }>();
-
-    const out: SpendTypeByDepartment[] = []; // 👈 tipar el array
-    for (const r of ids) {
-      out.push(await this.recalcDepartmentTotal(Number(r.id)));
+      if (!exist) {
+        await this.repo.save(
+          this.repo.create({
+            department: { id: d.id } as any,
+            fiscalYear: { id: fy.id } as any,
+            amountDepSpend: '0.00',
+          }),
+        );
+      }
     }
-    return out;
+
+    return this.findByFiscalYear(fiscalYearId);
   }
 
-  /** Obtiene la fila TOTAL por departamento */
-  findByDepartment(departmentId: number) {
-    return this.stdRepo.findOne({
-      where: {
-        department: { id: departmentId } as any,
-        spendType: IsNull(),
-      } as any,
-      relations: ['department'],
+  /** Lista snapshots por año fiscal */
+  findByFiscalYear(fiscalYearId: number): Promise<SpendTypeByDepartment[]> {
+    return this.repo.find({
+      where: { fiscalYear: { id: fiscalYearId } as any },
+      order: { id: 'ASC' },
     });
   }
 
-  /** Lista todas las filas TOTALES (de todos los departamentos) */
-  findAllTotals() {
-    return this.stdRepo.find({
-      where: { spendType: IsNull() as any },
-      relations: ['department'],
-      order: { id_SpendTypeByDepartment: 'ASC' },
+  /** Obtiene un snapshot (departmentId, fiscalYearId) */
+  findOne(departmentId: number, fiscalYearId: number): Promise<SpendTypeByDepartment | null> {
+    return this.repo.findOne({
+      where: {
+        department: { id: departmentId } as any,
+        fiscalYear: { id: fiscalYearId } as any,
+      } as any,
     });
   }
 }

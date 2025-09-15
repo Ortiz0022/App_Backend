@@ -2,6 +2,9 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
 import { IncomeTypeByDepartment } from 'src/anualBudget/incomeTypeByDeparment/entities/income-type-by-department.entity';
+import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity';
+import { SpendTypeByDepartment } from 'src/anualBudget/spendTypeByDepartment/entities/spend-type-by-department.entity';
+import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
 
 @Entity({ name: 'department' })
 export class Department {
@@ -16,4 +19,13 @@ export class Department {
 
   @OneToMany(() => IncomeTypeByDepartment, (itbd) => itbd.department)
   totals: IncomeTypeByDepartment[];
+
+  @OneToMany(() => PIncomeType, (pit) => pit.department)
+  pIncomeTypes: PIncomeType[];
+
+   @OneToMany(() => SpendType, (st) => st.department)
+  spendTypes: SpendType[];
+
+  @OneToMany(() => SpendTypeByDepartment, (stbd) => stbd.department)
+  spendTotals: SpendTypeByDepartment[];
 }

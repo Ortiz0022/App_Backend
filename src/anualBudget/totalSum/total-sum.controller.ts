@@ -5,24 +5,24 @@ import { TotalSumService } from './total-sum.service';
 export class TotalSumController {
   constructor(private readonly svc: TotalSumService) {}
 
-  // Recalcula y persiste el total GLOBAL del año fiscal
-  // GET /total-sum/recalc?fiscalYearId=1
-  @Get('recalc')
-  recalc(@Query('fiscalYearId') fiscalYearId: string) {
-    return this.svc.recalc(Number(fiscalYearId));
+  // Recalcula para un FY y devuelve el snapshot resultante
+  // GET /total-sum/sync?fiscalYearId=1
+  @Get('sync')
+  sync(@Query('fiscalYearId') fiscalYearId: string) {
+    return this.svc.recalcForFiscalYear(Number(fiscalYearId));
   }
 
-  // Lista todos los snapshots guardados
+  // Obtiene el snapshot por FY
+  // GET /total-sum/by-fy/1
+  @Get('by-fy/:fiscalYearId')
+  byFY(@Param('fiscalYearId', ParseIntPipe) fiscalYearId: number) {
+    return this.svc.findByFiscalYear(fiscalYearId);
+  }
+
+  // Lista todos los snapshots
   // GET /total-sum
   @Get()
   list() {
     return this.svc.findAll();
-  }
-
-  // Obtiene el snapshot por año fiscal
-  // GET /total-sum/by-fy/1
-  @Get('by-fy/:fiscalYearId')
-  byFY(@Param('fiscalYearId', ParseIntPipe) fiscalYearId: number) {
-    return this.svc.findOneByFiscalYear(fiscalYearId);
   }
 }

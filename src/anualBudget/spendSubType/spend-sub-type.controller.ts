@@ -1,34 +1,34 @@
-import { Controller, Get, Post, Body, Param, Delete, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { SpendSubTypeService } from './spend-sub-type.service';
 import { CreateSpendSubTypeDto } from './dto/createSpendSubTypeDto';
 import { UpdateSpendSubTypeDto } from './dto/updateSpendSubTypeDto';
 
-@Controller('spend-subtype')
+@Controller('spend-sub-type')
 export class SpendSubTypeController {
-  constructor(private readonly service: SpendSubTypeService) {}
+  constructor(private readonly svc: SpendSubTypeService) {}
 
   @Post()
   create(@Body() dto: CreateSpendSubTypeDto) {
-    return this.service.create(dto);
+    return this.svc.create(dto);
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  list(@Query('spendTypeId') spendTypeId?: number) {
+    return this.svc.findAll(spendTypeId ? Number(spendTypeId) : undefined);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(+id);
+  get(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.findOne(id);
   }
 
-  @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateSpendSubTypeDto) {
-    return this.service.update(+id, dto);
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpendSubTypeDto) {
+    return this.svc.update(id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.remove(id);
   }
 }

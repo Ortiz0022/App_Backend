@@ -1,23 +1,18 @@
-// src/spendType/entities/spend-subtype.entity.ts
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Spend } from 'src/anualBudget/spend/entities/spend.entity';
 
-
-@Entity()
+@Entity({ name: 'spend_sub_type' })
 export class SpendSubType {
   @PrimaryGeneratedColumn()
-  id_SpendSubType: number;
+  id: number;
 
-  @Column({ length: 50 })
+  @Column({ length: 120 })
   name: string;
 
-  @Column({ type: 'double precision' })
-  amount: number;
-
-  @Column({ type: 'datetime' })
-  date: Date;
-
-  @ManyToOne(() => SpendType, (type) => type.spendSubTypes, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'id_SpendType' }) // 👈 FK con tu nombre
+  @ManyToOne(() => SpendType, (st) => st.subTypes, { eager: true })
   spendType: SpendType;
+
+  @OneToMany(() => Spend, (sp) => sp.spendSubType)
+  spends: Spend[];
 }

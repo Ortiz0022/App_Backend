@@ -6,8 +6,7 @@ import { IncomeTypeByDepartmentService } from './income-type-by-department.servi
 export class IncomeTypeByDepartmentController {
   constructor(private readonly svc: IncomeTypeByDepartmentService) {}
 
-  // ✅ Recalcula y persiste los totales por departamento para el FY dado
-  // GET /income-type-by-department/sync?fiscalYearId=1
+
   @Get('sync')
   sync(@Query('fiscalYearId') fiscalYearId: string) {
     return this.svc.recalcAllForFiscalYear(Number(fiscalYearId));

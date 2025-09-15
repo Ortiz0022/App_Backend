@@ -1,40 +1,31 @@
-// src/anualBudget/spendTypeByDepartment/spend-type-by-department.controller.ts
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { SpendTypeByDepartmentService } from './spend-type-by-department.service';
-import { CreateSpendTypeByDepartmentDto } from './dto/createSpendTypeByDto';
-
 
 @Controller('spend-type-by-department')
 export class SpendTypeByDepartmentController {
   constructor(private readonly svc: SpendTypeByDepartmentService) {}
 
-  // Crea/asegura la fila TOTAL del depto y la calcula
-  @Post()
-  create(@Body() dto: CreateSpendTypeByDepartmentDto) {
-    return this.svc.create(dto);
+  // Recalcula y persiste los totales por departamento para el FY dado
+  // GET /spend-type-by-department/sync?fiscalYearId=1
+  @Get('sync')
+  sync(@Query('fiscalYearId') fiscalYearId: string) {
+    return this.svc.recalcAllForFiscalYear(Number(fiscalYearId));
   }
 
-  // Recalcula manualmente el total de un depto
-  @Post('recalc/:departmentId')
-  recalcOne(@Param('departmentId') id: string) {
-    return this.svc.recalcDepartmentTotal(+id);
+  // Lista snapshots por año fiscal
+  // GET /spend-type-by-department/by-fy/1
+  @Get('by-fy/:fiscalYearId')
+  byFY(@Param('fiscalYearId', ParseIntPipe) fiscalYearId: number) {
+    return this.svc.findByFiscalYear(fiscalYearId);
   }
 
-  // Recalcula todos los departamentos
-  @Post('recalc-all')
-  recalcAll() {
-    return this.svc.recalcAll();
-  }
-
-  // Obtiene el total por departamento
-  @Get('department/:id')
-  getByDepartment(@Param('id') id: string) {
-    return this.svc.findByDepartment(+id);
-  }
-
-  // Lista todos los totales
-  @Get()
-  findAllTotals() {
-    return this.svc.findAllTotals();
+  // Obtiene snapshot por (departmentId, fiscalYearId)
+  // GET /spend-type-by-department/1/1
+  @Get(':departmentId/:fiscalYearId')
+  one(
+    @Param('departmentId', ParseIntPipe) deptId: number,
+    @Param('fiscalYearId', ParseIntPipe) fyId: number,
+  ) {
+    return this.svc.findOne(deptId, fyId);
   }
 }

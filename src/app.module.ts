@@ -15,7 +15,6 @@ import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
 import { UsersModule } from './users/users.module';
 import { RoleModule } from './role/role.module';
-import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
 import { DepartmentModule } from './anualBudget/department/department.module';
@@ -29,6 +28,11 @@ import { SpendSubTypeModule } from './anualBudget/spendSubType/spend-sub-type.mo
 import { SpendTypeByDepartmentModule } from './anualBudget/spendTypeByDepartment/spend-type-by-department.module';
 import { TotalSumModule } from './anualBudget/totalSum/total-sum.module';
 import { IncomeModule } from './anualBudget/income/income.module';
+import { SpendModule } from './anualBudget/spend/spend.module';
+import { PIncomeModule } from './anualBudget/pIncome/pIncome.module';
+import { PIncomeTypeByDepartmentModule } from './anualBudget/pIncomeTypeByDeparment/p-income-type-by-department.module';
+import { PIncomeTypeModule } from './anualBudget/pIncomeType/pincome-type.module';
+import { PIncomeSubTypeModule } from './anualBudget/pIncomeSubType/pincome-sub-type.module';
 import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 
 
@@ -79,7 +83,6 @@ import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.m
     SpendTypeByDepartmentModule,
     TotalSumModule,
     IncomeModule,
-    ExtraordinaryModule
   ],
   controllers: [AppController],
   providers: [

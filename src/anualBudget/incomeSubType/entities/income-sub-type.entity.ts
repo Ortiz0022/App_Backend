@@ -17,4 +17,5 @@ export class IncomeSubType {
 
   @OneToMany(() => Income, (inc) => inc.incomeSubType)
   incomes: Income[];
+    pIncomes: any;
 }

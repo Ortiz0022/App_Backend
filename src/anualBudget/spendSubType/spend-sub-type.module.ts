@@ -1,18 +1,15 @@
-// src/spendSubType/spend-subtype.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SpendSubType } from './entities/spend-sub-type.entity';
 import { SpendSubTypeService } from './spend-sub-type.service';
+import { SpendSubTypeController } from './spend-sub-type.controller';
 import { SpendType } from '../spendType/entities/spend-type.entity';
 import { SpendTypeModule } from '../spendType/spend-type.module';
-import { SpendSubType } from './entities/spend-sub-type.entity';
-import { SpendSubTypeController } from './spend-sub-type.controller';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([SpendSubType, SpendType]), // repos que usa este módulo
-    SpendTypeModule,                                     // 👈 trae y habilita SpendTypeService
-  ],
+  imports: [TypeOrmModule.forFeature([SpendSubType, SpendType]), SpendTypeModule],
   controllers: [SpendSubTypeController],
   providers: [SpendSubTypeService],
+  exports: [TypeOrmModule, SpendSubTypeService],
 })
 export class SpendSubTypeModule {}
