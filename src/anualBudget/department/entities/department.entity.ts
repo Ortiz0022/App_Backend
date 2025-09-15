@@ -5,7 +5,7 @@ import { IncomeTypeByDepartment } from 'src/anualBudget/incomeTypeByDeparment/en
 import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity';
 import { SpendTypeByDepartment } from 'src/anualBudget/spendTypeByDepartment/entities/spend-type-by-department.entity';
 import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
-
+import { PIncomeTypeByDepartment } from 'src/anualBudget/pIncomeTypeByDeparment/entities/p-income-type-by-deparment.entity';
 @Entity({ name: 'department' })
 export class Department {
   @PrimaryGeneratedColumn()
@@ -22,6 +22,9 @@ export class Department {
 
   @OneToMany(() => PIncomeType, (pit) => pit.department)
   pIncomeTypes: PIncomeType[];
+
+  @OneToMany(() => PIncomeTypeByDepartment, (pis) => pis.department)
+  pIncomes: PIncomeTypeByDepartment[];
 
    @OneToMany(() => SpendType, (st) => st.department)
   spendTypes: SpendType[];

@@ -11,4 +11,7 @@ export class PIncome {
 
   @Column('decimal', { precision: 18, scale: 2 })
   amount: string;
+
+  @Column({ type: 'date', nullable: true })
+  date: Date;
 }

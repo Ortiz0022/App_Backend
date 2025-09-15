@@ -1,9 +1,9 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { FiscalYear } from 'src/anualBudget/fiscalYear/entities/fiscal-year.entity';
 
-@Entity({ name: 'total_sum' })
+@Entity({ name: 'p_total_sum' })
 @Unique(['fiscalYear']) // un snapshot por año fiscal
-export class TotalSum {
+export class PTotalSum {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -11,9 +11,9 @@ export class TotalSum {
   fiscalYear: FiscalYear;
 
   @Column('decimal', { precision: 18, scale: 2, default: 0 })
-  total_income: string;
+  total_p_income: string;
 
   @Column('decimal', { precision: 18, scale: 2, default: 0 })
-  total_spend: string;
+  total_p_spend: string;
 
 }
