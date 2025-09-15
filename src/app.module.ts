@@ -35,6 +35,7 @@ import { PIncomeTypeModule } from './anualBudget/pIncomeType/pincome-type.module
 import { PIncomeSubTypeModule } from './anualBudget/pIncomeSubType/pincome-sub-type.module';
 import { HomeModule } from './anualBudget/home/home.module';
 import { PTotalSumModule } from './anualBudget/pTotalSum/p-total-sum.module';
+import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 
 
 @Module({
@@ -91,6 +92,7 @@ import { PTotalSumModule } from './anualBudget/pTotalSum/p-total-sum.module';
     PIncomeSubTypeModule,
     HomeModule,
     PTotalSumModule,
+    ExtraordinaryModule,
   ],
   controllers: [AppController],
   providers: [
