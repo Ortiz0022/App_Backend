@@ -82,6 +82,11 @@ import { PIncomeSubTypeModule } from './anualBudget/pIncomeSubType/pincome-sub-t
     SpendTypeByDepartmentModule,
     TotalSumModule,
     IncomeModule,
+    SpendModule,
+    PIncomeModule,
+    PIncomeTypeByDepartmentModule,
+    PIncomeTypeModule,
+    PIncomeSubTypeModule,
   ],
   controllers: [AppController],
   providers: [
