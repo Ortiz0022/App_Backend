@@ -33,7 +33,6 @@ import { PIncomeModule } from './anualBudget/pIncome/pIncome.module';
 import { PIncomeTypeByDepartmentModule } from './anualBudget/pIncomeTypeByDeparment/p-income-type-by-department.module';
 import { PIncomeTypeModule } from './anualBudget/pIncomeType/pincome-type.module';
 import { PIncomeSubTypeModule } from './anualBudget/pIncomeSubType/pincome-sub-type.module';
-import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 
 
 @Module({
