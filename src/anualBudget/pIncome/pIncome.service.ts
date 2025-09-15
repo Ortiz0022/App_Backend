@@ -2,7 +2,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
 import { PIncome } from '../pIncome/entities/pIncome.entity';
 import { PIncomeSubType } from '../pIncomeSubType/entities/pincome-sub-type.entity';
 import { PIncomeTypeService } from '../pIncomeType/pincome-type.service';   // <-- nuevo
@@ -24,8 +23,8 @@ export class PIncomeService {
     return s;
   }
 
-  async create(dto: { incomeSubTypeId: number; amount: string }) {
-    const s = await this.getSubType(dto.incomeSubTypeId);
+  async create(dto: { pIncomeSubTypeId: number; amount: string }) {
+    const s = await this.getSubType(dto.pIncomeSubTypeId);
 
     const entity = this.repo.create({
       // propiedad correcta en tu entidad PIncome
