@@ -6,6 +6,11 @@ import { SpendType } from 'src/anualBudget/spendType/entities/spend-type.entity'
 import { SpendTypeByDepartment } from 'src/anualBudget/spendTypeByDepartment/entities/spend-type-by-department.entity';
 import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
 import { PIncomeTypeByDepartment } from 'src/anualBudget/pIncomeTypeByDeparment/entities/p-income-type-by-deparment.entity';
+
+// 👇 nuevos imports para proyección de gastos
+import { PSpendType } from 'src/anualBudget/pSpendType/entities/p-spend-type.entity';
+import { PSpendTypeByDepartment } from 'src/anualBudget/pSpendTypeByDepartment/entities/p-spend-type-by-department.entity';
+
 @Entity({ name: 'department' })
 export class Department {
   @PrimaryGeneratedColumn()
@@ -14,21 +19,31 @@ export class Department {
   @Column({ length: 100 })
   name: string;
 
+  // ===== INGRESOS REALES =====
   @OneToMany(() => IncomeType, (it) => it.department)
   incomeTypes: IncomeType[];
 
   @OneToMany(() => IncomeTypeByDepartment, (itbd) => itbd.department)
   totals: IncomeTypeByDepartment[];
 
+  // ===== INGRESOS PROYECTADOS =====
   @OneToMany(() => PIncomeType, (pit) => pit.department)
   pIncomeTypes: PIncomeType[];
 
   @OneToMany(() => PIncomeTypeByDepartment, (pis) => pis.department)
   pIncomes: PIncomeTypeByDepartment[];
 
-   @OneToMany(() => SpendType, (st) => st.department)
+  // ===== EGRESOS REALES =====
+  @OneToMany(() => SpendType, (st) => st.department)
   spendTypes: SpendType[];
 
   @OneToMany(() => SpendTypeByDepartment, (stbd) => stbd.department)
   spendTotals: SpendTypeByDepartment[];
+
+  // ===== EGRESOS PROYECTADOS =====
+  @OneToMany(() => PSpendType, (pst) => pst.department)
+  pSpendTypes: PSpendType[];
+
+  @OneToMany(() => PSpendTypeByDepartment, (pstbd) => pstbd.department)
+  pSpendTotals: PSpendTypeByDepartment[];
 }

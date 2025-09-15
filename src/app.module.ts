@@ -35,6 +35,10 @@ import { PIncomeTypeModule } from './anualBudget/pIncomeType/pincome-type.module
 import { PIncomeSubTypeModule } from './anualBudget/pIncomeSubType/pincome-sub-type.module';
 import { HomeModule } from './anualBudget/home/home.module';
 import { PTotalSumModule } from './anualBudget/pTotalSum/p-total-sum.module';
+import { PSpendModule } from './anualBudget/pSpend/p-spend.module';
+import { PSpendTypeModule } from './anualBudget/pSpendType/p-spend-type.module';
+import { PSpendSubTypeModule } from './anualBudget/pSpendSubType/p-spend-sub-type.module';
+import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartment/p-spend-type-by-department.module';
 
 
 @Module({
@@ -91,6 +95,10 @@ import { PTotalSumModule } from './anualBudget/pTotalSum/p-total-sum.module';
     PIncomeSubTypeModule,
     HomeModule,
     PTotalSumModule,
+    PSpendModule,
+    PSpendTypeModule,
+    PSpendSubTypeModule,
+    PSpendTypeByDepartmentModule,
   ],
   controllers: [AppController],
   providers: [
