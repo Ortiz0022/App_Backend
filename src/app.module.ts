@@ -40,6 +40,7 @@ import { PSpendTypeModule } from './anualBudget/pSpendType/p-spend-type.module';
 import { PSpendSubTypeModule } from './anualBudget/pSpendSubType/p-spend-sub-type.module';
 import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartment/p-spend-type-by-department.module';
 import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
+import { AuthModule } from './auth/auth.module';
 
 
 @Module({
@@ -72,6 +73,7 @@ import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.m
     VolunteersModule,
     PersonalModule,
     FaqModule,
+    AuthModule,
     AssociateModule,
     ServicesInformativeModule,
     AboutUsModule,
