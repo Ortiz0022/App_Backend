@@ -3,6 +3,7 @@ import { ExtraordinaryService } from './extraordinary.service';
 import { CreateExtraordinaryDto } from './dto/createExtraordinaryDto';
 import { UpdateExtraordinaryDto } from './dto/updateExtraordinaryDto';
 import { AllocateExtraordinaryDto } from './dto/allocateExtraordinaryDto';
+import { AssignExtraordinaryDto } from './dto/assignExtraordinaryDto';
 
 @Controller('extraordinary')
 export class ExtraordinaryController {
@@ -11,6 +12,11 @@ export class ExtraordinaryController {
   @Post()
   create(@Body() dto: CreateExtraordinaryDto) {
     return this.service.create(dto);
+  }
+
+  @Post('assign-to-income')
+  assignToIncome(@Body() dto: AssignExtraordinaryDto) {
+    return this.service.assignToIncome(dto);
   }
 
   @Get()

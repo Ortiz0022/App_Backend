@@ -1,16 +1,15 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Max, MaxLength } from 'class-validator';
+// dto/createExtraordinaryDto.ts
+import { IsNotEmpty, IsString, MaxLength, IsOptional, IsDateString, IsNumberString } from 'class-validator';
 
 export class CreateExtraordinaryDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
+  @IsString() @IsNotEmpty() @MaxLength(120)
   name: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  @Max(999_999_999_999_999.99)
-  amount: number;
+  // viene como string desde el front; validamos que sea número
+  @IsNumberString()
+  amount: string;
 
+  @IsOptional()
   @IsDateString()
   date?: string; // yyyy-mm-dd
 }

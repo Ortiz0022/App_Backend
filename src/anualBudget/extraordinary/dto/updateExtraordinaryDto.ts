@@ -1,19 +1,15 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
-
+// dto/updateExtraordinaryDto.ts (relevante a amount/date)
+import { IsOptional, IsString, IsDateString, IsNumberString, MaxLength } from 'class-validator';
 export class UpdateExtraordinaryDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
+  @IsOptional() @IsString() @MaxLength(120)
   name?: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  amount?: number;
+  @IsOptional() @IsNumberString()
+  amount?: string;  // permitir string numérico
 
-  @IsDateString()
+  @IsOptional() @IsDateString()
   date?: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
+  @IsOptional()
   used?: number;
 }
