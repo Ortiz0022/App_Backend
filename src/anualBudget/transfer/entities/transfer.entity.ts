@@ -1,35 +1,42 @@
 // src/transfer/entities/transfer.entity.ts
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
+import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
 
 @Entity('transfer')
 export class Transfer {
   @PrimaryGeneratedColumn({ name: 'id_Transfer' })
   id: number;
 
-  @Column({ name: 'name', type: 'varchar', length: 50 })
-  name: string;
+  // Etiqueta breve opcional (ej: "Traspaso a Mantenimiento")
+  @Column({ name: 'name', type: 'varchar', length: 50, nullable: true })
+  name: string | null;
 
-  // Fecha del movimiento (si no envías, se toma createdAt)
-  @Column({ name: 'date', type: 'datetime', nullable: true })
-  date: Date | null;
-
-  // Nota/descripción
+  // Nota / descripción opcional
   @Column({ name: 'detail', type: 'varchar', length: 255, nullable: true })
   detail: string | null;
 
-  // Tipo de transferencia (opcional, por si luego tienes otras)
-  @Column({ name: 'type', type: 'varchar', length: 30, default: 'extra' })
-  type: string;
+  // Fecha del movimiento (si no envías, se toma createdAt)
+  @Column({ name: 'date', type: 'date', nullable: true })
+  date: string | null;
 
   // Monto transferido
   @Column({ name: 'transferAmount', type: 'decimal', precision: 14, scale: 2 })
   transferAmount: string;
 
-//   @ManyToOne(() => IncomeType, (i) => i.outgoingTransfers, { eager: true })
-//   fromIncomeType: IncomeType;
+  // Desde qué Subtipo de Ingreso sale el dinero
+  @ManyToOne(() => IncomeSubType, { eager: true })
+  fromIncomeSubType: IncomeSubType;
 
-//   @ManyToOne(() => SpendType, (s) => s.incomingTransfers, { eager: true })
-//   toSpendType: SpendType;
+  // Hacia qué Subtipo de Egreso entra el dinero
+  @ManyToOne(() => SpendSubType, { eager: true })
+  toSpendSubType: SpendSubType;
 
   @CreateDateColumn({ name: 'createdAt', type: 'datetime' })
   createdAt: Date;
