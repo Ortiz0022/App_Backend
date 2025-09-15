@@ -1,23 +1,28 @@
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength, IsNumber } from 'class-validator';
+// src/transfer/dto/create-transfer.dto.ts
+import { IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class CreateTransferDto {
-  @IsString() @IsNotEmpty() @MaxLength(50)
-  name: string;
+  @IsInt()
+  incomeSubTypeId: number;
 
-  @IsOptional() @IsDateString()
-  date?: string;
+  @IsInt()
+  spendSubTypeId: number;
 
-  @IsOptional() @IsString() @MaxLength(255)
-  detail?: string;
-  
-  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
-  transferAmount: number;
+  @IsNotEmpty()
+  amount: string;
 
-  @IsInt()
-  id_FromIncomeType: number;
+  @IsOptional()
+  @IsString()
+  date?: string; // yyyy-mm-dd
 
-  @IsInt()
-  id_ToSpendType: number;
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  detail?: string;
 }
-

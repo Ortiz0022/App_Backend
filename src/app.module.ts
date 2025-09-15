@@ -39,6 +39,7 @@ import { PSpendModule } from './anualBudget/pSpend/p-spend.module';
 import { PSpendTypeModule } from './anualBudget/pSpendType/p-spend-type.module';
 import { PSpendSubTypeModule } from './anualBudget/pSpendSubType/p-spend-sub-type.module';
 import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartment/p-spend-type-by-department.module';
+import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 
 
 @Module({
@@ -99,6 +100,7 @@ import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartme
     PSpendTypeModule,
     PSpendSubTypeModule,
     PSpendTypeByDepartmentModule,
+    ExtraordinaryModule,
   ],
   controllers: [AppController],
   providers: [
