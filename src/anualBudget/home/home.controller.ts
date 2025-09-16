@@ -28,12 +28,12 @@ export class HomeController {
   }
   // Tabla de Egresos
   // GET /home/spends?groupBy=department|type|subtype&startDate=...&endDate=...
-  /*@Get('spends')
+  @Get('spends')
   spends(
     @Query('groupBy') groupBy?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ): Promise<ComparisonRow[]> {
     return this.svc.getSpendComparison({ startDate, endDate }, groupBy);
-  }*/
+  }
 }

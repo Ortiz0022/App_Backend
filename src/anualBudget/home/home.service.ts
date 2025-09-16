@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { Between, DataSource } from 'typeorm';
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { Income } from 'src/anualBudget/income/entities/income.entity';
 import { Spend } from 'src/anualBudget/spend/entities/spend.entity';
@@ -50,6 +50,24 @@ export class HomeService {
       where.date.$lte = new Date(endDate);
     }
     return where;
+  }
+
+  private getDateRange(startDate?: string, endDate?: string) {
+    const range: { startDate?: Date; endDate?: Date } = {};
+    
+    if (startDate) {
+      range.startDate = new Date(startDate);
+      // Set to start of day
+      range.startDate.setHours(0, 0, 0, 0);
+    }
+    
+    if (endDate) {
+      range.endDate = new Date(endDate);
+      // Set to end of day
+      range.endDate.setHours(23, 59, 59, 999);
+    }
+    
+    return range;
   }
 
   private async calculateRealIncomes(dateFilter: any): Promise<number> {
@@ -208,4 +226,125 @@ export class HomeService {
       return out;
     }
     
+    public async getSpendComparison(
+      period: { startDate?: string; endDate?: string },
+      groupByParam?: string
+    ) {
+      const groupBy = (groupByParam ?? 'department').toLowerCase() as
+        'department' | 'type' | 'subtype';
+    
+      const range = this.getDateRange(period.startDate, period.endDate);
+    
+      // ===== REAL SPEND =====
+      // m -> spendSubType ss -> spendType st -> department d
+      let realQB = this.ds.getRepository(Spend)
+        .createQueryBuilder('m')
+        .innerJoin('m.spendSubType', 'ss')
+        .innerJoin('ss.spendType', 'st');
+    
+      // ===== PROYECTADO SPEND =====
+      // pm -> pSpendSubType pss -> pSpendType pst -> department dd
+      // (Si tus entidades se llaman diferente, ajusta los nombres)
+      let projQB = this.ds.getRepository(PSpend)
+        .createQueryBuilder('pm')
+        .innerJoin('pm.pSpendSubType', 'pss')
+        .innerJoin('pss.pSpendType', 'pst');
+    
+      let idExprReal = '';
+      let nameExprReal = '';
+      let idExprProj = '';
+    
+      if (groupBy === 'department') {
+        realQB = realQB.innerJoin('st.department', 'd');
+        projQB = projQB.innerJoin('pst.department', 'dd');
+    
+        idExprReal = 'd.id';
+        nameExprReal = 'd.name';
+        idExprProj = 'dd.id';
+      } else if (groupBy === 'type') {
+        idExprReal = 'st.id';
+        nameExprReal = 'st.name';
+        idExprProj = 'pst.id';
+      } else {
+        idExprReal = 'ss.id';
+        nameExprReal = 'ss.name';
+        idExprProj = 'pss.id';
+      }
+    
+      // Fechas (si se enviaron)
+      if (range) {
+        realQB = realQB.where({ date: Between(range.startDate, range.endDate) });
+        projQB = projQB.where({ date: Between(range.startDate, range.endDate) });
+      }
+    
+      const real = await realQB
+        .select(idExprReal, 'id')
+        .addSelect(nameExprReal, 'name')
+        .addSelect('SUM(m.amount)', 'real')
+        .groupBy(idExprReal)
+        .addGroupBy(nameExprReal)
+        .getRawMany<{ id: number; name: string; real: string }>();
+    
+      const proj = await projQB
+        .select(idExprProj, 'id')
+        .addSelect('SUM(pm.amount)', 'projected')
+        .groupBy(idExprProj)
+        .getRawMany<{ id: number; projected: string }>();
+    
+      // ======= FIX DE NOMBRES CUANDO SOLO HAY PROYECCIÓN =======
+      if (groupBy === 'department') {
+        const depts = await this.ds.getRepository(Department).find({ select: ['id', 'name'] });
+        const nameByDept = new Map<number, string>(depts.map(d => [d.id, d.name]));
+    
+        const rMap = new Map<number, number>(real.map(r => [Number(r.id), Number(r.real) || 0]));
+        const pMap = new Map<number, number>(proj.map(p => [Number(p.id), Number(p.projected) || 0]));
+    
+        const ids = new Set<number>([...rMap.keys(), ...pMap.keys()]);
+    
+        return Array.from(ids).map(id => {
+          const realN = rMap.get(id) ?? 0;
+          const projN = pMap.get(id) ?? 0;
+          const name = nameByDept.get(id) ?? '';
+          return {
+            id,
+            name,
+            real: realN,
+            projected: projN,
+            diff: realN - projN,
+          };
+        });
+      }
+    
+      // ========== merge default (type/subtype) ==========
+      const pMap = new Map<number, number>(proj.map(r => [Number(r.id), Number(r.projected) || 0]));
+      const out = real.map(r => {
+        const realN = Number(r.real) || 0;
+        const projected = pMap.get(Number(r.id)) ?? 0;
+        return {
+          id: Number(r.id),
+          name: r.name,
+          real: realN,
+          projected,
+          diff: realN - projected,
+        };
+      });
+    
+      // Agregar ids que existan solo en proyección
+      for (const pr of proj) {
+        const id = Number(pr.id);
+        if (!out.find(x => x.id === id)) {
+          out.push({
+            id,
+            name: '',
+            real: 0,
+            projected: Number(pr.projected) || 0,
+            diff: -Number(pr.projected || 0),
+          });
+        }
+      }
+    
+      return out;
+    }
+    
+
 }
