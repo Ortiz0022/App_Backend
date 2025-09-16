@@ -7,6 +7,7 @@ import { PIncomeSubType } from 'src/anualBudget/pIncomeSubType/entities/pincome-
 import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
 import { Totals } from './dto/home.dto';
 import { Department } from '../department/entities/department.entity';
+import { PSpend } from '../pSpend/entities/p-spend.entity';
 
 
 @Injectable()
@@ -25,18 +26,18 @@ export class HomeService {
     
     // Calculate projected incomes and spends
     const projectedIncomes = await this.calculateProjectedIncomes(dateFilter);
-    //const projectedSpends = await this.calculateProjectedSpends(dateFilter);
+    const projectedSpends = await this.calculateProjectedSpends(dateFilter);
 
     // Calculate balances
     const realBalance = realIncomes - realSpends;
-    const projectedBalance = projectedIncomes - 0;//projectedSpends;
+    const projectedBalance = projectedIncomes - projectedSpends;
 
     return {
       incomes: realIncomes,
       spends: realSpends,
       balance: realBalance,
       projectedIncomes,
-      projectedSpends: 0, //quitar el :0 cuando funcione spend
+      projectedSpends,
       projectedBalance,
     };
   }
@@ -81,10 +82,9 @@ export class HomeService {
     return parseFloat(result?.total || 0);
   }
 
- /* private async calculateProjectedSpends(_dateFilter: any): Promise<number> {
+ private async calculateProjectedSpends(_dateFilter: any): Promise<number> {
     try {
       // Try to import PSpend dynamically to avoid compilation errors if it doesn't exist
-      const { PSpend } = await import('src/anualBudget/pSpend/entities/pSpend.entity');
       const result = await this.ds.getRepository(PSpend)
         .createQueryBuilder('pSpend')
         .select('SUM(pSpend.amount)', 'total')
@@ -96,9 +96,9 @@ export class HomeService {
       this.logger.warn('PSpend entity not found. Projected spends will be set to 0.');
       return 0;
     }
-  }*/
+  }
 
-    async getIncomeComparison(
+   public async getIncomeComparison(
       period: { startDate?: string; endDate?: string },
       groupByParam?: string
     ) {
@@ -115,7 +115,7 @@ export class HomeService {
       let projQB = this.ds.getRepository(PIncome)
         .createQueryBuilder('pi')
         .innerJoin('pi.pIncomeSubType', 'ps')
-        .innerJoin('ps.pincomeType', 'pt');
+        .innerJoin('ps.pIncomeType', 'pt');
     
       let idExprReal = '';
       let nameExprReal = '';

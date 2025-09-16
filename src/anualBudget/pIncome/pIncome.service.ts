@@ -18,7 +18,7 @@ export class PIncomeService {
   // findAll(...) { /* tu implementación actual */ }
 
   private async getSubType(id: number) {
-    const s = await this.subRepo.findOne({ where: { id }, relations: ['pincomeType'] });
+    const s = await this.subRepo.findOne({ where: { id }, relations: ['pIncomeType'] });
     if (!s) throw new BadRequestException('PIncomeSubType not found');
     return s;
   }
@@ -34,14 +34,14 @@ export class PIncomeService {
     const saved = await this.repo.save(entity);
 
     // ✅ Recalcula con el servicio de PROYECCIÓN
-    await this.pIncomeTypeService.recalcAmount(s.pincomeType.id);
+    await this.pIncomeTypeService.recalcAmount(s.pIncomeType.id);
     return saved;
   }
 
   async findOne(id: number) {
     const row = await this.repo.findOne({
       where: { id },
-      relations: ['pIncomeSubType', 'pIncomeSubType.pincomeType'],
+      relations: ['pIncomeSubType', 'pIncomeSubType.pIncomeType'],
     });
     if (!row) throw new NotFoundException('PIncome not found');
     return row;
@@ -56,7 +56,7 @@ export class PIncomeService {
       where: where as any, // si TS molesta con tipos, deja este 'as any'
       relations: [
         'pIncomeSubType',
-        'pIncomeSubType.pincomeType', // relación anidada correcta
+        'pIncomeSubType.pIncomeType', // relación anidada correcta
       ],
       order: { id: 'DESC' },
     });
@@ -64,7 +64,7 @@ export class PIncomeService {
 
   async update(id: number, dto: { incomeSubTypeId?: number; amount?: string }) {
     const row = await this.findOne(id);
-    const oldTypeId = row.pIncomeSubType.pincomeType.id;
+    const oldTypeId = row.pIncomeSubType.pIncomeType.id;
 
     if (dto.incomeSubTypeId !== undefined) {
       const s = await this.getSubType(dto.incomeSubTypeId);
@@ -74,7 +74,7 @@ export class PIncomeService {
 
     const saved = await this.repo.save(row);
 
-    const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pincomeType.id;
+    const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
     await this.pIncomeTypeService.recalcAmount(oldTypeId);
     if (newTypeId !== oldTypeId) await this.pIncomeTypeService.recalcAmount(newTypeId);
 
@@ -83,7 +83,7 @@ export class PIncomeService {
 
   async remove(id: number) {
     const row = await this.findOne(id);
-    const typeId = row.pIncomeSubType.pincomeType.id;
+    const typeId = row.pIncomeSubType.pIncomeType.id;
 
     await this.repo.delete(id);
     await this.pIncomeTypeService.recalcAmount(typeId);

@@ -25,8 +25,8 @@ constructor(
 
   const rows = await this.incRepo
     .createQueryBuilder('i')
-    .innerJoin('i.incomeSubType', 's')
-    .innerJoin('s.incomeType', 't')
+    .innerJoin('i.pIncomeSubType', 's')
+    .innerJoin('s.pIncomeType', 't')
     .innerJoin('t.department', 'd')
     .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
     .select('d.id', 'departmentId')

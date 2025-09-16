@@ -54,7 +54,7 @@ export class PIncomeTypeService {
     const totalRaw = await this.pIncRepo
       .createQueryBuilder('i')
       .innerJoin('i.pIncomeSubType', 's')
-      .where('s.pincomeType = :id', { id: PIncomeTypeId })
+      .where('s.pIncomeType = :id', { id: PIncomeTypeId })
       .select('COALESCE(SUM(i.amount),0)', 'total')
       .getRawOne<{ total: string }>();
 

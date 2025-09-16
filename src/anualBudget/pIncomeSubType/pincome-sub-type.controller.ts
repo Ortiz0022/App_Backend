@@ -14,8 +14,8 @@ export class PIncomeSubTypeController {
   }
 
   @Get()
-  list(@Query('pincomeTypeId') pincomeTypeId?: number) {
-    return this.svc.findAll(pincomeTypeId ? Number(pincomeTypeId) : undefined);
+  list(@Query('pIncomeTypeId') pIncomeTypeId?: number) {
+    return this.svc.findAll(pIncomeTypeId ? Number(pIncomeTypeId) : undefined);
   }
 
   @Get(':id')

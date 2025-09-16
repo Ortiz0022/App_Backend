@@ -26,30 +26,29 @@ export class PIncomeSubTypeService {
     await this.getType(dto.pIncomeTypeId);
     const entity = this.repo.create({
       name: dto.name,
-      pincomeType: { id: dto.pIncomeTypeId } as any,
+      pIncomeType: { id: dto.pIncomeTypeId } as any,
     });
     return this.repo.save(entity);
   }
 
   findAll(pIncomeTypeId?: number) {
-    const where = pIncomeTypeId ? { pincomeType: { id: pIncomeTypeId } } : {};
-    return this.repo.find({ where: where as any, relations: ['pincomeType'], order: { id: 'DESC' } });
+    const where = pIncomeTypeId ? { pIncomeType: { id: pIncomeTypeId } } : {};
+    return this.repo.find({ where: where as any, relations: ['pIncomeType'], order: { id: 'DESC' } });
   }
 
   async findOne(id: number) {
-    const row = await this.repo.findOne({ where: { id }, relations: ['pincomeType'] });
+    const row = await this.repo.findOne({ where: { id }, relations: ['pIncomeType'] });
     if (!row) throw new NotFoundException('PIncomeSubType not found');
     return row;
   }
 
   async update(id: number, dto: UpdatePIncomeSubTypeDto) {
     const row = await this.findOne(id);
-    const oldTypeId = row.pincomeType.id;
+    const oldTypeId = row.pIncomeType.id;
 
     if (dto.name !== undefined) row.name = dto.name;
-    if (dto.pIncomeTypeId !== undefined) {
-      await this.getType(dto.pIncomeTypeId);
-      row.pincomeType = { id: dto.pIncomeTypeId } as any;
+    if (dto.pIncomeTypeId !== undefined && dto.pIncomeTypeId !== oldTypeId) {
+      row.pIncomeType = await this.getType(dto.pIncomeTypeId);
     }
 
     const saved = await this.repo.save(row);

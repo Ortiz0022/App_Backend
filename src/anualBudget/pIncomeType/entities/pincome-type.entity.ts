@@ -17,6 +17,6 @@ export class PIncomeType {
   @Column('decimal', { precision: 18, scale: 2, default: 0 })
   amountPIncome: string;
 
-  @OneToMany(() => PIncomeSubType, (s) => s.pincomeType)
+  @OneToMany(() => PIncomeSubType, (s) => s.pIncomeType)
   subTypes: PIncomeSubType[];
 }

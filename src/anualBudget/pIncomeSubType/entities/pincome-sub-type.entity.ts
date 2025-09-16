@@ -11,8 +11,8 @@ export class PIncomeSubType {
   name: string;
 
   @ManyToOne(() => PIncomeType, (it) => it.subTypes, { eager: true })
-  pincomeType: PIncomeType;
+  pIncomeType: PIncomeType;
 
   @OneToMany(() => PIncome, (inc) => inc.pIncomeSubType)
-  pincomes: PIncome[];
+  pIncomes: PIncome[];
 }

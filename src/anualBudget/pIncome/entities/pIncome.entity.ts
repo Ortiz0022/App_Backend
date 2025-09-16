@@ -6,7 +6,7 @@ export class PIncome {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => PIncomeSubType, (s) => s.pincomes, { eager: true })
+  @ManyToOne(() => PIncomeSubType, (s) => s.pIncomes, { eager: true })
   pIncomeSubType: PIncomeSubType;
 
   @Column('decimal', { precision: 18, scale: 2 })
