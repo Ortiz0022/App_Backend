@@ -16,11 +16,6 @@ export class RoleController {
         return this.roleService.findAllRoles();
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: number) {
-        return this.roleService.findOneRole(id);
-    }
-
     @Put(':id')
     update(@Param('id') id: number, @Body() roleDto: RoleDto) {
         return this.roleService.updateRole(id, roleDto);
