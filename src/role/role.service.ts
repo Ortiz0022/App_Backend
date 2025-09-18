@@ -11,12 +11,18 @@ export class RoleService {
     private rolesRepository: Repository<Role>,
   ) {}
 
+   async onModuleInit() {
+    const roles = await this.rolesRepository.find();
+    if (roles.length === 0) {
+      await this.rolesRepository.save([
+        { name: 'ADMIN' },
+        { name: 'JUNTA' },
+      ]);
+    }
+  }
+
     findAllRoles() {
         return this.rolesRepository.find();
-    }
-
-    findOneRole(id: number) {
-        return this.rolesRepository.findOneBy({ id });
     }
 
     async createRole(roleDto: RoleDto) {
