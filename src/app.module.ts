@@ -103,6 +103,7 @@ import { AuthModule } from './auth/auth.module';
     PSpendSubTypeModule,
     PSpendTypeByDepartmentModule,
     ExtraordinaryModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [

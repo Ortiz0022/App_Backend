@@ -1,20 +1,26 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ExtraordinaryService } from './extraordinary.service';
 import { CreateExtraordinaryDto } from './dto/createExtraordinaryDto';
 import { UpdateExtraordinaryDto } from './dto/updateExtraordinaryDto';
 import { AllocateExtraordinaryDto } from './dto/allocateExtraordinaryDto';
 import { AssignExtraordinaryDto } from './dto/assignExtraordinaryDto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('extraordinary')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ExtraordinaryController {
   constructor(private readonly service: ExtraordinaryService) {}
 
   @Post()
+  @Roles('ADMIN')
   create(@Body() dto: CreateExtraordinaryDto) {
     return this.service.create(dto);
   }
 
   @Post('assign-to-income')
+  @Roles('ADMIN')
   assignToIncome(@Body() dto: AssignExtraordinaryDto) {
     return this.service.assignToIncome(dto);
   }
@@ -35,6 +41,7 @@ export class ExtraordinaryController {
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }
