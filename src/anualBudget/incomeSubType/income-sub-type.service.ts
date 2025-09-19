@@ -80,36 +80,6 @@ export class IncomeSubTypeService {
     return { deleted: true };
   }
 
-  async recalcAmountWithManager(em: EntityManager, incomeSubTypeId: number) {
-    // 1) SUM(Income.amount) del subtipo con el MISMO manager
-    const totalRaw = await em
-      .createQueryBuilder(Income, 'i')
-      .where('i.incomeSubType = :sid', { sid: incomeSubTypeId })
-      .select('COALESCE(SUM(i.amount),0)', 'total')
-      .getRawOne<{ total: string }>();
-  
-    const total = Number(totalRaw?.total ?? 0).toFixed(2);
-  
-    // 2) Actualiza el materializado del SubType
-    await em.update(IncomeSubType, incomeSubTypeId, { amountSubIncome: total });
-  
-    // 3) Recalcula el Type padre (suma de amountSubIncome)
-    const sub = await em.findOne(IncomeSubType, {
-      where: { id: incomeSubTypeId },
-      relations: ['incomeType'],
-    });
-    if (sub?.incomeType?.id) {
-      // si tu IncomeTypeService también tiene ...WithManager, úsalo; sino, recalca normal
-      const maybeWithEm = (this.typeService as any).recalcAmountWithManager;
-      if (typeof maybeWithEm === 'function') {
-        await maybeWithEm.call(this.typeService, em, sub.incomeType.id);
-      } else {
-        await this.typeService.recalcAmount(sub.incomeType.id);
-      }
-    }
-  
-    return total;
-  }
 
   /** Recalcula y persiste amountSubIncome = SUM(Income.amount) del SubType */
   async recalcAmount(incomeSubTypeId: number) {
@@ -127,5 +97,40 @@ export class IncomeSubTypeService {
     await this.typeService.recalcAmount(sub.incomeType.id);
 
     return sub;
+  }
+
+  async recalcAmountWithManager(em: EntityManager, incomeSubTypeId: number) {
+    // 1) SUM(Income.amount) del SubType con el MISMO manager/tx
+    const totalRaw = await em
+      .createQueryBuilder(Income, 'i')
+      .where('i.incomeSubType = :sid', { sid: incomeSubTypeId })
+      .select('COALESCE(SUM(i.amount),0)', 'total')
+      .getRawOne<{ total: string }>();
+  
+    const total = Number(totalRaw?.total ?? 0).toFixed(2);
+  
+    // 2) Actualiza amountSubIncome del SubType con el MISMO manager/tx
+    await em.update(IncomeSubType, incomeSubTypeId, { amountSubIncome: total });
+  
+    // 3) Recalcula el Type padre con el MISMO manager/tx (sin llamar a otro service)
+    const sub = await em.findOne(IncomeSubType, {
+      where: { id: incomeSubTypeId },
+      relations: ['incomeType'],
+    });
+  
+    if (sub?.incomeType?.id) {
+      const typeId = sub.incomeType.id;
+  
+      const typeTotalRaw = await em
+        .createQueryBuilder(IncomeSubType, 's')
+        .where('s.incomeType = :id', { id: typeId })
+        .select('COALESCE(SUM(s.amountSubIncome),0)', 'total')
+        .getRawOne<{ total: string }>();
+  
+      const typeTotal = Number(typeTotalRaw?.total ?? 0).toFixed(2);
+      await em.update(IncomeType, typeId, { amountIncome: typeTotal });
+    }
+  
+    return total;
   }
 }
