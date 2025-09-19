@@ -13,7 +13,7 @@ export class SpendType {
   @ManyToOne(() => Department, (d) => d.id, { eager: true })
   department: Department;
 
-  // SUM de sus subtipos (spends)
+  // Suma de los subtotales de sus subtipos
   @Column('decimal', { precision: 18, scale: 2, default: 0 })
   amountSpend: string;
 

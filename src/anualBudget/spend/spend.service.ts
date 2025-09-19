@@ -7,6 +7,7 @@ import { UpdateSpendDto } from './dto/updateSpendDto';
 import { SpendSubType } from '../spendSubType/entities/spend-sub-type.entity';
 import { SpendTypeService } from '../spendType/spend-type.service';
 import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
+import { SpendSubTypeService } from '../spendSubType/spend-sub-type.service'; // NUEVO
 
 @Injectable()
 export class SpendService {
@@ -15,6 +16,7 @@ export class SpendService {
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
     private readonly typeService: SpendTypeService,
     private readonly fyService: FiscalYearService,
+    private readonly subTypeService: SpendSubTypeService, // NUEVO
   ) {}
 
   private async getSubType(id: number) {
@@ -35,8 +37,10 @@ export class SpendService {
     });
     const saved = await this.repo.save(entity);
 
-    // Recalcular total del tipo relacionado
+    // Recalcular subtotal del SubType y total del Type
+    await this.subTypeService.recalcAmountSubSpend(s.id);
     await this.typeService.recalcAmount(s.spendType.id);
+
     return saved;
   }
 
@@ -60,6 +64,8 @@ export class SpendService {
 
   async update(id: number, dto: UpdateSpendDto) {
     const row = await this.findOne(id);
+
+    const oldSubTypeId = row.spendSubType.id;
     const oldTypeId = row.spendSubType.spendType.id;
 
     const newDate = dto.date ?? row.date;
@@ -74,10 +80,19 @@ export class SpendService {
 
     const saved = await this.repo.save(row);
 
-    // Recalcular tipo viejo y el nuevo (si cambió)
+    // Recalcular: subtipo viejo (si cambió o igual, sigue correcto) y subtipo nuevo
+    await this.subTypeService.recalcAmountSubSpend(oldSubTypeId);
+    const newSubTypeId = row.spendSubType.id;
+    if (newSubTypeId !== oldSubTypeId) {
+      await this.subTypeService.recalcAmountSubSpend(newSubTypeId);
+    }
+
+    // Recalcular tipo viejo y (si cambió) tipo nuevo
     await this.typeService.recalcAmount(oldTypeId);
-    const newTypeId = (await this.getSubType(row.spendSubType.id)).spendType.id;
-    if (newTypeId !== oldTypeId) await this.typeService.recalcAmount(newTypeId);
+    const newTypeId = (await this.getSubType(newSubTypeId)).spendType.id;
+    if (newTypeId !== oldTypeId) {
+      await this.typeService.recalcAmount(newTypeId);
+    }
 
     return saved;
   }
@@ -85,9 +100,14 @@ export class SpendService {
   async remove(id: number) {
     const row = await this.findOne(id);
     await this.fyService.assertOpenByDate(row.date);
+
+    const subTypeId = row.spendSubType.id;
     const typeId = row.spendSubType.spendType.id;
 
     await this.repo.delete(id);
+
+    // Recalcular subtotal y total
+    await this.subTypeService.recalcAmountSubSpend(subTypeId);
     await this.typeService.recalcAmount(typeId);
 
     return { deleted: true };

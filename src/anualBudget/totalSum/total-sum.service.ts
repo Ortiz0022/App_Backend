@@ -1,16 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { TotalSum } from './entities/total-sum.entity';
 import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 import { Income } from '../income/entities/income.entity';
 import { Spend } from '../spend/entities/spend.entity';
-import { PIncome } from '../pIncome/entities/pIncome.entity';
 
 @Injectable()
 export class TotalSumService {
   constructor(
-    @InjectRepository(TotalSum)  private readonly repo: Repository<TotalSum>,
+    @InjectRepository(TotalSum)   private readonly repo: Repository<TotalSum>,
     @InjectRepository(FiscalYear) private readonly fyRepo: Repository<FiscalYear>,
     @InjectRepository(Income)     private readonly incomeRepo: Repository<Income>,
     @InjectRepository(Spend)      private readonly spendRepo: Repository<Spend>,
@@ -25,7 +24,7 @@ export class TotalSumService {
     const incRaw = await this.incomeRepo
       .createQueryBuilder('i')
       .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
-      .select('COALESCE(SUM(i.amount),0)', 'total')
+      .select('COALESCE(SUM(i.amount), 0)', 'total')
       .getRawOne<{ total: string }>();
     const totalIncome = Number(incRaw?.total ?? 0).toFixed(2);
 
@@ -33,7 +32,7 @@ export class TotalSumService {
     const spRaw = await this.spendRepo
       .createQueryBuilder('s')
       .where('s.date >= :start AND s.date <= :end', { start: fy.start_date, end: fy.end_date })
-      .select('COALESCE(SUM(s.amount),0)', 'total')
+      .select('COALESCE(SUM(s.amount), 0)', 'total')
       .getRawOne<{ total: string }>();
     const totalSpend = Number(spRaw?.total ?? 0).toFixed(2);
 
@@ -46,8 +45,9 @@ export class TotalSumService {
         total_spend: '0.00',
       });
     }
+
     snap.total_income = totalIncome;
-    snap.total_spend = totalSpend;
+    snap.total_spend  = totalSpend;
 
     await this.repo.save(snap);
     return this.findByFiscalYear(fy.id);
@@ -60,7 +60,7 @@ export class TotalSumService {
     }) as Promise<TotalSum>;
   }
 
-  /** Lista todos los snapshots ordenados por FY (desc). */
+  /** Lista todos los snapshots ordenados por id (desc). */
   findAll(): Promise<TotalSum[]> {
     return this.repo.find({ order: { id: 'DESC' } });
   }

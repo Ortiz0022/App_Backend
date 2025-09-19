@@ -15,6 +15,4 @@ export class TotalSum {
 
   @Column('decimal', { precision: 18, scale: 2, default: 0 })
   total_spend: string;
-
-  
 }

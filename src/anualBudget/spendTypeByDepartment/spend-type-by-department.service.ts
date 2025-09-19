@@ -32,7 +32,7 @@ export class SpendTypeByDepartmentService {
       .innerJoin('st.department', 'd')
       .where('sp.date >= :start AND sp.date <= :end', { start: fy.start_date, end: fy.end_date })
       .select('d.id', 'departmentId')
-      .addSelect('COALESCE(SUM(sp.amount),0)', 'total')
+      .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
       .groupBy('d.id')
       .getRawMany<{ departmentId: number; total: string }>();
 
@@ -54,7 +54,9 @@ export class SpendTypeByDepartmentService {
         });
       }
 
-      snap.amountDepSpend = r.total ?? '0';
+      // Asegurar formato string con 2 decimales
+      const totalStr = Number(r.total ?? 0).toFixed(2);
+      snap.amountDepSpend = totalStr;
       await this.repo.save(snap);
     }
 
