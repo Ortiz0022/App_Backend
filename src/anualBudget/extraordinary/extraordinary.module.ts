@@ -10,6 +10,7 @@ import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity'
 import { Income } from '../income/entities/income.entity';
 import { IncomeTypeModule } from '../incomeType/income-type.module';
 import { IncomeSubTypeModule } from '../incomeSubType/income-sub-type.module';
+import { ExtraordinaryService } from './extraordinary.service';
 
 @Module({
   imports: [
