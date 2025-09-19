@@ -15,12 +15,11 @@ export class TotalSumService {
     @InjectRepository(Spend)      private readonly spendRepo: Repository<Spend>,
   ) {}
 
-  /** Calcula y persiste total_income y total_spend para el FY indicado (upsert). */
   async recalcForFiscalYear(fiscalYearId: number): Promise<TotalSum> {
     const fy = await this.fyRepo.findOne({ where: { id: fiscalYearId } });
     if (!fy) throw new NotFoundException('FiscalYear not found');
 
-    // SUM ingresos en el rango del año fiscal
+    // === Ingresos reales por FY (igual que antes)
     const incRaw = await this.incomeRepo
       .createQueryBuilder('i')
       .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
@@ -28,15 +27,22 @@ export class TotalSumService {
       .getRawOne<{ total: string }>();
     const totalIncome = Number(incRaw?.total ?? 0).toFixed(2);
 
-    // SUM egresos en el rango del año fiscal
-    const spRaw = await this.spendRepo
-      .createQueryBuilder('s')
-      .where('s.date >= :start AND s.date <= :end', { start: fy.start_date, end: fy.end_date })
-      .select('COALESCE(SUM(s.amount), 0)', 'total')
-      .getRawOne<{ total: string }>();
-    const totalSpend = Number(spRaw?.total ?? 0).toFixed(2);
+    // === Egresos reales por FY, sumando por SubType (respeta FY)
+    //   (equivalente a sumar amountSubSpend pero SOLO dentro del FY)
+    const subTypeTotals = await this.spendRepo
+      .createQueryBuilder('sp')
+      .innerJoin('sp.spendSubType', 'sst')
+      .where('sp.date >= :start AND sp.date <= :end', { start: fy.start_date, end: fy.end_date })
+      .select('sst.id', 'subTypeId')
+      .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
+      .groupBy('sst.id')
+      .getRawMany<{ subTypeId: number; total: string }>();
 
-    // Upsert por FY
+    const totalSpend = Number(
+      subTypeTotals.reduce((acc, r) => acc + Number(r.total ?? 0), 0)
+    ).toFixed(2);
+
+    // === Upsert por FY (igual)
     let snap = await this.repo.findOne({ where: { fiscalYear: { id: fy.id } as any } });
     if (!snap) {
       snap = this.repo.create({
@@ -45,7 +51,6 @@ export class TotalSumService {
         total_spend: '0.00',
       });
     }
-
     snap.total_income = totalIncome;
     snap.total_spend  = totalSpend;
 
