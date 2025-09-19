@@ -7,13 +7,13 @@ import { UpdateSpendTypeDto } from './dto/updateSpendTypeDto';
 import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
 import { Spend } from '../spend/entities/spend.entity';
 
-
 @Injectable()
 export class SpendTypeService {
   constructor(
     @InjectRepository(SpendType)    private readonly repo: Repository<SpendType>,
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
-    @InjectRepository(Spend)        private readonly spendRepo: Repository<Spend>,
+    // Mantengo la inyección para compatibilidad; no se usa con la nueva lógica
+    @InjectRepository(Spend)        private readonly _spendRepo: Repository<Spend>,
   ) {}
 
   async create(dto: CreateSpendTypeDto) {
@@ -47,13 +47,14 @@ export class SpendTypeService {
     return { deleted: true };
   }
 
-  /** SUM(spend.amount) filtrando por subtipos del tipo */
+  /** NUEVA LÓGICA:
+   * Suma de amountSubSpend de los subtipos del tipo (no suma directa de Spend)
+   */
   async recalcAmount(spendTypeId: number) {
-    const totalRaw = await this.spendRepo
-      .createQueryBuilder('sp')
-      .innerJoin('sp.spendSubType', 's')
-      .where('s.spendType = :id', { id: spendTypeId })
-      .select('COALESCE(SUM(sp.amount),0)', 'total')
+    const totalRaw = await this.subRepo
+      .createQueryBuilder('s')
+      .where('s.spendTypeId = :id', { id: spendTypeId })
+      .select('COALESCE(SUM(s.amountSubSpend), 0)', 'total')
       .getRawOne<{ total: string }>();
 
     const total = Number(totalRaw?.total ?? 0).toFixed(2);

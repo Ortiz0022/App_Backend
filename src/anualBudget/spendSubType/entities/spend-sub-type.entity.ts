@@ -15,4 +15,8 @@ export class SpendSubType {
 
   @OneToMany(() => Spend, (sp) => sp.spendSubType)
   spends: Spend[];
+
+  /** NUEVO: subtotal del SubType (suma de todos los Spend.amount ligados) */
+  @Column('decimal', { precision: 18, scale: 2, default: 0 })
+  amountSubSpend: string;
 }

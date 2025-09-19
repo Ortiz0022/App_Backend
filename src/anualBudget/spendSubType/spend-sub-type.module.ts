@@ -5,9 +5,13 @@ import { SpendSubTypeService } from './spend-sub-type.service';
 import { SpendSubTypeController } from './spend-sub-type.controller';
 import { SpendType } from '../spendType/entities/spend-type.entity';
 import { SpendTypeModule } from '../spendType/spend-type.module';
+import { Spend } from '../spend/entities/spend.entity'; // NUEVO
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SpendSubType, SpendType]), SpendTypeModule],
+  imports: [
+    TypeOrmModule.forFeature([SpendSubType, SpendType, Spend]), // incluye Spend para sumar
+    SpendTypeModule,
+  ],
   controllers: [SpendSubTypeController],
   providers: [SpendSubTypeService],
   exports: [TypeOrmModule, SpendSubTypeService],
