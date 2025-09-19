@@ -3,50 +3,71 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PSpendType } from './entities/p-spend-type.entity';
+import { PSpend } from '../pSpend/entities/p-spend.entity';
 import { Department } from '../department/entities/department.entity';
-import { CreatePSpendTypeDto } from './dto/create.dto';
-import { UpdatePSpendTypeDto } from './dto/update.dto';
 
 @Injectable()
 export class PSpendTypeService {
   constructor(
-    @InjectRepository(PSpendType) private repo: Repository<PSpendType>,
-    @InjectRepository(Department) private deptRepo: Repository<Department>,
+    @InjectRepository(PSpendType) private typeRepo: Repository<PSpendType>,
+    @InjectRepository(PSpend) private pSpendRepo: Repository<PSpend>,
+    @InjectRepository(Department) private depRepo: Repository<Department>,
   ) {}
 
-  async create(dto: CreatePSpendTypeDto) {
-    const department = await this.deptRepo.findOneBy({ id: dto.departmentId });
-    if (!department) throw new NotFoundException('Department no existe');
-    const row = this.repo.create({ name: dto.name, department });
-    return this.repo.save(row);
-  }
+  /**
+   * Devuelve los tipos con amountPSpend = SUM(ps.amount) por tipo.
+   * Filtros:
+   * - departmentId: limita los tipos al departamento
+   * - fiscalYearId: limita la suma al año fiscal
+   */
+  async findAll(departmentId?: number, fiscalYearId?: number) {
+    // 1) Traer los tipos (opcional por department)
+    const types = await this.typeRepo.find({
+      where: departmentId ? { department: { id: departmentId } as any } : {},
+    });
+    if (types.length === 0) return types;
 
-  // GET /p-spend-type?departmentId=2
-  findAll(departmentId?: number) {
-    if (departmentId) return this.repo.find({ where: { department: { id: departmentId } } });
-    return this.repo.find();
-  }
+    const typeIds = types.map((t) => t.id);
 
-  async findOne(id: number) {
-    const item = await this.repo.findOne({ where: { id } });
-    if (!item) throw new NotFoundException();
-    return item;
-  }
+    // 2) SUM(ps.amount) agrupado por type.id
+    const qb = this.pSpendRepo
+      .createQueryBuilder('ps')
+      .innerJoin('ps.subType', 'st')
+      .innerJoin('st.type', 't')
+      .select('t.id', 'typeId')
+      .addSelect('COALESCE(SUM(ps.amount),0)', 'total')
+      .where('t.id IN (:...typeIds)', { typeIds });
 
-  async update(id: number, dto: UpdatePSpendTypeDto) {
-    const item = await this.findOne(id);
-    if (dto.departmentId) {
-      const department = await this.deptRepo.findOneBy({ id: dto.departmentId });
-      if (!department) throw new NotFoundException('Department no existe');
-      item.department = department;
+    if (fiscalYearId) {
+      qb.innerJoin('ps.fiscalYear', 'fy').andWhere('fy.id = :fy', { fy: fiscalYearId });
     }
-    if (dto.name !== undefined) item.name = dto.name;
-    return this.repo.save(item);
+    if (departmentId) {
+      qb.innerJoin('t.department', 'd').andWhere('d.id = :dep', { dep: departmentId });
+    }
+
+    qb.groupBy('t.id');
+
+    const rows: Array<{ typeId: string; total: string }> = await qb.getRawMany();
+    const totals = new Map<number, number>();
+    for (const r of rows) totals.set(Number(r.typeId), Number(r.total));
+
+    // 3) Inyectar amountPSpend en cada tipo
+    for (const t of types) {
+      (t as any).amountPSpend = (totals.get(t.id) ?? 0).toFixed(2);
+      (t as any).byDepartment = null;
+    }
+
+    return types;
   }
 
-  async remove(id: number) {
-    const item = await this.findOne(id);
-    await this.repo.remove(item);
-    return { ok: true };
+  /**
+   * Crea un nuevo tipo de gasto proyectado ligado a un departamento
+   */
+  async create(dto: { name: string; departmentId: number }) {
+    const dep = await this.depRepo.findOneBy({ id: dto.departmentId });
+    if (!dep) throw new NotFoundException('Department no existe');
+
+    const row = this.typeRepo.create({ name: dto.name, department: dep });
+    return this.typeRepo.save(row);
   }
 }
