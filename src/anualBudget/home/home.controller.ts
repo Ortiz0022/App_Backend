@@ -26,6 +26,7 @@ export class HomeController {
   ) {
     return this.svc.getIncomeComparison({ startDate, endDate }, groupBy);
   }
+
   // Tabla de Egresos
   // GET /home/spends?groupBy=department|type|subtype&startDate=...&endDate=...
   @Get('spends')
