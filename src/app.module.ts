@@ -41,6 +41,7 @@ import { PSpendSubTypeModule } from './anualBudget/pSpendSubType/p-spend-sub-typ
 import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartment/p-spend-type-by-department.module';
 import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 import { AuthModule } from './auth/auth.module';
+import { ReportModule } from './anualBudget/report/report.module';
 
 
 @Module({
@@ -104,6 +105,7 @@ import { AuthModule } from './auth/auth.module';
     PSpendTypeByDepartmentModule,
     ExtraordinaryModule,
     AuthModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [
