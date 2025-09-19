@@ -42,6 +42,7 @@ import { PSpendTypeByDepartmentModule } from './anualBudget/pSpendTypeByDepartme
 import { ExtraordinaryModule } from './anualBudget/extraordinary/extraordinary.module';
 import { AuthModule } from './auth/auth.module';
 import { ReportModule } from './anualBudget/report/report.module';
+import { ReportProjectionsModule } from './anualBudget/reportProjections/reportProjections.module';
 
 
 @Module({
@@ -106,6 +107,7 @@ import { ReportModule } from './anualBudget/report/report.module';
     ExtraordinaryModule,
     AuthModule,
     ReportModule,
+    ReportProjectionsModule,
   ],
   controllers: [AppController],
   providers: [
