@@ -1,22 +1,29 @@
-// src/anualBudget/extraordinary/extraordinary.module.ts
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { Extraordinary } from './entities/extraordinary.entity';
-import { ExtraordinaryService } from './extraordinary.service';
+
 import { ExtraordinaryController } from './extraordinary.controller';
-import { Income } from '../income/entities/income.entity';
-import { IncomeType } from '../incomeType/entities/income-type.entity';
-import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
-import { IncomeTypeModule } from '../incomeType/income-type.module';
-// (si tienes allocation entity, inclúyela aquí también)
+import { ExtraordinaryService } from './extraordinary.service';
+
+// ➕ estos módulos proveen los servicios/repos que usa ExtraordinaryService
+import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
+import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
+import { Income } from 'src/anualBudget/income/entities/income.entity';
+
+import { IncomeTypeModule } from 'src/anualBudget/incomeType/income-type.module';
+import { IncomeSubTypeModule } from 'src/anualBudget/incomeSubType/income-sub-type.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Extraordinary, Income, IncomeType, IncomeSubType]),
-    IncomeTypeModule,                         // 👈 importa el módulo que EXPORTA el servicio
-    // o: forwardRef(() => IncomeTypeModule),
+    // repos usados dentro de ExtraordinaryService (InjectRepository)
+    TypeOrmModule.forFeature([Extraordinary, IncomeType, IncomeSubType, Income]),
+    // ⬇️ IMPORTANTE: para que Nest tenga disponibles los providers que inyectas
+    IncomeTypeModule,
+    IncomeSubTypeModule,
   ],
-  providers: [ExtraordinaryService],
   controllers: [ExtraordinaryController],
+  providers: [ExtraordinaryService],
+  exports: [ExtraordinaryService],
 })
 export class ExtraordinaryModule {}
