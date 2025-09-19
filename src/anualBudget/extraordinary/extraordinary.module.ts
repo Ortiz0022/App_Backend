@@ -1,22 +1,22 @@
 // src/anualBudget/extraordinary/extraordinary.module.ts
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Extraordinary } from './entities/extraordinary.entity';
 import { ExtraordinaryService } from './extraordinary.service';
 import { ExtraordinaryController } from './extraordinary.controller';
-import { Income } from '../income/entities/income.entity';
 import { IncomeType } from '../incomeType/entities/income-type.entity';
 import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
+import { Income } from '../income/entities/income.entity';
 import { IncomeTypeModule } from '../incomeType/income-type.module';
-// (si tienes allocation entity, inclúyela aquí también)
+import { IncomeSubTypeModule } from '../incomeSubType/income-sub-type.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Extraordinary, Income, IncomeType, IncomeSubType]),
-    IncomeTypeModule,                         // 👈 importa el módulo que EXPORTA el servicio
-    // o: forwardRef(() => IncomeTypeModule),
+    TypeOrmModule.forFeature([Extraordinary, IncomeType, IncomeSubType, Income]),
+    IncomeTypeModule,
+    IncomeSubTypeModule, // ⬅️ para resolver IncomeSubTypeService
   ],
-  providers: [ExtraordinaryService],
   controllers: [ExtraordinaryController],
+  providers: [ExtraordinaryService],
 })
 export class ExtraordinaryModule {}

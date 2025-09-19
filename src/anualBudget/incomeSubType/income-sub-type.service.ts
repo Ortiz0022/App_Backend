@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { IncomeSubType } from './entities/income-sub-type.entity';
 import { CreateIncomeSubTypeDto } from './dto/createIncomeSubTypeDto';
 import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
@@ -78,6 +78,37 @@ export class IncomeSubTypeService {
     await this.typeService.recalcAmount(typeId);
 
     return { deleted: true };
+  }
+
+  async recalcAmountWithManager(em: EntityManager, incomeSubTypeId: number) {
+    // 1) SUM(Income.amount) del subtipo con el MISMO manager
+    const totalRaw = await em
+      .createQueryBuilder(Income, 'i')
+      .where('i.incomeSubType = :sid', { sid: incomeSubTypeId })
+      .select('COALESCE(SUM(i.amount),0)', 'total')
+      .getRawOne<{ total: string }>();
+  
+    const total = Number(totalRaw?.total ?? 0).toFixed(2);
+  
+    // 2) Actualiza el materializado del SubType
+    await em.update(IncomeSubType, incomeSubTypeId, { amountSubIncome: total });
+  
+    // 3) Recalcula el Type padre (suma de amountSubIncome)
+    const sub = await em.findOne(IncomeSubType, {
+      where: { id: incomeSubTypeId },
+      relations: ['incomeType'],
+    });
+    if (sub?.incomeType?.id) {
+      // si tu IncomeTypeService también tiene ...WithManager, úsalo; sino, recalca normal
+      const maybeWithEm = (this.typeService as any).recalcAmountWithManager;
+      if (typeof maybeWithEm === 'function') {
+        await maybeWithEm.call(this.typeService, em, sub.incomeType.id);
+      } else {
+        await this.typeService.recalcAmount(sub.incomeType.id);
+      }
+    }
+  
+    return total;
   }
 
   /** Recalcula y persiste amountSubIncome = SUM(Income.amount) del SubType */

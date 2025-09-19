@@ -153,7 +153,7 @@ import { IncomeSubTypeService } from 'src/anualBudget/incomeSubType/income-sub-t
           // 6) Recalcular acumulados (en cadena)
           //    - recalc del SubType suma todos sus incomes → actualiza amountSubIncome
           //    - ese método al final llama recalc del Type → actualiza amountIncome
-          await this.incomeSubTypeService.recalcAmount(subType.id);
+          await this.incomeSubTypeService.recalcAmountWithManager(em, subType.id);
       
           return { extraordinary: extra, income: inc, subType, incomeType: type };
         });
