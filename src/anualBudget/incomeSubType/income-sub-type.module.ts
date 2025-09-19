@@ -1,4 +1,3 @@
-// src/anualBudget/incomeSubType/income-sub-type.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IncomeSubType } from './entities/income-sub-type.entity';
@@ -11,10 +10,10 @@ import { IncomeSubTypeController } from './income-sub-type.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([IncomeSubType, IncomeType, Income]),
-    IncomeTypeModule, // porque el service usa IncomeTypeService
+    IncomeTypeModule, // porque IncomeSubTypeService usa IncomeTypeService
   ],
-  controllers: [IncomeSubTypeController],  
+  controllers: [IncomeSubTypeController],
   providers: [IncomeSubTypeService],
-  exports: [IncomeSubTypeService], // ⬅️ importante
+  exports: [IncomeSubTypeService], // ⬅️ NECESARIO
 })
 export class IncomeSubTypeModule {}

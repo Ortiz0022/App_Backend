@@ -7,6 +7,7 @@ import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
 import { IncomeType } from '../incomeType/entities/income-type.entity';
 import { Income } from '../income/entities/income.entity';
 import { IncomeTypeService } from '../incomeType/income-type.service';
+import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Injectable()
 export class IncomeSubTypeService {
@@ -132,5 +133,46 @@ export class IncomeSubTypeService {
     }
   
     return total;
+  }
+
+  async recalcNetWithManager(em: EntityManager, incomeSubTypeId: number) {
+    // SUM(incomes)
+    const inRaw = await em
+      .createQueryBuilder(Income, 'i')
+      .where('i.incomeSubType = :sid', { sid: incomeSubTypeId })
+      .select('COALESCE(SUM(i.amount),0)', 'total')
+      .getRawOne<{ total: string }>();
+
+    // SUM(transfers out)
+    const outRaw = await em
+      .createQueryBuilder(Transfer, 't')
+      .where('t.fromIncomeSubType = :sid', { sid: incomeSubTypeId })
+      .select('COALESCE(SUM(t.transferAmount),0)', 'total')
+      .getRawOne<{ total: string }>();
+
+    const totalIn  = Number(inRaw?.total ?? 0);
+    const totalOut = Number(outRaw?.total ?? 0);
+    const net = (totalIn - totalOut).toFixed(2);
+
+    // Actualiza el materializado del SubType (NETO)
+    await em.update(IncomeSubType, incomeSubTypeId, { amountSubIncome: net });
+
+    // Recalcula el Type padre sumando los NETOS de sus subtipos
+    const sub = await em.findOne(IncomeSubType, {
+      where: { id: incomeSubTypeId },
+      relations: ['incomeType'],
+    });
+    if (sub?.incomeType?.id) {
+      const typeTotalRaw = await em
+        .createQueryBuilder(IncomeSubType, 's')
+        .where('s.incomeType = :id', { id: sub.incomeType.id })
+        .select('COALESCE(SUM(s.amountSubIncome),0)', 'total')
+        .getRawOne<{ total: string }>();
+
+      const typeTotal = Number(typeTotalRaw?.total ?? 0).toFixed(2);
+      await em.update(IncomeType, sub.incomeType.id, { amountIncome: typeTotal });
+    }
+
+    return net;
   }
 }

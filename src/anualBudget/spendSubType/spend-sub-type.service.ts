@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { SpendSubType } from './entities/spend-sub-type.entity';
 import { CreateSpendSubTypeDto } from './dto/createSpendSubTypeDto';
 import { UpdateSpendSubTypeDto } from './dto/updateSpendSubTypeDto';
@@ -41,6 +41,39 @@ export class SpendSubTypeService {
   await this.typeService.recalcAmount(sub.spendType.id);
   return sub.amountSubSpend;
 }
+
+/** ✅ NUEVO: Recalcula con EL MISMO EntityManager/tx para evitar locks */
+async recalcAmountSubSpendWithManager(em: EntityManager, subTypeId: number) {
+  const sub = await em.findOne(SpendSubType, { where: { id: subTypeId }, relations: ['spendType'] });
+  if (!sub) throw new NotFoundException('SpendSubType not found');
+
+  const totalRaw = await em
+    .createQueryBuilder(Spend, 'sp')
+    .where('sp.spendSubType = :id', { id: subTypeId })
+    .select('COALESCE(SUM(sp.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  const total = Number(totalRaw?.total ?? 0).toFixed(2);
+  await em.update(SpendSubType, subTypeId, { amountSubSpend: total });
+
+  // Recalcula el tipo con el mismo em
+  await this.recalcSpendTypeAmountWithManager(em, sub.spendType.id);
+  return total;
+}
+
+ /** ✅ NUEVO: Suma de amountSubSpend por tipo usando el mismo em */
+ async recalcSpendTypeAmountWithManager(em: EntityManager, spendTypeId: number) {
+  const totalRaw = await em
+    .createQueryBuilder(SpendSubType, 's')
+    .where('s.spendType = :id', { id: spendTypeId })
+    .select('COALESCE(SUM(s.amountSubSpend), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  const total = Number(totalRaw?.total ?? 0).toFixed(2);
+  await em.update(SpendType, spendTypeId, { amountSpend: total });
+  return total;
+}
+
 
   async create(dto: CreateSpendSubTypeDto) {
     await this.getType(dto.spendTypeId);

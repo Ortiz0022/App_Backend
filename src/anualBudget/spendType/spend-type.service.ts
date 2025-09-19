@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { SpendType } from './entities/spend-type.entity';
 import { CreateSpendTypeDto } from './dto/createSpendTypeDto';
 import { UpdateSpendTypeDto } from './dto/updateSpendTypeDto';
@@ -61,4 +61,17 @@ export class SpendTypeService {
     await this.repo.update(spendTypeId, { amountSpend: total });
     return this.findOne(spendTypeId);
   }
+
+    /** ✅ NUEVO: recálculo con el mismo EntityManager/tx */
+    async recalcAmountWithManager(em: EntityManager, spendTypeId: number) {
+      const totalRaw = await em
+        .createQueryBuilder(SpendSubType, 's')
+        .where('s.spendType = :id', { id: spendTypeId })
+        .select('COALESCE(SUM(s.amountSubSpend), 0)', 'total')
+        .getRawOne<{ total: string }>();
+  
+      const total = Number(totalRaw?.total ?? 0).toFixed(2);
+      await em.update(SpendType, spendTypeId, { amountSpend: total });
+      return total;
+    }
 }

@@ -11,6 +11,7 @@ import { PIncome } from '../pIncome/entities/pIncome.entity';
 import { HomeController } from './home.controller';
 import { HomeService } from './home.service';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PSpend } from '../pSpend/entities/p-spend.entity';
       Spend, PSpend,
       IncomeType, IncomeSubType,
       SpendType, SpendSubType,
+      Transfer, // ⬅️ NUEVO
     ]),
   ],
   controllers: [HomeController],

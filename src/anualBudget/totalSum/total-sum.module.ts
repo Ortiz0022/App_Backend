@@ -6,11 +6,20 @@ import { TotalSumController } from './total-sum.controller';
 import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 import { Income } from '../income/entities/income.entity';
 import { Spend } from '../spend/entities/spend.entity';
+import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TotalSum, FiscalYear, Income, Spend])],
+  imports: [
+    TypeOrmModule.forFeature([
+      TotalSum,
+      FiscalYear,
+      Income,
+      Spend,
+      Transfer, // ⬅️ NUEVO
+    ]),
+  ],
   controllers: [TotalSumController],
   providers: [TotalSumService],
-  exports: [TypeOrmModule, TotalSumService],
+  exports: [TotalSumService],
 })
 export class TotalSumModule {}

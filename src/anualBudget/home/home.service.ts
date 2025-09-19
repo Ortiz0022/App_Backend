@@ -6,6 +6,7 @@ import { PIncome } from 'src/anualBudget/pIncome/entities/pIncome.entity';
 import { Totals } from './dto/home.dto';
 import { Department } from '../department/entities/department.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Injectable()
 export class HomeService {
@@ -46,21 +47,42 @@ export class HomeService {
   }
 
   private async calculateRealIncomes(range: { startDate?: Date; endDate?: Date }): Promise<number> {
-    const qb = this.ds.getRepository(Income)
+    // 1) Ingresos brutos dentro del rango
+    const incQB = this.ds.getRepository(Income)
       .createQueryBuilder('income')
-      .select('SUM(income.amount)', 'total');
-
+      .select('COALESCE(SUM(income.amount), 0)', 'total');
+  
     if (range.startDate && range.endDate) {
-      qb.andWhere('income.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
+      incQB.andWhere('income.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
     } else if (range.startDate) {
-      qb.andWhere('income.date >= :s', { s: range.startDate });
+      incQB.andWhere('income.date >= :s', { s: range.startDate });
     } else if (range.endDate) {
-      qb.andWhere('income.date <= :e', { e: range.endDate });
+      incQB.andWhere('income.date <= :e', { e: range.endDate });
     }
-
-    const result = await qb.getRawOne<{ total?: string }>();
-    return Number(result?.total ?? 0);
+  
+    const incRaw = await incQB.getRawOne<{ total?: string }>();
+    const gross = Number(incRaw?.total ?? 0);
+  
+    // 2) Transferencias saliendo de ingresos en el mismo rango
+    const trQB = this.ds.getRepository(Transfer)
+      .createQueryBuilder('t')
+      .select('COALESCE(SUM(t.transferAmount), 0)', 'total');
+  
+    if (range.startDate && range.endDate) {
+      trQB.andWhere('t.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
+    } else if (range.startDate) {
+      trQB.andWhere('t.date >= :s', { s: range.startDate });
+    } else if (range.endDate) {
+      trQB.andWhere('t.date <= :e', { e: range.endDate });
+    }
+  
+    const trRaw = await trQB.getRawOne<{ total?: string }>();
+    const transfersOut = Number(trRaw?.total ?? 0);
+  
+    // 3) Neto para las tarjetas
+    return gross - transfersOut;
   }
+  
 
   private async calculateRealSpends(range: { startDate?: Date; endDate?: Date }): Promise<number> {
     const qb = this.ds.getRepository(Spend)
