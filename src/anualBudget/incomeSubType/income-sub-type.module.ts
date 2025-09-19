@@ -1,16 +1,22 @@
-// src/anualBudget/incomeSubType/income-sub-type.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { IncomeSubType } from './entities/income-sub-type.entity';
-import { IncomeSubTypeService } from './income-sub-type.service';
+import { Income } from 'src/anualBudget/income/entities/income.entity';
+import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
+
 import { IncomeSubTypeController } from './income-sub-type.controller';
-import { IncomeType } from '../incomeType/entities/income-type.entity';
-import { IncomeTypeModule } from '../incomeType/income-type.module';
+import { IncomeSubTypeService } from './income-sub-type.service';
+import { IncomeTypeModule } from 'src/anualBudget/incomeType/income-type.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([IncomeSubType, IncomeType]), IncomeTypeModule],
+  imports: [
+    TypeOrmModule.forFeature([IncomeSubType, Income, IncomeType]),
+    // Evita ciclo: este módulo necesita IncomeTypeService
+    forwardRef(() => IncomeTypeModule),
+  ],
   controllers: [IncomeSubTypeController],
   providers: [IncomeSubTypeService],
-  exports: [TypeOrmModule, IncomeSubTypeService],
+  exports: [IncomeSubTypeService], // para que IncomeModule pueda inyectarlo
 })
 export class IncomeSubTypeModule {}

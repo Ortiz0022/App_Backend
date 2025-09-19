@@ -10,6 +10,7 @@ import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub
 import { Income } from 'src/anualBudget/income/entities/income.entity';
 import { AssignExtraordinaryDto } from './dto/assignExtraordinaryDto';
 import { IncomeTypeService } from '../incomeType/income-type.service';
+import { IncomeSubTypeService } from 'src/anualBudget/incomeSubType/income-sub-type.service';
 
     function toNumber(dec: string | number | null | undefined): number {
       if (dec === null || dec === undefined) return 0;
@@ -19,16 +20,14 @@ import { IncomeTypeService } from '../incomeType/income-type.service';
     @Injectable()
     export class ExtraordinaryService {
       constructor(
-        @InjectRepository(Extraordinary)
-        private readonly repo: Repository<Extraordinary>,
-        @InjectRepository(IncomeType)
-        private readonly typeRepo: Repository<IncomeType>,
-        @InjectRepository(IncomeSubType)
-        private readonly subRepo: Repository<IncomeSubType>,
-        @InjectRepository(Income)
-        private readonly incRepo: Repository<Income>,
+        @InjectRepository(Extraordinary) private readonly repo: Repository<Extraordinary>,
+        @InjectRepository(IncomeType) private readonly typeRepo: Repository<IncomeType>,
+        @InjectRepository(IncomeSubType) private readonly subRepo: Repository<IncomeSubType>,
+        @InjectRepository(Income) private readonly incRepo: Repository<Income>,
         private readonly incomeTypeService: IncomeTypeService,
+        private readonly incomeSubTypeService: IncomeSubTypeService, // ⬅️ nuevo
       ) {}
+      
 
       findAll(): Promise<Extraordinary[]> {
         return this.repo.find({ order: { createdAt: 'DESC' } });
@@ -93,60 +92,73 @@ import { IncomeTypeService } from '../incomeType/income-type.service';
       
       async assignToIncome(dto: AssignExtraordinaryDto) {
         return this.repo.manager.transaction(async (em: EntityManager) => {
-          // 1. Buscar extraordinary
-          const extra = await em.findOne(Extraordinary, {
-            where: { id: dto.extraordinaryId },
-          });
+          // 1) Extraordinary
+          const extra = await em.findOne(Extraordinary, { where: { id: dto.extraordinaryId } });
           if (!extra) throw new NotFoundException('Extraordinary not found');
-    
+      
+          const assignAmt = Number(dto.amount);
+          if (!Number.isFinite(assignAmt) || assignAmt <= 0) {
+            throw new BadRequestException('Amount must be positive');
+          }
+      
           const saldo = Number(extra.amount) - Number(extra.used);
-          if (dto.amount > saldo) {
+          if (assignAmt > saldo) {
             throw new BadRequestException('Amount exceeds extraordinary balance');
           }
-    
-          // 2. Buscar IncomeType "MOVIMIENTO EXTRAORDINARIO" en el depto
+      
+          // 2) IncomeType fijo "MOVIMIENTO EXTRAORDINARIO" por departamento
           let type = await em.findOne(IncomeType, {
             where: { name: 'MOVIMIENTO EXTRAORDINARIO', department: { id: dto.departmentId } },
             relations: ['department'],
           });
           if (!type) {
-            // opcional: lo creamos automáticamente
             type = em.create(IncomeType, {
               name: 'MOVIMIENTO EXTRAORDINARIO',
               department: { id: dto.departmentId } as any,
+              amountIncome: '0.00',
             });
             await em.save(type);
           }
-    
-          // 3. Buscar/crear IncomeSubType dentro del type
+      
+          // 3) IncomeSubType (razón). Si no existe bajo ese type, créalo.
+          const subName = dto.subTypeName.trim();
+          if (!subName) throw new BadRequestException('subTypeName is required');
+      
           let subType = await em.findOne(IncomeSubType, {
-            where: { name: dto.subTypeName, incomeType: { id: type.id } },
+            where: { name: subName, incomeType: { id: type.id } },
+            relations: ['incomeType'],
           });
           if (!subType) {
             subType = em.create(IncomeSubType, {
-              name: dto.subTypeName,
+              name: subName,
               incomeType: { id: type.id } as any,
+              amountSubIncome: '0.00',
             });
             await em.save(subType);
           }
-    
-          // 4. Crear Income
+      
+          // 4) Crear Income bajo ese SubType
+          const dateStr = dto.date && dto.date.trim() !== '' ? dto.date : new Date().toISOString().slice(0, 10);
           const inc = em.create(Income, {
             incomeSubType: { id: subType.id } as any,
-            amount: dto.amount.toFixed(2),
-            date: dto.date || new Date().toISOString().slice(0, 10),
+            amount: assignAmt.toFixed(2),
+            date: dateStr,
           });
           await em.save(inc);
-    
-          // 5. Actualizar usado del extraordinary
-          extra.used = (Number(extra.used) + dto.amount).toFixed(2);
+      
+          // 5) Restar del extraordinario
+          extra.used = (Number(extra.used) + assignAmt).toFixed(2);
           await em.save(extra);
-    
-          await this.incomeTypeService.recalcAmountWithManager(em, type.id);
-          
-          return { extraordinary: extra, income: inc, subType };
+      
+          // 6) Recalcular acumulados (en cadena)
+          //    - recalc del SubType suma todos sus incomes → actualiza amountSubIncome
+          //    - ese método al final llama recalc del Type → actualiza amountIncome
+          await this.incomeSubTypeService.recalcAmount(subType.id);
+      
+          return { extraordinary: extra, income: inc, subType, incomeType: type };
         });
       }
+      
 
       async allocate(id: number, dto: AllocateExtraordinaryDto): Promise<Extraordinary> {
         const e = await this.findOne(id);

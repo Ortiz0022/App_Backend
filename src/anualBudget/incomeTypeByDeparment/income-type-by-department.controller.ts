@@ -2,6 +2,7 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { IncomeTypeByDepartmentService } from './income-type-by-department.service';
 
+//http://localhost:3000/income-type-by-department/sync?fiscalYearId=1
 @Controller('income-type-by-department')
 export class IncomeTypeByDepartmentController {
   constructor(private readonly svc: IncomeTypeByDepartmentService) {}

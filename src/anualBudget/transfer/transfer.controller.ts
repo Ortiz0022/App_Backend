@@ -11,11 +11,11 @@ import { Roles } from 'src/auth/roles.decorator';
 export class TransferController {
   constructor(private readonly service: TransferService) {}
 
-  @Post()
-  @Roles('ADMIN')
-  create(@Body() dto: CreateTransferDto) {
-    return this.service.create(dto);
-  }
+  // @Post()
+  // @Roles('ADMIN')
+  // create(@Body() dto: CreateTransferDto) {
+  //   return this.service.create(dto);
+  // }
 
   @Get()
   findAll() {

@@ -1,21 +1,25 @@
-// src/anualBudget/income/income.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { Income } from './entities/income.entity';
-import { IncomeService } from './income.service';
+import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
+
 import { IncomeController } from './income.controller';
-import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
-import { IncomeTypeModule } from '../incomeType/income-type.module';
-import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';
+import { IncomeService } from './income.service';
+
+import { IncomeTypeModule } from 'src/anualBudget/incomeType/income-type.module';
+import { IncomeSubTypeModule } from 'src/anualBudget/incomeSubType/income-sub-type.module';
+import { FiscalYearModule } from 'src/anualBudget/fiscalYear/fiscal-year.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Income, IncomeSubType]),
-    IncomeTypeModule,   // para inyectar IncomeTypeService
-    FiscalYearModule,   // para validar FY por fecha
+    forwardRef(() => IncomeTypeModule),
+    forwardRef(() => IncomeSubTypeModule),
+    FiscalYearModule, // assertOpenByDate()
   ],
   controllers: [IncomeController],
   providers: [IncomeService],
-  exports: [TypeOrmModule, IncomeService],
+  exports: [IncomeService], // opcional: por si otro módulo lo necesita
 })
 export class IncomeModule {}

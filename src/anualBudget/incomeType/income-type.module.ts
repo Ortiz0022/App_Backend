@@ -2,19 +2,18 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { IncomeType } from './entities/income-type.entity';
-import { IncomeTypeService } from './income-type.service';
-import { IncomeTypeController } from './income-type.controller';
+import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
 
-import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
-import { IncomeTypeByDepartmentModule } from '../incomeTypeByDeparment/income-type-by-department.module';
+import { IncomeTypeController } from './income-type.controller';
+import { IncomeTypeService } from './income-type.service';
 
 @Module({
   imports: [
+    // Usa ambos repos porque el service suma desde IncomeSubType
     TypeOrmModule.forFeature([IncomeType, IncomeSubType]),
-    IncomeTypeByDepartmentModule, // para inyectar IncomeTypeByDepartmentService
   ],
   controllers: [IncomeTypeController],
   providers: [IncomeTypeService],
-  exports: [TypeOrmModule, IncomeTypeService],
+  exports: [IncomeTypeService], // para que otros módulos (Income, IncomeSubType) lo inyecten
 })
 export class IncomeTypeModule {}

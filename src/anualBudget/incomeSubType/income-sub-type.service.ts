@@ -1,4 +1,3 @@
-// src/anualBudget/incomeSubType/income-sub-type.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,6 +5,7 @@ import { IncomeSubType } from './entities/income-sub-type.entity';
 import { CreateIncomeSubTypeDto } from './dto/createIncomeSubTypeDto';
 import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
 import { IncomeType } from '../incomeType/entities/income-type.entity';
+import { Income } from '../income/entities/income.entity';
 import { IncomeTypeService } from '../incomeType/income-type.service';
 
 @Injectable()
@@ -13,6 +13,7 @@ export class IncomeSubTypeService {
   constructor(
     @InjectRepository(IncomeSubType) private readonly repo: Repository<IncomeSubType>,
     @InjectRepository(IncomeType) private readonly typeRepo: Repository<IncomeType>,
+    @InjectRepository(Income) private readonly incRepo: Repository<Income>,
     private readonly typeService: IncomeTypeService,
   ) {}
 
@@ -33,7 +34,11 @@ export class IncomeSubTypeService {
 
   findAll(incomeTypeId?: number) {
     const where = incomeTypeId ? { incomeType: { id: incomeTypeId } } : {};
-    return this.repo.find({ where: where as any, relations: ['incomeType'], order: { id: 'DESC' } });
+    return this.repo.find({
+      where: where as any,
+      relations: ['incomeType'],
+      order: { id: 'DESC' },
+    });
   }
 
   async findOne(id: number) {
@@ -54,18 +59,42 @@ export class IncomeSubTypeService {
 
     const saved = await this.repo.save(row);
 
-    // si cambió de tipo, recalcula el viejo y el nuevo (sumas basadas en income)
+    // Si cambió de type, recalcular ambos types (suma desde subtypes)
     if (dto.incomeTypeId !== undefined && dto.incomeTypeId !== oldTypeId) {
       await this.typeService.recalcAmount(oldTypeId);
       await this.typeService.recalcAmount(dto.incomeTypeId);
     }
+
     return saved;
   }
 
   async remove(id: number) {
     const row = await this.findOne(id);
+    const typeId = row.incomeType.id;
+
     await this.repo.delete(id);
-    // si borras un subtipo, las sumas por tipo no cambian hasta que borres/reescribas sus incomes
+
+    // Al eliminar el SubType, recalcular el total del Type (desde subtypes)
+    await this.typeService.recalcAmount(typeId);
+
     return { deleted: true };
+  }
+
+  /** Recalcula y persiste amountSubIncome = SUM(Income.amount) del SubType */
+  async recalcAmount(incomeSubTypeId: number) {
+    const totalRaw = await this.incRepo
+      .createQueryBuilder('i')
+      .where('i.incomeSubType = :sid', { sid: incomeSubTypeId })
+      .select('COALESCE(SUM(i.amount),0)', 'total')
+      .getRawOne<{ total: string }>();
+
+    const total = Number(totalRaw?.total ?? 0).toFixed(2);
+    await this.repo.update(incomeSubTypeId, { amountSubIncome: total });
+
+    const sub = await this.findOne(incomeSubTypeId);
+    // Al recalcular el SubType, también recalculamos su Type
+    await this.typeService.recalcAmount(sub.incomeType.id);
+
+    return sub;
   }
 }

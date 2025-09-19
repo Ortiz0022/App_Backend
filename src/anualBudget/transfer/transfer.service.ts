@@ -47,56 +47,56 @@ export class TransferService {
     return Number((totalIn - totalOut).toFixed(2));
   }
 
-  async create(dto: CreateTransferDto): Promise<TransferResponseDto> {
-    const date = dto.date ?? new Date().toISOString().slice(0, 10);
-    await this.fyService.assertOpenByDate(date);
+  // async create(dto: CreateTransferDto): Promise<TransferResponseDto> {
+  //   const date = dto.date ?? new Date().toISOString().slice(0, 10);
+  //   await this.fyService.assertOpenByDate(date);
 
-    const from = await this.incSubRepo.findOne({ where: { id: dto.incomeSubTypeId }, relations: ['incomeType'] });
-    if (!from) throw new NotFoundException('IncomeSubType not found');
+  //   const from = await this.incSubRepo.findOne({ where: { id: dto.incomeSubTypeId }, relations: ['incomeType'] });
+  //   if (!from) throw new NotFoundException('IncomeSubType not found');
 
-    const to = await this.spSubRepo.findOne({ where: { id: dto.spendSubTypeId }, relations: ['spendType'] });
-    if (!to) throw new NotFoundException('SpendSubType not found');
+  //   const to = await this.spSubRepo.findOne({ where: { id: dto.spendSubTypeId }, relations: ['spendType'] });
+  //   if (!to) throw new NotFoundException('SpendSubType not found');
 
-    const amountNum = Number(dto.amount);
-    if (!Number.isFinite(amountNum)) throw new BadRequestException('Invalid amount');
-    if (amountNum <= 0) throw new BadRequestException('amount must be > 0');
+  //   const amountNum = Number(dto.amount);
+  //   if (!Number.isFinite(amountNum)) throw new BadRequestException('Invalid amount');
+  //   if (amountNum <= 0) throw new BadRequestException('amount must be > 0');
 
-    const balance = await this.getIncomeSubTypeBalance(from.id);
-    if (amountNum > balance) throw new BadRequestException('amount exceeds available balance');
+  //   const balance = await this.getIncomeSubTypeBalance(from.id);
+  //   if (amountNum > balance) throw new BadRequestException('amount exceeds available balance');
 
-    return this.dataSource.transaction(async (em) => {
-      // 1) SPEND
-      const spend = em.create(Spend, {
-        spendSubType: { id: to.id } as any,
-        amount: amountNum.toFixed(2),
-        date,
-      });
-      await em.save(spend);
+  //   return this.dataSource.transaction(async (em) => {
+  //     // 1) SPEND
+  //     const spend = em.create(Spend, {
+  //       spendSubType: { id: to.id } as any,
+  //       amount: amountNum.toFixed(2),
+  //       date,
+  //     });
+  //     await em.save(spend);
 
-      // 2) TRANSFER (rastro)
-      const transfer = em.create(Transfer, {
-        name: dto.name ?? null,
-        detail: dto.detail ?? null,
-        date,
-        transferAmount: amountNum.toFixed(2),
-        fromIncomeSubType: { id: from.id } as any,
-        toSpendSubType: { id: to.id } as any,
-      });
-      await em.save(transfer);
+  //     // 2) TRANSFER (rastro)
+  //     const transfer = em.create(Transfer, {
+  //       name: dto.name ?? null,
+  //       detail: dto.detail ?? null,
+  //       date,
+  //       transferAmount: amountNum.toFixed(2),
+  //       fromIncomeSubType: { id: from.id } as any,
+  //       toSpendSubType: { id: to.id } as any,
+  //     });
+  //     await em.save(transfer);
 
-      // 3) Recalcular EGRESO destino (total por tipo)
-      await this.spendTypeService.recalcAmount(to.spendType.id);
+  //     // 3) Recalcular EGRESO destino (total por tipo)
+  //     await this.spendTypeService.recalcAmount(to.spendType.id);
 
-      // 4) Recalcular INGRESO origen (NETO = ingresos - transfers)
-      await this.incomeTypeService.recalcAmountWithManager(em, from.incomeType.id); // ⬅️ clave
+  //     // 4) Recalcular INGRESO origen (NETO = ingresos - transfers)
+  //     await this.incomeTypeService.recalcAmountWithManager(em, from.incomeType.id); // ⬅️ clave
 
-      // 5) Saldo restante del subtipo de ingreso
-      const remaining = await this.getIncomeSubTypeBalance(from.id);
+  //     // 5) Saldo restante del subtipo de ingreso
+  //     const remaining = await this.getIncomeSubTypeBalance(from.id);
 
-      const netIncomeType = await em.getRepository(IncomeType).findOne({ where: { id: from.incomeType.id } });
-      return { transfer, spend, remainingFromIncomeSubType: remaining, incomeType: netIncomeType };
-    });
-  }
+  //     const netIncomeType = await em.getRepository(IncomeType).findOne({ where: { id: from.incomeType.id } });
+  //     return { transfer, spend, remainingFromIncomeSubType: remaining, incomeType: netIncomeType };
+  //   });
+  // }
 
   findAll() {
     return this.trRepo.find({ order: { id: 'DESC' } });

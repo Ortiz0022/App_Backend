@@ -1,8 +1,6 @@
-// src/anualBudget/incomeSubType/entities/income-sub-type.entity.ts
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { IncomeType } from 'src/anualBudget/incomeType/entities/income-type.entity';
 import { Income } from 'src/anualBudget/income/entities/income.entity';
-
 
 @Entity({ name: 'income_sub_type' })
 export class IncomeSubType {
@@ -17,5 +15,8 @@ export class IncomeSubType {
 
   @OneToMany(() => Income, (inc) => inc.incomeSubType)
   incomes: Income[];
-    pIncomes: any;
+
+  // SUM de todos los Income ligados a este SubType
+  @Column('decimal', { precision: 18, scale: 2, default: 0 })
+  amountSubIncome: string;
 }
