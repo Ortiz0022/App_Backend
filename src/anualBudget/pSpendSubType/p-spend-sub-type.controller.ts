@@ -1,34 +1,49 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { PSpendSubTypeService } from './p-spend-sub-type.service';
-import { CreatePSpendSubTypeDto } from './dto/create.dto';
-import { UpdatePSpendSubTypeDto } from './dto/update.dto';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/roles.guard';
-import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('p-spend-sub-type')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class PSpendSubTypeController {
   constructor(private readonly svc: PSpendSubTypeService) {}
 
-  @Post() 
-  @Roles('ADMIN') 
-  create(@Body() dto: CreatePSpendSubTypeDto) { return this.svc.create(dto); }
-
-  @Get() 
-  list(@Query('typeId') typeId?: number) {
-    return this.svc.findAll(typeId ? Number(typeId) : undefined);
+  // GET /p-spend-sub-type?departmentId=2&typeId=5&fiscalYearId=1
+  @Get()
+  list(
+    @Query('departmentId') departmentId?: string,
+    @Query('typeId') typeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      departmentId ? Number(departmentId) : undefined,
+      typeId ? Number(typeId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
-  @Get(':id') 
-  one(@Param('id', ParseIntPipe) id: number) { return this.svc.findOne(id); }
 
-  @Patch(':id') 
-  @Roles('ADMIN') 
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePSpendSubTypeDto) 
-  { return this.svc.update(id, dto); }
+  @Post()
+  create(@Body() dto: { name: string; typeId: number }) {
+    return this.svc.create(dto);
+  }
 
-  @Delete(':id') 
-  @Roles('ADMIN') 
-  remove(@Param('id', ParseIntPipe) id: number) { return this.svc.remove(id); }
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { name?: string; typeId?: number },
+  ) {
+    return this.svc.update(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.remove(id);
+  }
 }
