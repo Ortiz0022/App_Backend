@@ -1,5 +1,14 @@
-// src/anualBudget/pSpendType/p-spend-type.controller.ts
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PSpendTypeService } from './p-spend-type.service';
 
 @Controller('p-spend-type')
@@ -20,5 +29,18 @@ export class PSpendTypeController {
   @Post()
   create(@Body() dto: { name: string; departmentId: number }) {
     return this.svc.create(dto);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { name?: string; departmentId?: number },
+  ) {
+    return this.svc.update(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.remove(id);
   }
 }

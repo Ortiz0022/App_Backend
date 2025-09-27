@@ -1,73 +1,94 @@
-// src/anualBudget/pSpendType/p-spend-type.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PSpendType } from './entities/p-spend-type.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
-import { Department } from '../department/entities/department.entity';
 
 @Injectable()
 export class PSpendTypeService {
   constructor(
-    @InjectRepository(PSpendType) private typeRepo: Repository<PSpendType>,
-    @InjectRepository(PSpend) private pSpendRepo: Repository<PSpend>,
-    @InjectRepository(Department) private depRepo: Repository<Department>,
+    @InjectRepository(PSpendType)
+    private readonly typeRepo: Repository<PSpendType>,
+    @InjectRepository(PSpend)
+    private readonly pSpendRepo: Repository<PSpend>,
   ) {}
 
   /**
-   * Devuelve los tipos con amountPSpend = SUM(ps.amount) por tipo.
+   * Devuelve tipos con amountPSpend = SUM(ps.amount) por typeId.
    * Filtros:
    * - departmentId: limita los tipos al departamento
-   * - fiscalYearId: limita la suma al año fiscal
+   * - fiscalYearId: limita la SUMA al año fiscal
    */
   async findAll(departmentId?: number, fiscalYearId?: number) {
-    // 1) Traer los tipos (opcional por department)
+    // 1) Traer tipos con su departamento (sin pSpends)
+    const where: any = {};
+    if (departmentId) where.department = { id: departmentId } as any;
+
     const types = await this.typeRepo.find({
-      where: departmentId ? { department: { id: departmentId } as any } : {},
+      where,
+      relations: ['department'],
+      order: { id: 'ASC' },
     });
-    if (types.length === 0) return types;
 
-    const typeIds = types.map((t) => t.id);
+    if (types.length === 0) return [];
 
-    // 2) SUM(ps.amount) agrupado por type.id
+    // 2) Sumar PSpend por typeId (vía ps.subType.typeId)
+    const typeIds = types.map(t => t.id);
+
     const qb = this.pSpendRepo
       .createQueryBuilder('ps')
-      .innerJoin('ps.subType', 'st')
-      .innerJoin('st.type', 't')
+      .leftJoin('ps.subType', 'st')
+      .leftJoin('st.type', 't')
       .select('t.id', 'typeId')
-      .addSelect('COALESCE(SUM(ps.amount),0)', 'total')
+      .addSelect('COALESCE(SUM(ps.amount), 0)', 'total')
       .where('t.id IN (:...typeIds)', { typeIds });
 
     if (fiscalYearId) {
-      qb.innerJoin('ps.fiscalYear', 'fy').andWhere('fy.id = :fy', { fy: fiscalYearId });
-    }
-    if (departmentId) {
-      qb.innerJoin('t.department', 'd').andWhere('d.id = :dep', { dep: departmentId });
+      qb.andWhere('ps.fiscalYearId = :fy', { fy: fiscalYearId });
     }
 
-    qb.groupBy('t.id');
+    const rows = await qb.groupBy('t.id').getRawMany<{ typeId: number; total: string | number }>();
 
-    const rows: Array<{ typeId: string; total: string }> = await qb.getRawMany();
     const totals = new Map<number, number>();
-    for (const r of rows) totals.set(Number(r.typeId), Number(r.total));
-
-    // 3) Inyectar amountPSpend en cada tipo
-    for (const t of types) {
-      (t as any).amountPSpend = (totals.get(t.id) ?? 0).toFixed(2);
-      (t as any).byDepartment = null;
+    for (const r of rows) {
+      const n = typeof r.total === 'string' ? Number(r.total) : (r.total ?? 0);
+      totals.set(Number(r.typeId), Number.isFinite(n) ? n : 0);
     }
 
-    return types;
+    // 3) Mapear salida "limpia"
+    return types.map(t => ({
+      id: t.id,
+      name: t.name,
+      amountPSpend: (totals.get(t.id) ?? 0).toFixed(2),
+      department: t.department
+        ? { id: t.department.id, name: t.department.name }
+        : null,
+    }));
   }
 
-  /**
-   * Crea un nuevo tipo de gasto proyectado ligado a un departamento
-   */
-  async create(dto: { name: string; departmentId: number }) {
-    const dep = await this.depRepo.findOneBy({ id: dto.departmentId });
-    if (!dep) throw new NotFoundException('Department no existe');
+    async create(dto: { name: string; departmentId: number }) {
+    const entity = this.typeRepo.create({
+      name: dto.name,
+      department: { id: dto.departmentId } as any,
+    });
+    return this.typeRepo.save(entity);
+  }
 
-    const row = this.typeRepo.create({ name: dto.name, department: dep });
-    return this.typeRepo.save(row);
+  async update(id: number, dto: { name?: string; departmentId?: number }) {
+    const partial: any = {};
+    if (dto.name !== undefined) partial.name = dto.name;
+    if (dto.departmentId !== undefined) {
+      partial.department = { id: dto.departmentId } as any;
+    }
+    await this.typeRepo.update(id, partial);
+    return this.typeRepo.findOne({
+      where: { id },
+      relations: ['department'],
+    });
+  }
+
+  async remove(id: number) {
+    await this.typeRepo.delete(id);
+    return { ok: true };
   }
 }
