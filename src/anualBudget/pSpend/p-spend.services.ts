@@ -1,12 +1,19 @@
-// src/anualBudget/pSpend/p-spend.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { PSpend } from './entities/p-spend.entity';
 import { PSpendSubType } from '../pSpendSubType/entities/p-spend-sub-type.entity';
-import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+import { FiscalState, FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+
 import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
+
+function toNumberAmount(v: any): number {
+  // Ej.: "₡10 125,00" | "10,125.50" | "10125.50" -> 10125.5
+  const n = Number(String(v).replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : NaN;
+}
 
 @Injectable()
 export class PSpendService {
@@ -17,11 +24,31 @@ export class PSpendService {
   ) {}
 
   async create(dto: CreatePSpendDto) {
+    console.log('[PSpend.create] DTO recibido:', dto);
+
+    // 1) Subtipo obligatorio
     const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
-    const fy = await this.fyRepo.findOneBy({ id: dto.fiscalYearId });
-    if (!subType || !fy) throw new NotFoundException('FK inválida');
-    const row = this.repo.create({ amount: dto.amount, subType, fiscalYear: fy });
-    return this.repo.save(row);
+    if (!subType) throw new NotFoundException('SubType no existe');
+
+    // 2) Inferir FiscalYear (primero OPEN, si no existe toma el más reciente)
+    let fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
+    if (!fy) {
+      fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
+    }
+    if (!fy) throw new NotFoundException('No hay un FiscalYear válido (OPEN o reciente)');
+
+    // 3) Normalizar y validar monto
+    const amount = toNumberAmount(dto.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      console.log('[PSpend.create] Monto inválido calculado:', dto.amount, '->', amount);
+      throw new BadRequestException('Monto inválido');
+    }
+
+    // 4) Guardar
+    const row = this.repo.create({ amount, subType, fiscalYear: fy });
+    const saved = await this.repo.save(row);
+    console.log('[PSpend.create] Guardado:', saved);
+    return saved;
   }
 
   // GET /p-spend?subTypeId=&fiscalYearId=
@@ -34,13 +61,10 @@ export class PSpendService {
       // relaciones ya vienen eager desde las entidades
     });
 
-    // 👇 Inyectar amountPSpend en el type para que el JSON se vea como en /spend
+    // Inyectar amountPSpend en el type para mantener el shape esperado
     for (const it of items) {
-      const type = it?.subType?.type as any;
-      if (type) {
-        // si tu columna es string decimal en BD, devuélvela formateada
-        type.amountPSpend = Number(it.amount).toFixed(2);
-      }
+      const type = (it as any)?.subType?.type as any;
+      if (type) type.amountPSpend = Number(it.amount).toFixed(2);
     }
     return items;
   }
@@ -48,7 +72,6 @@ export class PSpendService {
   async findOne(id: number) {
     const item = await this.repo.findOne({ where: { id } });
     if (!item) throw new NotFoundException();
-    // también lo seteamos aquí para el detalle
     const type = (item as any)?.subType?.type as any;
     if (type) type.amountPSpend = Number(item.amount).toFixed(2);
     return item;
@@ -56,17 +79,19 @@ export class PSpendService {
 
   async update(id: number, dto: UpdatePSpendDto) {
     const item = await this.findOne(id);
+
     if (dto.subTypeId) {
       const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
       if (!subType) throw new NotFoundException('SubType no existe');
       item.subType = subType;
     }
-    if (dto.fiscalYearId) {
-      const fy = await this.fyRepo.findOneBy({ id: dto.fiscalYearId });
-      if (!fy) throw new NotFoundException('FiscalYear no existe');
-      item.fiscalYear = fy;
+    if (dto.amount !== undefined) {
+      const amount = toNumberAmount(dto.amount as any);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new BadRequestException('Monto inválido');
+      }
+      item.amount = amount;
     }
-    if (dto.amount !== undefined) item.amount = dto.amount;
     return this.repo.save(item);
   }
 

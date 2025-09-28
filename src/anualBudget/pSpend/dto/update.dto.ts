@@ -4,5 +4,4 @@ import { IsInt, IsNumber, IsOptional } from 'class-validator';
 export class UpdatePSpendDto {
   @IsOptional() @IsNumber() amount?: number;
   @IsOptional() @IsInt() subTypeId?: number;
-  @IsOptional() @IsInt() fiscalYearId?: number;
 }
