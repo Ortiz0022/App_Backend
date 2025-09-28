@@ -47,41 +47,23 @@ export class HomeService {
   }
 
   private async calculateRealIncomes(range: { startDate?: Date; endDate?: Date }): Promise<number> {
-    // 1) Ingresos brutos dentro del rango
-    const incQB = this.ds.getRepository(Income)
-      .createQueryBuilder('income')
-      .select('COALESCE(SUM(income.amount), 0)', 'total');
-  
-    if (range.startDate && range.endDate) {
-      incQB.andWhere('income.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
-    } else if (range.startDate) {
-      incQB.andWhere('income.date >= :s', { s: range.startDate });
-    } else if (range.endDate) {
-      incQB.andWhere('income.date <= :e', { e: range.endDate });
-    }
-  
-    const incRaw = await incQB.getRawOne<{ total?: string }>();
-    const gross = Number(incRaw?.total ?? 0);
-  
-    // 2) Transferencias saliendo de ingresos en el mismo rango
-    const trQB = this.ds.getRepository(Transfer)
-      .createQueryBuilder('t')
-      .select('COALESCE(SUM(t.transferAmount), 0)', 'total');
-  
-    if (range.startDate && range.endDate) {
-      trQB.andWhere('t.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
-    } else if (range.startDate) {
-      trQB.andWhere('t.date >= :s', { s: range.startDate });
-    } else if (range.endDate) {
-      trQB.andWhere('t.date <= :e', { e: range.endDate });
-    }
-  
-    const trRaw = await trQB.getRawOne<{ total?: string }>();
-    const transfersOut = Number(trRaw?.total ?? 0);
-  
-    // 3) Neto para las tarjetas
-    return gross - transfersOut;
+  const incQB = this.ds.getRepository(Income)
+    .createQueryBuilder('income')
+    .select('COALESCE(SUM(income.amount), 0)', 'total');
+
+  if (range.startDate && range.endDate) {
+    incQB.andWhere('income.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
+  } else if (range.startDate) {
+    incQB.andWhere('income.date >= :s', { s: range.startDate });
+  } else if (range.endDate) {
+    incQB.andWhere('income.date <= :e', { e: range.endDate });
   }
+
+  const incRaw = await incQB.getRawOne<{ total?: string }>();
+  const gross = Number(incRaw?.total ?? 0);
+
+  return gross;
+}
   
 
   private async calculateRealSpends(range: { startDate?: Date; endDate?: Date }): Promise<number> {
@@ -102,7 +84,6 @@ export class HomeService {
   }
 
   private async calculateProjectedIncomes(range: { startDate?: Date; endDate?: Date }): Promise<number> {
-    // PIncome sí tiene date → aplicar filtro
     const qb = this.ds.getRepository(PIncome)
       .createQueryBuilder('pIncome')
       .select('SUM(pIncome.amount)', 'total');
@@ -120,7 +101,6 @@ export class HomeService {
   }
 
   private async calculateProjectedSpends(_range: { startDate?: Date; endDate?: Date }): Promise<number> {
-    // PSpend (según tu modelo) no tiene date → no filtra por rango
     try {
       const qb = this.ds.getRepository(PSpend)
         .createQueryBuilder('pSpend')
@@ -142,13 +122,11 @@ export class HomeService {
     const groupBy = (groupByParam ?? 'department').toLowerCase() as 'department' | 'type' | 'subtype';
     const range = this.getDateRange(period.startDate, period.endDate);
 
-    // ===== REAL =====
     let realQB = this.ds.getRepository(Income)
       .createQueryBuilder('i')
       .innerJoin('i.incomeSubType', 's')
       .innerJoin('s.incomeType', 't');
 
-    // Filtro de fechas para reales
     if (range.startDate && range.endDate) {
       realQB.andWhere('i.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
     } else if (range.startDate) {
@@ -163,7 +141,6 @@ export class HomeService {
       .innerJoin('pi.pIncomeSubType', 'ps')
       .innerJoin('ps.pIncomeType', 'pt');
 
-    // Filtro de fechas para proyección (PIncome sí tiene date)
     if (range.startDate && range.endDate) {
       projQB.andWhere('pi.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
     } else if (range.startDate) {
@@ -273,7 +250,6 @@ export class HomeService {
       idExprProj = 'pss.id';
     }
 
-    // Fechas SOLO para reales (Spend). PSpend no lleva filtro por fecha.
     if (range.startDate && range.endDate) {
       realQB.andWhere('m.date BETWEEN :s AND :e', { s: range.startDate, e: range.endDate });
     } else if (range.startDate) {
