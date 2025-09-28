@@ -43,6 +43,7 @@ import { AuthModule } from './auth/auth.module';
 import { ReportModule } from './anualBudget/report/report.module';
 import { ReportProjectionsModule } from './anualBudget/reportProjections/reportProjections.module';
 import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra.module';
+import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
 
 
 @Module({
@@ -108,6 +109,7 @@ import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra
     ReportModule,
     ReportProjectionsModule,
     ReportExtraModule,  
+    AssociatesPageModule,
   ],
   controllers: [AppController],
   providers: [
