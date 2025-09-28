@@ -6,8 +6,7 @@ import { TotalSum } from './entities/total-sum.entity';
 import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 import { Income } from '../income/entities/income.entity';
 import { Spend } from '../spend/entities/spend.entity';
-import { Transfer } from '../transfer/entities/transfer.entity';
-// ⬇️ NUEVO
+
 
 
 @Injectable()
@@ -17,8 +16,7 @@ export class TotalSumService {
     @InjectRepository(FiscalYear) private readonly fyRepo: Repository<FiscalYear>,
     @InjectRepository(Income)     private readonly incomeRepo: Repository<Income>,
     @InjectRepository(Spend)      private readonly spendRepo: Repository<Spend>,
-    // ⬇️ NUEVO
-    @InjectRepository(Transfer)   private readonly trRepo: Repository<Transfer>,
+
   ) {}
 
   async recalcForFiscalYear(fiscalYearId: number): Promise<TotalSum> {
@@ -35,15 +33,10 @@ export class TotalSumService {
       .select('COALESCE(SUM(i.amount), 0)', 'total')
       .getRawOne<{ total: string }>();
 
-    // Transferencias saliendo de ingresos en el FY
-    const trRaw = await this.trRepo
-      .createQueryBuilder('t')
-      .where('t.date >= :start AND t.date <= :end', params)
-      .select('COALESCE(SUM(t.transferAmount), 0)', 'total')
-      .getRawOne<{ total: string }>();
+
 
     const totalIncome = (
-      Number(incRaw?.total ?? 0) - Number(trRaw?.total ?? 0)
+      Number(incRaw?.total ?? 0) 
     ).toFixed(2);
 
     // ===== EGRESOS REALES POR FY =====

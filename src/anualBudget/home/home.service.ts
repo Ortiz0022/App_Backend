@@ -6,7 +6,6 @@ import { PIncome } from 'src/anualBudget/pIncome/entities/pIncome.entity';
 import { Totals } from './dto/home.dto';
 import { Department } from '../department/entities/department.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
-import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Injectable()
 export class HomeService {

@@ -6,7 +6,6 @@ import { TotalSumController } from './total-sum.controller';
 import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 import { Income } from '../income/entities/income.entity';
 import { Spend } from '../spend/entities/spend.entity';
-import { Transfer } from '../transfer/entities/transfer.entity';
 
 @Module({
   imports: [
@@ -15,7 +14,6 @@ import { Transfer } from '../transfer/entities/transfer.entity';
       FiscalYear,
       Income,
       Spend,
-      Transfer, // ⬅️ NUEVO
     ]),
   ],
   controllers: [TotalSumController],

@@ -22,7 +22,6 @@ import { FiscalYearModule } from './anualBudget/fiscalYear/fiscal-year.module';
 import { IncomeTypeModule } from './anualBudget/incomeType/income-type.module';
 import { IncomeSubTypeModule } from './anualBudget/incomeSubType/income-sub-type.module';
 import { IncomeTypeByDepartmentModule } from './anualBudget/incomeTypeByDeparment/income-type-by-department.module';
-import { TransferModule } from './anualBudget/transfer/transfer.module';
 import { SpendTypeModule } from './anualBudget/spendType/spend-type.module';
 import { SpendSubTypeModule } from './anualBudget/spendSubType/spend-sub-type.module';
 import { SpendTypeByDepartmentModule } from './anualBudget/spendTypeByDepartment/spend-type-by-department.module';
@@ -88,7 +87,6 @@ import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra
     IncomeTypeModule,
     IncomeSubTypeModule,
     IncomeTypeByDepartmentModule,
-    TransferModule,
     SpendTypeModule,
     SpendSubTypeModule,
     SpendTypeByDepartmentModule,
