@@ -1,22 +1,27 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res, Header } from '@nestjs/common';
+import type { Response } from 'express';
 import { ExtraordinaryService } from '../extraordinary/extraordinary.service';
+import { ReportExtraService } from './reportExtra.service';
+import { ExtraFilters } from './entities/report-extra-filter.entity';
 
 @Controller('report-extra')
 export class ReportExtraController {
-  constructor(private readonly extraSvc: ExtraordinaryService) {}
+  constructor(
+    private readonly extraSvc: ExtraordinaryService,
+    private readonly reportService: ReportExtraService
+  ) {}
 
-  // endpoint único que tu UI necesita: tabla + totales + filtros
+  // Endpoint original que ya tienes
   @Get('full')
   async full(
     @Query('start') start?: string,   // YYYY-MM-DD
     @Query('end') end?: string,       // YYYY-MM-DD
     @Query('name') name?: string,     // texto a buscar en nombre/descr
   ) {
-    const rows = await this.extraSvc.findAll(); // 👈 reuso directo
+    const rows = await this.extraSvc.findAll();
     const fName = (name ?? '').trim().toLowerCase();
 
     const filtered = rows.filter((e: any) => {
-      // usa e.date si existe; si no, createdAt
       const iso = (e.date ?? e.createdAt)?.toString().slice(0, 10) ?? '';
       if (start && iso < start) return false;
       if (end && iso > end) return false;
@@ -49,5 +54,65 @@ export class ReportExtraController {
         totalRemaining,
       },
     };
+  }
+
+  // NUEVO: Endpoint para descargar PDF
+  @Get('download/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async downloadPDF(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('name') name?: string,
+    @Res() res?: Response,
+  ) {
+    const filters: ExtraFilters = { start, end, name };
+    
+    // Obtener datos del reporte usando los métodos del servicio
+    const table = await this.reportService.getExtraTable(filters);
+    const summary = await this.reportService.getExtraSummary(filters);
+    
+    // Generar PDF
+    const pdfBuffer = await this.reportService.generatePDF({
+      table,
+      summary,
+      filters,
+    });
+
+    // Configurar headers para descarga forzada
+    const filename = `reporte-extraordinarios-${new Date().toISOString().slice(0, 10)}.pdf`;
+    res?.set({
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res?.end(pdfBuffer);
+  }
+
+  // NUEVO: Endpoint para vista previa del PDF en el navegador
+  @Get('preview/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async previewPDF(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('name') name?: string,
+    @Res() res?: Response,
+  ) {
+    const filters: ExtraFilters = { start, end, name };
+    
+    const table = await this.reportService.getExtraTable(filters);
+    const summary = await this.reportService.getExtraSummary(filters);
+    
+    const pdfBuffer = await this.reportService.generatePDF({
+      table,
+      summary,
+      filters,
+    });
+
+    // Para vista previa, no forzamos la descarga
+    res?.set({
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res?.end(pdfBuffer);
   }
 }

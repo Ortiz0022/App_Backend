@@ -1,11 +1,13 @@
-import { Controller, Get, Query } from '@nestjs/common';
+// report.controller.ts
+import { Controller, Get, Query, Header, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ReportService } from './report.service';
 
 @Controller('report')
 export class ReportController {
   constructor(private readonly svc: ReportService) {}
 
-  // ===== INCOME (lo tuyo) =====
+  // ================= INCOME =================
   @Get('income/table')
   getIncomeTable(
     @Query('start') start?: string,
@@ -62,7 +64,34 @@ export class ReportController {
     return { filters, rows, totals };
   }
 
-  // ===== SPEND (nuevo) =====
+  @Get('income/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async incomePdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    const filters = {
+      start,
+      end,
+      departmentId: departmentId ? Number(departmentId) : undefined,
+      incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+      incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+    };
+    const pdfBuffer = await this.svc.generateIncomePDF(filters);
+    const filename = `reporte-ingresos-${new Date().toISOString().slice(0, 10)}.pdf`;
+    res?.set({
+      'Content-Disposition': preview === 'true' ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res?.end(pdfBuffer);
+  }
+
+  // ================= SPEND =================
   @Get('spend/table')
   getSpendTable(
     @Query('start') start?: string,
@@ -117,5 +146,32 @@ export class ReportController {
       this.svc.getSpendSummary(filters),
     ]);
     return { filters, rows, totals };
+  }
+
+  @Get('spend/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async spendPdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    const filters = {
+      start,
+      end,
+      departmentId: departmentId ? Number(departmentId) : undefined,
+      spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+      spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+    };
+    const pdfBuffer = await this.svc.generateSpendPDF(filters);
+    const filename = `reporte-egresos-${new Date().toISOString().slice(0, 10)}.pdf`;
+    res?.set({
+      'Content-Disposition': preview === 'true' ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res?.end(pdfBuffer);
   }
 }
