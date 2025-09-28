@@ -20,5 +20,6 @@ import { ExtraordinaryService } from './extraordinary.service';
   ],
   controllers: [ExtraordinaryController],
   providers: [ExtraordinaryService],
+  exports: [ExtraordinaryService],
 })
 export class ExtraordinaryModule {}
