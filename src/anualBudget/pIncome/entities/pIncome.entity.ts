@@ -1,3 +1,4 @@
+import { FiscalYear } from 'src/anualBudget/fiscalYear/entities/fiscal-year.entity';
 import { PIncomeSubType } from 'src/anualBudget/pIncomeSubType/entities/pincome-sub-type.entity';
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
@@ -14,4 +15,8 @@ export class PIncome {
 
   @Column({ type: 'date', nullable: true })
   date: Date;
+
+
+  @ManyToOne(() => FiscalYear, { eager: true, onDelete: 'RESTRICT', nullable: true })
+  fiscalYear?: FiscalYear;
 }

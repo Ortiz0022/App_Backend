@@ -6,16 +6,28 @@ import { PIncome } from 'src/anualBudget/pIncome/entities/pIncome.entity';
 import { Totals } from './dto/home.dto';
 import { Department } from '../department/entities/department.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 
 @Injectable()
 export class HomeService {
   private readonly logger = new Logger(HomeService.name);
 
-  constructor(private readonly ds: DataSource) {}
+  constructor(
+    private readonly ds: DataSource,
+    private readonly fyService: FiscalYearService,
+  ) {}
 
   async getTotals(period: { startDate?: string; endDate?: string }): Promise<Totals> {
     const range = this.getDateRange(period.startDate, period.endDate);
-
+    if (!range.startDate && !range.endDate) {
+      const fy = await this.fyService.getActiveOrCurrent();
+      if (fy) {
+        range.startDate = new Date(fy.start_date);
+        range.startDate.setHours(0,0,0,0);
+        range.endDate = new Date(fy.end_date);
+        range.endDate.setHours(23,59,59,999);
+      }
+    }
     const realIncomes = await this.calculateRealIncomes(range);
     const realSpends = await this.calculateRealSpends(range);
 
