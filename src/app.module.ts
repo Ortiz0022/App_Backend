@@ -9,7 +9,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VolunteersModule } from './volunteers/volunteers.module';
 import { PersonalModule } from './personal/personal.module';
 import { FaqModule } from './faq/faq.module';
-import { AssociateModule } from './associates/associates.module';
 import { ServicesInformativeModule } from './servicesInformative/servicesInformative.module';
 import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
@@ -44,6 +43,7 @@ import { ReportModule } from './anualBudget/report/report.module';
 import { ReportProjectionsModule } from './anualBudget/reportProjections/reportProjections.module';
 import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra.module';
 import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
+import { AssociatesModule } from './associates/associates.module';
 
 
 @Module({
@@ -77,7 +77,6 @@ import { AssociatesPageModule } from './editInformative/associatesPage/associate
     PersonalModule,
     FaqModule,
     AuthModule,
-    AssociateModule,
     ServicesInformativeModule,
     AboutUsModule,
     EventModule,
@@ -110,6 +109,7 @@ import { AssociatesPageModule } from './editInformative/associatesPage/associate
     ReportProjectionsModule,
     ReportExtraModule,  
     AssociatesPageModule,
+    AssociatesModule,
   ],
   controllers: [AppController],
   providers: [

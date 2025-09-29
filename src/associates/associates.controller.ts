@@ -1,35 +1,48 @@
-import { Controller, Get, Query, Post, Body, Put, Param, Delete } from '@nestjs/common';
-import { AssociateDto } from './dto/AssociatesDto';
-import { AssociateService } from './associates.service';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { AssociatesService } from './associates.service';
+import { CreateAssociateDto } from './dto/create-associate.dto';
+import { UpdateAssociateDto } from './dto/update-associate.dto';
+import { ChangeStatusDto } from './dto/change-status.dto';
+import { QueryAssociateDto } from './dto/query-associate.dto';
 
+// Puedes proteger rutas admin con guards/roles si ya tienes Auth
+@Controller('associates')
+export class AssociatesController {
+  constructor(private readonly service: AssociatesService) {}
 
-@Controller('associate')
-export class AssociateController {
-
-  constructor(private associateService: AssociateService){}
-
+  // Público: enviar solicitud (queda PENDIENTE)
   @Post()
-  create(@Body() createAssociateDto: AssociateDto) {
-    return this.associateService.createAssociate(createAssociateDto);
+  create(@Body() dto: CreateAssociateDto) {
+    return this.service.create(dto);
   }
 
+  // Admin: listar (opcionalmente por estado y con búsqueda)
+  // /associates?status=APROBADO&search=greilyn
   @Get()
-  findAll() {
-    return this.associateService.findAllAssociates();
+  findAll(@Query() query: QueryAssociateDto) {
+    return this.service.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.associateService.findOneAssociate(id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findOne(id);
   }
 
-  @Put(':id')
-  update(@Param('id') id: number, @Body() updateAssociateDto: AssociateDto) {
-    return this.associateService.updateAssociate(id, updateAssociateDto);
+  // Admin: actualizar datos del asociado
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAssociateDto) {
+    return this.service.update(id, dto);
   }
 
+  // Admin: cambiar estado (PENDIENTE/APROBADO/RECHAZADO)
+  @Patch(':id/status')
+  changeStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: ChangeStatusDto) {
+    return this.service.changeStatus(id, dto);
+  }
+
+  // Admin: eliminar registro
   @Delete(':id')
-  remove(@Param('id') id: number) {
-    return this.associateService.deleteAssociate(id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
   }
 }
