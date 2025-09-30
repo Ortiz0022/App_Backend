@@ -1,49 +1,298 @@
-import { Controller, Get, Query } from '@nestjs/common';
+// reportProjections.controller.ts
+import { Controller, Get, Header, Query, Res, BadRequestException } from '@nestjs/common';
+import type { Response } from 'express';
 import { ReportProjectionsService } from './reportProjections.service';
 
 @Controller('report-proj')
 export class ReportProjectionsController {
   constructor(private readonly svc: ReportProjectionsService) {}
 
-  // ---- INCOME ----
-  // GET /report-proj/income?start=2025-09-01&end=2025-09-30&fiscalYearId=1&departmentId=2
+  // ---------- JSON ----------
   @Get('income')
   compareIncome(
     @Query('start') start?: string,
     @Query('end') end?: string,
-    @Query('fiscalYearId') fiscalYearId?: string,
-    @Query('month') month?: string,
     @Query('departmentId') departmentId?: string,
     @Query('incomeTypeId') incomeTypeId?: string,
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
   ) {
     return this.svc.compareIncome({
-      start,
-      end,
+      start, end,
       departmentId: departmentId ? Number(departmentId) : undefined,
       incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
       incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
     });
   }
 
-  // ---- SPEND ----
-  // GET /report-proj/spend?start=2025-09-01&end=2025-09-30&fiscalYearId=1
   @Get('spend')
   compareSpend(
     @Query('start') start?: string,
     @Query('end') end?: string,
-    @Query('fiscalYearId') fiscalYearId?: string,
-    @Query('month') month?: string,
     @Query('departmentId') departmentId?: string,
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
   ) {
     return this.svc.compareSpend({
-      start,
-      end,
+      start, end,
       departmentId: departmentId ? Number(departmentId) : undefined,
       spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
       spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
     });
+  }
+
+  // ---------- PDF COMPARATIVOS ----------
+  @Get('income/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async incomeComparePdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+        incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      };
+      const pdf = await this.svc.generateCompareIncomePDF(filters);
+      const filename = `reporte-comparativo-ingresos-${new Date().toISOString().slice(0,10)}.pdf`;
+      res?.set({
+        'Content-Disposition': preview === 'true'
+          ? `inline; filename="${filename}"`
+          : `attachment; filename="${filename}"`,
+        'Content-Length': pdf.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(pdf);
+    } catch {
+      throw new BadRequestException('No se pudo generar el PDF de ingresos');
+    }
+  }
+
+  @Get('spend/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async spendComparePdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+        spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      };
+      const pdf = await this.svc.generateCompareSpendPDF(filters);
+      const filename = `reporte-comparativo-egresos-${new Date().toISOString().slice(0,10)}.pdf`;
+      res?.set({
+        'Content-Disposition': preview === 'true'
+          ? `inline; filename="${filename}"`
+          : `attachment; filename="${filename}"`,
+        'Content-Length': pdf.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(pdf);
+    } catch {
+      throw new BadRequestException('No se pudo generar el PDF de egresos');
+    }
+  }
+
+  // ---------- PDF LISTAS ----------
+  @Get('pincome/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async pIncomePdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+        incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      };
+      const pdf = await this.svc.generatePIncomePDF(filters);
+      const filename = `reporte-pincome-${new Date().toISOString().slice(0,10)}.pdf`;
+      res?.set({
+        'Content-Disposition': preview === 'true'
+          ? `inline; filename="${filename}"`
+          : `attachment; filename="${filename}"`,
+        'Content-Length': pdf.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(pdf);
+    } catch {
+      throw new BadRequestException('No se pudo generar el PDF de pIncome');
+    }
+  }
+
+  @Get('pspend/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async pSpendPdf(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('preview') preview?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+        spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      };
+      const pdf = await this.svc.generatePSpendPDF(filters);
+      const filename = `reporte-pspend-${new Date().toISOString().slice(0,10)}.pdf`;
+      res?.set({
+        'Content-Disposition': preview === 'true'
+          ? `inline; filename="${filename}"`
+          : `attachment; filename="${filename}"`,
+        'Content-Length': pdf.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(pdf);
+    } catch {
+      throw new BadRequestException('No se pudo generar el PDF de pSpend');
+    }
+  }
+
+  // ---------- EXCEL COMPARATIVOS ----------
+  @Get('income/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async incomeCompareExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+        incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generateCompareIncomeExcel(filters);
+      const filename = `reporte-comparativo-ingresos-${new Date().toISOString().slice(0,10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de ingresos');
+    }
+  }
+
+  @Get('spend/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async spendCompareExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+        spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generateCompareSpendExcel(filters);
+      const filename = `reporte-comparativo-egresos-${new Date().toISOString().slice(0,10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de egresos');
+    }
+  }
+
+  // ---------- EXCEL LISTAS ----------
+  @Get('pincome/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async pIncomeExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+        incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generatePIncomeExcel(filters);
+      const filename = `reporte-pincome-${new Date().toISOString().slice(0,10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de pIncome');
+    }
+  }
+
+  @Get('pspend/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async pSpendExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start, end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+        spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generatePSpendExcel(filters);
+      const filename = `reporte-pspend-${new Date().toISOString().slice(0,10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de pSpend');
+    }
   }
 }

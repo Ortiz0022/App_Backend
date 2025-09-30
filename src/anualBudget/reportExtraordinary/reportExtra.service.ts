@@ -13,10 +13,21 @@ export class ReportExtraService {
     private readonly repo: Repository<Extraordinary>,
   ) {}
 
-  // ================== HELPERS (ya existían) ==================
+  // ============= ESTILO ADAPTADO (igual a ingresos/gastos) =============
+  private readonly UI = {
+    ink: '#33361D',
+    gray: '#666',
+    line: '#EAEFE0',
+    card: {
+      total:  { bg:'#F8F9F3', ring:'#EAEFE0', text:'#5B732E', bar:'#5B732E', barSoft:'#CFE0B5' },
+      used:   { bg:'#EAEFE0', ring:'#D8E2CC', text:'#556B2F', bar:'#6B8E23', barSoft:'#D6E2B5' },
+      remain: { bg:'#FEF6E0', ring:'#F4E7B7', text:'#C19A3D', bar:'#E5C46A', barSoft:'#F2E7C8' },
+    }
+  };
+
+  // ================== HELPERS ==================
   private toISODate(e: Extraordinary): string {
-    const d: string | Date | undefined =
-      (e as any).date ?? (e as any).createdAt ?? undefined;
+    const d: string | Date | undefined = (e as any).date ?? (e as any).createdAt ?? undefined;
     if (!d) return '';
     const iso = typeof d === 'string' ? d : d.toISOString();
     return iso.length >= 10 ? iso.slice(0, 10) : iso;
@@ -64,7 +75,7 @@ export class ReportExtraService {
     return out;
   }
 
-  // ================== MÉTODOS DE REPORTES (ya existían) ==================
+  // ================== MÉTODOS DE REPORTES ==================
   async getExtraTable(filters: ExtraFilters) {
     const rows = await this.repo.find();
     const filtered = this.applyFilters(rows, filters);
@@ -100,7 +111,6 @@ export class ReportExtraService {
   async getExtraByMonth(year?: number) {
     const rows = await this.repo.find();
     const bucket = new Map<string, { amount: number; used: number }>();
-
     for (const e of rows) {
       const iso = this.toISODate(e);
       if (!iso) continue;
@@ -112,7 +122,6 @@ export class ReportExtraService {
       cur.used   += Number((e as any).used ?? 0);
       bucket.set(ym, cur);
     }
-
     return Array.from(bucket.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, v]) => {
@@ -166,7 +175,6 @@ export class ReportExtraService {
 
   async findForReport(opts: { start?: string; end?: string; name?: string }) {
     const qb = this.repo.createQueryBuilder('e');
-
     if (opts.start && opts.end)
       qb.andWhere(`COALESCE(e.date, e.createdAt) BETWEEN :from AND :to`, { from: opts.start, to: opts.end });
     else if (opts.start)
@@ -193,7 +201,7 @@ export class ReportExtraService {
       }>();
   }
 
-  // ================== GENERACIÓN DE PDF (sin cambios de lógica) ==================
+  // ================== PDF (ESTILO ADAPTADO) ==================
   async generatePDF(data: {
     table: ExtraRow[];
     summary: any;
@@ -212,9 +220,13 @@ export class ReportExtraService {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        // Generar contenido del PDF (mismas llamadas)
+        // Generar contenido del PDF usando UI adaptada
         this.addHeader(doc);
-        this.addFilters(doc, data.filters);
+       
+        if (this.hasFilters(data.filters)) {
+          this.addFilters(doc, data.filters);
+        }
+        
         this.addSummary(doc, data.summary);
         this.addTable(doc, data.table);
         this.addFooter(doc);
@@ -226,44 +238,38 @@ export class ReportExtraService {
     });
   }
 
-  // ================== MÉTODOS PRIVADOS PARA PDF (solo ESTILO) ==================
-  private readonly UI = {
-    ink: '#111827',
-    gray: '#6B7280',
-    line: '#E5E7EB',
-    card: {
-      total:   { bg: '#EEF2FF', ring: '#E0E7FF', text: '#3730A3', bar: '#4F46E5', barSoft: '#C7D2FE' },
-      used:    { bg: '#ECFDF5', ring: '#D1FAE5', text: '#065F46', bar: '#10B981', barSoft: '#A7F3D0' },
-      remain:  { bg: '#FFFBEB', ring: '#FEF3C7', text: '#92400E', bar: '#F59E0B', barSoft: '#FDE68A' },
-    }
-  };
-
+  // ================== MÉTODOS PRIVADOS PARA PDF (solo estilo visual) ==================
   private addHeader(doc: PDFKit.PDFDocument) {
-    // Encabezado sobrio
-    doc.font('Helvetica-Bold').fontSize(16).fillColor(this.UI.ink)
-       .text('Reportes — Extraordinario', 50, 40, { align: 'left' });
+    doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
+doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
 
-    doc.font('Helvetica').fontSize(9).fillColor(this.UI.gray)
-       .text(`Generado: ${new Date().toLocaleDateString('es-CR', {day:'2-digit',month:'2-digit',year:'numeric'})} ${new Date().toLocaleTimeString('es-CR')}`,
-         50, 58, { align: 'right', width: doc.page.width - 100 });
+
+    doc.font('NotoSans').fontSize(16).fillColor(this.UI.ink)
+      .text('Reportes — Extraordinario', 50, 40, { align: 'left' });
+
+    doc.font('NotoSans').fontSize(9).fillColor(this.UI.gray)
+      .text(
+        `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
+        50, 58, { align: 'right', width: doc.page.width - 100 }
+      );
 
     doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70)
-       .strokeColor(this.UI.line).lineWidth(1).stroke();
+      .strokeColor(this.UI.line).lineWidth(1).stroke();
 
     doc.y = 86;
   }
 
   private addFilters(doc: PDFKit.PDFDocument, filters: ExtraFilters) {
-    // Card de filtros
     const y = doc.y, W = doc.page.width - 100, H = 84;
-    doc.roundedRect(50, y, W, H, 12).lineWidth(1).strokeColor(this.UI.line).stroke();
+    doc.roundedRect(50, y, W, H, 12)
+       .lineWidth(1).strokeColor(this.UI.line).stroke();
 
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(this.UI.ink)
+    doc.font('NotoSansBold').fontSize(11).fillColor(this.UI.ink)
        .text('Filtros', 65, y + 12);
 
-    doc.font('Helvetica').fontSize(9).fillColor(this.UI.gray);
-    const start = filters.start ? new Date(filters.start).toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-    const end   = filters.end   ? new Date(filters.end).toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' })   : '—';
+    doc.font('NotoSans').fontSize(9).fillColor(this.UI.gray);
+    const start = filters.start ? new Date(filters.start).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+    const end   = filters.end   ? new Date(filters.end).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })   : '—';
     const name  = filters.name  ? filters.name : '—';
 
     doc.text(`Nombre: ${name}`, 65, y + 32, { width: W / 2 - 30 });
@@ -274,99 +280,115 @@ export class ReportExtraService {
   }
 
   private addSummary(doc: PDFKit.PDFDocument, summary: any) {
-    // Tres "cards" como en la UI (Total / Usado / Restante)
     const GAP = 10;
     const W = (doc.page.width - 100 - GAP*2) / 3;
     const H = 72;
     const top = doc.y;
 
     const drawCard = (x: number, label: string, value: number, palette: any, pct?: number) => {
+      const prevY = doc.y; // no alterar flujo
       doc.roundedRect(x, top, W, H, 16)
          .lineWidth(1).strokeColor(palette.ring).fillAndStroke(palette.bg);
 
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(palette.text)
+      doc.font('NotoSansBold').fontSize(9).fillColor(palette.text)
          .text(label.toUpperCase(), x + 14, top + 10);
 
-      doc.font('Helvetica-Bold').fontSize(18).fillColor(palette.text)
+      doc.font('NotoSansBold').fontSize(18).fillColor(palette.text)
          .text(
            value.toLocaleString('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 2 }),
            x + 14, top + 26, { width: W - 28 }
          );
 
-      const barW = W - 28, barY = top + H - 16;
-      doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
-      const p = Math.max(0, Math.min(100, pct ?? 100));
-      doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
+      // const barW = W - 28, barY = top + H - 16;
+      // doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
+      // const p = Math.max(0, Math.min(100, pct ?? 100));
+      // doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
+
+      doc.y = prevY; // restaurar cursor
     };
 
     const usedPct = summary.totalAmount > 0 ? Math.round((summary.totalUsed / summary.totalAmount) * 100) : 0;
     const remPct  = summary.totalAmount > 0 ? Math.round((summary.totalRemaining / summary.totalAmount) * 100) : 0;
 
-    drawCard(50,           'Total',   summary.totalAmount,    this.UI.card.total,   100);
-    drawCard(50 + W + GAP, 'Usado',   summary.totalUsed,      this.UI.card.used,    usedPct);
-    drawCard(50 + 2*(W + GAP), 'Restante', summary.totalRemaining, this.UI.card.remain,  remPct);
+    drawCard(50,               'Total',     summary.totalAmount,    this.UI.card.total,  100);
+    drawCard(50 + W + GAP,     'Usado',     summary.totalUsed,      this.UI.card.used,   usedPct);
+    drawCard(50 + 2*(W + GAP), 'Restante',  summary.totalRemaining, this.UI.card.remain, remPct);
 
     doc.y = top + H + 16;
   }
 
+
+  private hasFilters(filters: ExtraFilters): boolean {
+    // Considera solo filtros relevantes para el PDF
+    if (!filters) return false;
+    if (filters.start) return true;
+    if (filters.end) return true;
+    if (filters.name && filters.name.trim() !== '') return true;
+    return false;
+  }
+
+  
   private addTable(doc: PDFKit.PDFDocument, table: ExtraRow[]) {
-    // Título de sección
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+    doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
     doc.moveDown(0.5);
 
     const left = 50, right = doc.page.width - 50;
     const cols = [
-      { key: 'name',  title: 'CONCEPTO',  w: Math.floor((right-left)*0.40), align: 'left' as const },
-      { key: 'date',  title: 'FECHA',     w: Math.floor((right-left)*0.15), align: 'left' as const },
-      { key: 'amount',title: 'MONTO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
-      { key: 'used',  title: 'USADO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
-      { key: 'rem',   title: 'RESTANTE',  w: Math.floor((right-left)*0.15), align: 'right' as const },
+      { key: 'name',    title: 'CONCEPTO',  w: Math.floor((right-left)*0.40), align: 'left' as const },
+      { key: 'date',    title: 'FECHA',     w: Math.floor((right-left)*0.15), align: 'left' as const },
+      { key: 'amount',  title: 'MONTO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
+      { key: 'used',    title: 'USADO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
+      { key: 'rem',     title: 'RESTANTE',  w: Math.floor((right-left)*0.15), align: 'right' as const },
     ];
     const x: number[] = [];
-    cols.reduce((acc, c, i) => {
-      const xx = i === 0 ? left : acc + cols[i-1].w;
-      x.push(xx);
-      return xx;
-    }, 0);
+    cols.reduce((acc, c, i) => { const xx = i === 0 ? left : acc + cols[i-1].w; x.push(xx); return xx; }, 0);
 
     let y = doc.y + 6;
 
-    // Header de la tabla
+    // Header
     doc.roundedRect(left, y, right-left, 28, 12)
        .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(this.UI.gray);
+    doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
     cols.forEach((c, i) => doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align }));
     y += 34;
 
-    // Filas
     const bottom = () => doc.page.height - doc.page.margins.bottom;
-    const ensure = (rowH=22) => { if (y + rowH > bottom()) { doc.addPage(); y = doc.page.margins.top; } };
+    const ensure = (rowH=22) => {
+      if (y + rowH > bottom()) {
+        doc.addPage(); y = doc.page.margins.top;
+        doc.roundedRect(left, y, right-left, 28, 12)
+           .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+        doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
+        cols.forEach((c, i) => doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align }));
+        y += 34;  
+      }
+    };
 
     if (table.length === 0) {
       ensure(40);
-      doc.font('Helvetica').fontSize(10).fillColor('#EF4444')
+      doc.font('NotoSans').fontSize(10).fillColor('#EF4444')
          .text('Sin resultados con los filtros aplicados.', left, y + 6);
       doc.y = y + 40;
       return;
     }
 
+    // Filas (solo presentación)
     table.forEach((row, idx) => {
       ensure(24);
 
-      // Zebra
+      // zebra
       doc.rect(left, y, right-left, 22)
          .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
          .fill();
 
-      // Textos
-      doc.font('Helvetica').fontSize(9).fillColor(this.UI.ink);
-      const vals = {
-        name: row.name ?? '—',
-        date: row.date ? new Date(row.date).toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—',
-        amount: row.amount.toLocaleString('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 2 }),
-        used: row.used.toLocaleString('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 2 }),
-        rem: row.remaining.toLocaleString('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 2 }),
-      };
+      const name   = row.name ?? '—';
+      const date   = row.date ? new Date(row.date).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+      const amount = row.amount.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+      const used   = row.used.toLocaleString('es-CR',   { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+      const rem    = row.remaining.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+
+      doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
+      const vals = { name, date, amount, used, rem };
       cols.forEach((c, i) => {
         doc.text(String((vals as any)[c.key]), x[i] + 10, y + 6, { width: c.w - 20, align: c.align });
       });
@@ -382,7 +404,8 @@ export class ReportExtraService {
     const y = doc.page.height - 32;
     doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8)
        .strokeColor(this.UI.line).lineWidth(1).stroke();
-    doc.font('Helvetica').fontSize(8).fillColor(this.UI.gray)
+
+    doc.font('NotoSans').fontSize(8).fillColor(this.UI.gray)
        .text('Sistema de Presupuesto — Reporte de Extraordinario',
              50, y, { width: doc.page.width - 100, align: 'center' });
   }
