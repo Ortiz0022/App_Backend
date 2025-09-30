@@ -75,7 +75,7 @@ export class ReportExtraController {
     const pdfBuffer = await this.reportService.generatePDF({
       table,
       summary,
-      filters,
+      filters
     });
 
     // Configurar headers para descarga forzada
