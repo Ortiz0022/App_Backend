@@ -4,6 +4,7 @@ import { CreateAssociateDto } from './dto/create-associate.dto';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { QueryAssociateDto } from './dto/query-associate.dto';
+import { AssociateStatus } from './dto/associate-status.enum';
 
 // Puedes proteger rutas admin con guards/roles si ya tienes Auth
 @Controller('associates')
@@ -33,6 +34,17 @@ export class AssociatesController {
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAssociateDto) {
     return this.service.update(id, dto);
   }
+
+  @Patch(':id/approve')
+  approve(@Param('id', ParseIntPipe) id: number) {
+    return this.service.changeStatus(id, { estado: AssociateStatus.APROBADO });
+  }
+
+  @Patch(':id/reject')
+  reject(@Param('id', ParseIntPipe) id: number, @Body() body: { motivo: string }) {
+    return this.service.changeStatus(id, { estado: AssociateStatus.RECHAZADO, motivo: body.motivo });
+  }
+
 
   // Admin: cambiar estado (PENDIENTE/APROBADO/RECHAZADO)
   @Patch(':id/status')
