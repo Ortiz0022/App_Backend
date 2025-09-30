@@ -44,6 +44,8 @@ import { ReportProjectionsModule } from './anualBudget/reportProjections/reportP
 import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra.module';
 import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
 import { AssociatesModule } from './associates/associates.module';
+import { VolunteersPageModule } from './editInformative/volunteersPage/volunteers-page-module';
+
 
 
 @Module({
@@ -110,6 +112,8 @@ import { AssociatesModule } from './associates/associates.module';
     ReportExtraModule,  
     AssociatesPageModule,
     AssociatesModule,
+    VolunteersPageModule,
+    VolunteersModule
   ],
   controllers: [AppController],
   providers: [
