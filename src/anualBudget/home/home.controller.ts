@@ -1,40 +1,35 @@
-import { Controller, Get, Query } from '@nestjs/common';
+// src/anualBudget/home/home.controller.ts
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { HomeService } from './home.service';
-import { Totals, ComparisonRow } from './dto/home.dto';
 
 @Controller('home')
 export class HomeController {
   constructor(private readonly svc: HomeService) {}
 
-  // Cards superiores
-  // GET /home/summary?startDate=2025-01-01&endDate=2025-12-31
   @Get('summary')
-  summary(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ): Promise<Totals> {
-    return this.svc.getTotals({ startDate, endDate });
+  summary(@Req() req: any,
+          @Query('startDate') startDate?: string,
+          @Query('endDate') endDate?: string) {
+    const fyId = Number(req.headers['x-fiscal-year-id'] ?? req.headers['x-fiscal-year']);
+    return this.svc.getTotals({ startDate, endDate }, Number.isFinite(fyId) ? fyId : undefined);
   }
 
-  // Tabla de Ingresos
-  // GET /home/incomes?groupBy=department|type|subtype&startDate=...&endDate=...
   @Get('incomes')
-  incomes(
-    @Query('groupBy') groupBy: 'department' | 'type' | 'subtype' = 'department',
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
-  ) {
-    return this.svc.getIncomeComparison({ startDate, endDate }, groupBy);
+  incomes(@Req() req: any,
+          @Query('groupBy') groupBy?: string,
+          @Query('startDate') startDate?: string,
+          @Query('endDate') endDate?: string) {
+    const fyId = Number(req.headers['x-fiscal-year-id'] ?? req.headers['x-fiscal-year']);
+    return this.svc.getIncomeComparison({ startDate, endDate }, groupBy, Number.isFinite(fyId) ? fyId : undefined);
   }
 
-  // Tabla de Egresos
-  // GET /home/spends?groupBy=department|type|subtype&startDate=...&endDate=...
   @Get('spends')
-  spends(
-    @Query('groupBy') groupBy?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ): Promise<ComparisonRow[]> {
-    return this.svc.getSpendComparison({ startDate, endDate }, groupBy);
+  spends(@Req() req: any,
+         @Query('groupBy') groupBy?: string,
+         @Query('startDate') startDate?: string,
+         @Query('endDate') endDate?: string) {
+    const fyId = Number(req.headers['x-fiscal-year-id'] ?? req.headers['x-fiscal-year']);
+    return this.svc.getSpendComparison({ startDate, endDate }, groupBy, Number.isFinite(fyId) ? fyId : undefined);
   }
 }
+
