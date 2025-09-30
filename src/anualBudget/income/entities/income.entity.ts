@@ -1,6 +1,7 @@
 // src/anualBudget/income/entities/income.entity.ts
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
+import { FiscalYear } from 'src/anualBudget/fiscalYear/entities/fiscal-year.entity';
 
 @Entity({ name: 'income' })
 export class Income {
@@ -15,4 +16,7 @@ export class Income {
 
   @Column({ type: 'date' })
   date: string;
+
+  @ManyToOne(() => FiscalYear, { eager: true, onDelete: 'RESTRICT', nullable: true })
+  fiscalYear?: FiscalYear;
 }

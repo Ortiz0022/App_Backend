@@ -58,4 +58,50 @@ export class FiscalYearService {
     }
     return fy;
   }
+
+
+
+
+
+    // --- NUEVOS HELPERS --- //
+  async findByIdSafe(id: number | string) {
+    if (!id && id !== 0) return null;
+    const n = Number(id);
+    const row = await this.repo.findOne({ where: { id: Number.isFinite(n) ? n : (id as any) } as any });
+    return row ?? null;
+  }
+
+  async findByCodeSafe(code: string) {
+    const y = Number(code);
+    if (!Number.isFinite(y)) return null;
+    const row = await this.repo.findOne({ where: { year: y } });
+    return row ?? null;
+  }
+
+  async getActiveOrCurrent(): Promise<FiscalYear | null> {
+    // 1) Activo
+    const active = await this.repo.findOne({ where: { is_active: true } });
+    if (active) return active;
+
+    // 2) Abierto más reciente
+    const open = await this.repo.findOne({ where: { state: FiscalState.OPEN }, order: { year: 'DESC' } });
+    if (open) return open;
+
+    // 3) El más reciente
+    const last = await this.repo.findOne({ order: { year: 'DESC' } });
+    return last ?? null;
+  }
+
+  /**
+   * Devuelve el FY para la fecha; si no hay, retorna el activo/actual.
+   * Útil para "reales" (Income/Spend) y fallback para proyecciones.
+   */
+  async resolveByDateOrActive(date?: string): Promise<FiscalYear | null> {
+    if (date) {
+      const byDate = await this.findByDate(date);
+      if (byDate) return byDate;
+    }
+    return this.getActiveOrCurrent();
+  }
+
 }

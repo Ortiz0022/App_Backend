@@ -5,17 +5,17 @@ import { Repository } from 'typeorm';
 import { PIncome } from '../pIncome/entities/pIncome.entity';
 import { PIncomeSubType } from '../pIncomeSubType/entities/pincome-sub-type.entity';
 import { PIncomeTypeService } from '../pIncomeType/pincome-type.service';   // <-- nuevo
+import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 
 @Injectable()
 export class PIncomeService {
   constructor(
     @InjectRepository(PIncome) private readonly repo: Repository<PIncome>,
     @InjectRepository(PIncomeSubType) private readonly subRepo: Repository<PIncomeSubType>,
-    private readonly pIncomeTypeService: PIncomeTypeService,               // <-- nuevo
+    private readonly pIncomeTypeService: PIncomeTypeService,
+    private readonly fyService: FiscalYearService, 
   ) {}
 
-  // ⚠️ NO toco tu findAll. Déjalo exactamente como lo tienes.
-  // findAll(...) { /* tu implementación actual */ }
 
   private async getSubType(id: number) {
     const s = await this.subRepo.findOne({ where: { id }, relations: ['pIncomeType'] });
@@ -25,11 +25,13 @@ export class PIncomeService {
 
   async create(dto: { pIncomeSubTypeId: number; amount: string }) {
     const s = await this.getSubType(dto.pIncomeSubTypeId);
+    const fy = await this.fyService.getActiveOrCurrent();
 
     const entity = this.repo.create({
       // propiedad correcta en tu entidad PIncome
       pIncomeSubType: { id: s.id } as any,
       amount: dto.amount,
+      fiscalYear: fy ?? undefined,
     });
     const saved = await this.repo.save(entity);
 
@@ -71,6 +73,11 @@ export class PIncomeService {
       row.pIncomeSubType = { id: s.id } as any;
     }
     if (dto.amount !== undefined) row.amount = dto.amount;
+
+    if (!row.fiscalYear) {
+      const fy = await this.fyService.getActiveOrCurrent();
+      row.fiscalYear = fy ?? undefined;
+    }
 
     const saved = await this.repo.save(row);
 

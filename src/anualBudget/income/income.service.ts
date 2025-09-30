@@ -28,11 +28,13 @@ export class IncomeService {
   async create(dto: CreateIncomeDto) {
     await this.fyService.assertOpenByDate(dto.date);
     const s = await this.getSubType(dto.incomeSubTypeId);
+    const fy = await this.fyService.resolveByDateOrActive(dto.date);
 
     const entity = this.repo.create({
       incomeSubType: { id: s.id } as any,
       amount: dto.amount,
       date: dto.date,
+      fiscalYear: fy ?? undefined,
     });
     const saved = await this.repo.save(entity);
 
@@ -78,6 +80,8 @@ export class IncomeService {
 
     if (dto.amount !== undefined) row.amount = dto.amount;
     if (dto.date !== undefined) row.date = dto.date;
+
+    row.fiscalYear = (await this.fyService.resolveByDateOrActive(row.date)) ?? undefined;
 
     const saved = await this.repo.save(row);
 

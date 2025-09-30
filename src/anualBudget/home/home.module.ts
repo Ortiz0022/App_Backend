@@ -1,3 +1,4 @@
+// src/anualBudget/home/home.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Department } from '../department/entities/department.entity';
@@ -11,6 +12,7 @@ import { PIncome } from '../pIncome/entities/pIncome.entity';
 import { HomeController } from './home.controller';
 import { HomeService } from './home.service';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';   // 👈 IMPORTA ESTE
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { PSpend } from '../pSpend/entities/p-spend.entity';
       IncomeType, IncomeSubType,
       SpendType, SpendSubType,
     ]),
+    FiscalYearModule, // 👈 AGREGA ESTE MÓDULO
   ],
   controllers: [HomeController],
   providers: [HomeService],
