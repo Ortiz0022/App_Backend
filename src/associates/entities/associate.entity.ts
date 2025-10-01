@@ -53,6 +53,9 @@ export class Associate {
   // Estado de la solicitud
   @Column({ type: 'enum', enum: AssociateStatus, default: AssociateStatus.PENDIENTE })
   estado: AssociateStatus;
+  
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  motivoRechazo?: string;  
 
   @CreateDateColumn()
   createdAt: Date;
