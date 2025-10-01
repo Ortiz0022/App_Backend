@@ -45,6 +45,7 @@ import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra
 import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
 import { AssociatesModule } from './associates/associates.module';
 import { VolunteersPageModule } from './editInformative/volunteersPage/volunteers-page-module';
+import { FincaModule } from './finca/finca.module';
 
 
 
@@ -113,7 +114,8 @@ import { VolunteersPageModule } from './editInformative/volunteersPage/volunteer
     AssociatesPageModule,
     AssociatesModule,
     VolunteersPageModule,
-    VolunteersModule
+    VolunteersModule,
+    FincaModule,
   ],
   controllers: [AppController],
   providers: [
