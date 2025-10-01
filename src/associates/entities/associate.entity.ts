@@ -1,7 +1,9 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, Unique, CreateDateColumn, UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { AssociateStatus } from '../dto/associate-status.enum';
+import { Finca } from 'src/finca/entities/finca.entity';
 
 @Entity('associates')
 @Unique(['cedula'])
@@ -62,4 +64,9 @@ export class Associate {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+
+  @OneToMany(() => Finca, (finca) => finca.asociado)
+  fincas: Finca[];
+
 }

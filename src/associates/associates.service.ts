@@ -1,3 +1,4 @@
+// src/associates/associates.service.ts
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, QueryFailedError, Repository } from 'typeorm';
@@ -44,19 +45,20 @@ export class AssociatesService {
     sortField = allowedSortFields.has(sortField) ? sortField : 'createdAt';
     const direction: 'ASC' | 'DESC' = sortDir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    const qb = this.repo.createQueryBuilder('a');
+    const qb = this.repo.createQueryBuilder('a')
+      .leftJoinAndSelect('a.fincas', 'finca'); // ← Incluir fincas
 
     if (status) {
       qb.andWhere('a.estado = :status', { status });
     }
 
     if (search) {
-       const q = `%${search.toLowerCase()}%`;
-       qb.andWhere(`LOWER(a.nombre) LIKE :q
-                 OR LOWER(a.apellido1) LIKE :q
-                 OR LOWER(a.apellido2) LIKE :q
-                 OR LOWER(a.cedula) LIKE :q
-                 OR LOWER(a.email)  LIKE :q`, { q });
+      const q = `%${search.toLowerCase()}%`;
+      qb.andWhere(`LOWER(a.nombre) LIKE :q
+                OR LOWER(a.apellido1) LIKE :q
+                OR LOWER(a.apellido2) LIKE :q
+                OR LOWER(a.cedula) LIKE :q
+                OR LOWER(a.email)  LIKE :q`, { q });
     }
 
     qb.orderBy(`a.${sortField}`, direction)
@@ -73,9 +75,11 @@ export class AssociatesService {
     };
   }
 
-
   async findOne(id: number): Promise<Associate> {
-    const item = await this.repo.findOne({ where: { id } });
+    const item = await this.repo.findOne({ 
+      where: { id },
+      relations: ['fincas'], // ← Incluir fincas
+    });
     if (!item) throw new NotFoundException('Associate not found');
     return item;
   }
