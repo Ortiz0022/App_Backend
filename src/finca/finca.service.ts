@@ -5,14 +5,14 @@ import { Finca } from './entities/finca.entity';
 import { CreateFincaDto } from './dto/create-finca.dto';
 import { UpdateFincaDto } from './dto/update-finca.dto';
 import { QueryFincaDto } from './dto/query-finca.dto';
-import { AssociatesService } from '../associates/associates.service';
+import { AssociateService } from '../formAssociates/associate/associate.service';
 
 @Injectable()
 export class FincaService {
   constructor(
     @InjectRepository(Finca)
     private readonly repo: Repository<Finca>,
-    private readonly associatesService: AssociatesService, // Para validar que existe el asociado
+    private readonly associatesService: AssociateService, // Para validar que existe el asociado
   ) {}
 
   async create(dto: CreateFincaDto): Promise<Finca> {

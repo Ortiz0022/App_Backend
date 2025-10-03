@@ -43,9 +43,10 @@ import { ReportModule } from './anualBudget/report/report.module';
 import { ReportProjectionsModule } from './anualBudget/reportProjections/reportProjections.module';
 import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra.module';
 import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
-import { AssociatesModule } from './associates/associates.module';
 import { VolunteersPageModule } from './editInformative/volunteersPage/volunteers-page-module';
 import { FincaModule } from './finca/finca.module';
+import { AssociateModule } from './formAssociates/associate/associate.module';
+import { PersonaModule } from './formAssociates/persona/persona.module';
 
 
 
@@ -112,10 +113,11 @@ import { FincaModule } from './finca/finca.module';
     ReportProjectionsModule,
     ReportExtraModule,  
     AssociatesPageModule,
-    AssociatesModule,
+    AssociateModule,
     VolunteersPageModule,
     VolunteersModule,
     FincaModule,
+    PersonaModule,
   ],
   controllers: [AppController],
   providers: [

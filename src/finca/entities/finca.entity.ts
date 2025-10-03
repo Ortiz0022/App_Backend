@@ -7,7 +7,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Associate } from '../../associates/entities/associate.entity';
+import { Associate } from '../../formAssociates/associate/entities/associate.entity';
 
 @Entity('fincas')
 export class Finca {

@@ -3,4 +3,3 @@ export enum AssociateStatus {
     APROBADO = 'APROBADO',
     RECHAZADO = 'RECHAZADO',
   }
-  
