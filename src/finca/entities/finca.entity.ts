@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Associate } from '../../formAssociates/associate/entities/associate.entity';
+import { Propietario } from 'src/formAssociates/propietario/entities/propietario.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -37,4 +38,9 @@ export class Finca {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+
+  @ManyToOne(() => Propietario, (propietario) => propietario.fincas)
+  @JoinColumn({ name: 'idPropietario' })
+  propietario: Propietario;
 }

@@ -1,5 +1,6 @@
 
 import { Associate } from "src/formAssociates/associate/entities/associate.entity";
+import { Propietario } from "src/formAssociates/propietario/entities/propietario.entity";
 import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
   @Entity('personas')
@@ -44,4 +45,7 @@ import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Uni
     // Relación 1:1 con Asociado
     @OneToOne(() => Associate, (associate) => associate.persona)
     asociado?: Associate;
+
+    @OneToOne(() => Propietario, (propietario) => propietario.persona)
+  propietario?: Propietario;
   }
