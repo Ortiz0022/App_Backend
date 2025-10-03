@@ -7,7 +7,6 @@ import {
     ValidateNested,
   } from 'class-validator';
   import { Type } from 'class-transformer';
-  import { AssociateStatus } from './associate-status.enum';
 import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.dto';
   
   export class CreateAssociateDto {
@@ -35,8 +34,4 @@ import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.
     @MaxLength(100)
     CVO?: string;
   
-    // Estado (opcional, por defecto será PENDIENTE)
-    @IsOptional()
-    @IsEnum(AssociateStatus)
-    estado?: AssociateStatus;
   }
