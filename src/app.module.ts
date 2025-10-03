@@ -48,6 +48,8 @@ import { FincaModule } from './finca/finca.module';
 import { AssociateModule } from './formAssociates/associate/associate.module';
 import { PersonaModule } from './formAssociates/persona/persona.module';
 import { SolicitudModule } from './formAssociates/solicitud/solicitud.module';
+import { PropietarioModule } from './formAssociates/propietario/propietario.module';
+import { NucleoFamiliarModule } from './formAssociates/nucleo-familiar/nucleo-familiar.module';
 
 
 
@@ -120,6 +122,8 @@ import { SolicitudModule } from './formAssociates/solicitud/solicitud.module';
     FincaModule,
     PersonaModule,
     SolicitudModule,
+    PropietarioModule,
+    NucleoFamiliarModule,
   ],
   controllers: [AppController],
   providers: [

@@ -11,6 +11,7 @@ import {
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { Solicitud } from 'src/formAssociates/solicitud/entities/solicitud.entity';
 import { Finca } from 'src/finca/entities/finca.entity';
+import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucleo-familiar.entity';
 
 @Entity('associates')
 export class Associate {
@@ -55,4 +56,9 @@ export class Associate {
   // Relación inversa 1:1 con Solicitud
   @OneToOne(() => Solicitud, (solicitud) => solicitud.asociado)
   solicitud: Solicitud;
+
+
+  @OneToOne(() => NucleoFamiliar, (nucleoFamiliar) => nucleoFamiliar.asociado)
+    nucleoFamiliar?: NucleoFamiliar;
+
 }
