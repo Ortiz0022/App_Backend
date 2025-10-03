@@ -1,5 +1,5 @@
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
-import { Finca } from 'src/finca/entities/finca.entity';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,

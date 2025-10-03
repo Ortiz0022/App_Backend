@@ -44,12 +44,14 @@ import { ReportProjectionsModule } from './anualBudget/reportProjections/reportP
 import { ReportExtraModule } from './anualBudget/reportExtraordinary/reportExtra.module';
 import { AssociatesPageModule } from './editInformative/associatesPage/associates-page.module';
 import { VolunteersPageModule } from './editInformative/volunteersPage/volunteers-page-module';
-import { FincaModule } from './finca/finca.module';
+import { FincaModule } from './formFinca/finca/finca.module';
 import { AssociateModule } from './formAssociates/associate/associate.module';
 import { PersonaModule } from './formAssociates/persona/persona.module';
 import { SolicitudModule } from './formAssociates/solicitud/solicitud.module';
 import { PropietarioModule } from './formAssociates/propietario/propietario.module';
 import { NucleoFamiliarModule } from './formAssociates/nucleo-familiar/nucleo-familiar.module';
+import { RegistrosProductivosModule } from './formFinca/registros-productivos/registros-productivos.module';
+import { GeografiaModule } from './formFinca/geografia/geografia.module';
 
 
 
@@ -124,6 +126,8 @@ import { NucleoFamiliarModule } from './formAssociates/nucleo-familiar/nucleo-fa
     SolicitudModule,
     PropietarioModule,
     NucleoFamiliarModule,
+    RegistrosProductivosModule,
+    GeografiaModule,
   ],
   controllers: [AppController],
   providers: [

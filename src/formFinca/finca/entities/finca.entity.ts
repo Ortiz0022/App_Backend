@@ -6,9 +6,12 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToOne,
 } from 'typeorm';
-import { Associate } from '../../formAssociates/associate/entities/associate.entity';
+import { Associate } from '../../../formAssociates/associate/entities/associate.entity';
 import { Propietario } from 'src/formAssociates/propietario/entities/propietario.entity';
+import { RegistrosProductivos } from 'src/formFinca/registros-productivos/entities/registros-productivos.entity';
+import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -43,4 +46,22 @@ export class Finca {
   @ManyToOne(() => Propietario, (propietario) => propietario.fincas)
   @JoinColumn({ name: 'idPropietario' })
   propietario: Propietario;
+
+
+  @OneToOne(
+    () => RegistrosProductivos,
+    (registrosProductivos) => registrosProductivos.finca,
+    { eager: true }, // Carga automática
+  )
+  registrosProductivos?: RegistrosProductivos;
+
+
+  @ManyToOne(() => Geografia, (geografia) => geografia.fincas, {
+    eager: true, // Carga automática
+  })
+  @JoinColumn({ name: 'idGeografia' })
+  geografia: Geografia;
+
+
+
 }

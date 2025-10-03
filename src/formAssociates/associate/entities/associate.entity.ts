@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { Solicitud } from 'src/formAssociates/solicitud/entities/solicitud.entity';
-import { Finca } from 'src/finca/entities/finca.entity';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucleo-familiar.entity';
 
 @Entity('associates')

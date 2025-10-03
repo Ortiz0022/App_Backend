@@ -5,7 +5,7 @@ import { Finca } from './entities/finca.entity';
 import { CreateFincaDto } from './dto/create-finca.dto';
 import { UpdateFincaDto } from './dto/update-finca.dto';
 import { QueryFincaDto } from './dto/query-finca.dto';
-import { AssociateService } from '../formAssociates/associate/associate.service';
+import { AssociateService } from '../../formAssociates/associate/associate.service';
 
 @Injectable()
 export class FincaService {
@@ -51,7 +51,12 @@ export class FincaService {
   async findOne(id: number): Promise<Finca> {
     const finca = await this.repo.findOne({
       where: { idFinca: id },
-      relations: ['asociado'],
+      relations: ['asociado',
+      'asociado.persona',
+      'propietario',
+      'propietario.persona',
+      'geografia',
+      'registrosProductivos,'],
     });
     if (!finca) throw new NotFoundException('Finca not found');
     return finca;
