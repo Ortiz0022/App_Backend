@@ -1,11 +1,11 @@
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { AssociateStatus } from './associate-status.enum';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class QueryAssociateDto {
   @IsOptional()
-  @IsEnum(AssociateStatus)
-  status?: AssociateStatus;
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  estado?: boolean; // filtrar por activos/inactivos
 
   @IsOptional()
   @IsString()
@@ -26,5 +26,5 @@ export class QueryAssociateDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // ejemplo: 'createdAt:desc' | 'nombre:asc'
+  sort?: string; // ejemplo: 'createdAt:desc' | 'persona.nombre:asc'
 }

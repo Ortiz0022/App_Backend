@@ -47,6 +47,7 @@ import { VolunteersPageModule } from './editInformative/volunteersPage/volunteer
 import { FincaModule } from './finca/finca.module';
 import { AssociateModule } from './formAssociates/associate/associate.module';
 import { PersonaModule } from './formAssociates/persona/persona.module';
+import { SolicitudModule } from './formAssociates/solicitud/solicitud.module';
 
 
 
@@ -118,6 +119,7 @@ import { PersonaModule } from './formAssociates/persona/persona.module';
     VolunteersModule,
     FincaModule,
     PersonaModule,
+    SolicitudModule,
   ],
   controllers: [AppController],
   providers: [

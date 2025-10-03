@@ -1,231 +1,218 @@
 import {
-    Injectable,
-    NotFoundException,
-    BadRequestException,
-    ConflictException,
-  } from '@nestjs/common';
-  import { InjectRepository } from '@nestjs/typeorm';
-  import { Repository} from 'typeorm';
-  import { Associate } from './entities/associate.entity';
-  import { CreateAssociateDto } from './dto/create-associate.dto';
-  import { UpdateAssociateDto } from './dto/update-associate.dto';
-  import { ChangeStatusDto } from './dto/change-status.dto';
-  import { QueryAssociateDto } from './dto/query-associate.dto';
-  import { AssociateStatus } from './dto/associate-status.enum';
-import { Persona } from '../persona/entities/persona.entity';
-  
-  @Injectable()
-  export class AssociateService {
-    constructor(
-      @InjectRepository(Associate)
-      private associateRepository: Repository<Associate>,
-      @InjectRepository(Persona)
-      private personaRepository: Repository<Persona>,
-    ) {}
-  
-    async create(createDto: CreateAssociateDto): Promise<Associate> {
-      // Verificar si ya existe una persona con esa cédula
-      const existingByCedula = await this.personaRepository.findOne({
-        where: { cedula: createDto.persona.cedula },
-      });
-  
-      if (existingByCedula) {
-        throw new ConflictException(
-          `Ya existe una persona con la cédula ${createDto.persona.cedula}`,
-        );
-      }
-  
-      // Verificar si ya existe una persona con ese email
-      const existingByEmail = await this.personaRepository.findOne({
-        where: { email: createDto.persona.email },
-      });
-  
-      if (existingByEmail) {
-        throw new ConflictException(
-          `Ya existe una persona con el email ${createDto.persona.email}`,
-        );
-      }
-  
-      // Crear la persona
-      const persona = this.personaRepository.create(createDto.persona);
-  
-      // Crear el asociado con la persona
-      const associate = this.associateRepository.create({
-        persona,
-        distanciaFinca: createDto.distanciaFinca,
-        viveEnFinca: createDto.viveEnFinca,
-        marcaGanado: createDto.marcaGanado,
-        CVO: createDto.CVO,
-        estado: createDto.estado || AssociateStatus.PENDIENTE,
-      });
-  
-      return this.associateRepository.save(associate);
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Associate } from './entities/associate.entity';
+import { UpdateAssociateDto } from './dto/update-associate.dto';
+import { QueryAssociateDto } from './dto/query-associate.dto';
+
+@Injectable()
+export class AssociateService {
+  constructor(
+    @InjectRepository(Associate)
+    private associateRepository: Repository<Associate>,
+  ) {}
+
+  // Listar asociados con filtros
+  async findAll(query?: QueryAssociateDto) {
+    const { estado, search, page = 1, limit = 20, sort } = query || {};
+
+    const queryBuilder = this.associateRepository
+      .createQueryBuilder('associate')
+      .leftJoinAndSelect('associate.persona', 'persona')
+      .leftJoinAndSelect('associate.fincas', 'fincas')
+      .leftJoinAndSelect('associate.solicitud', 'solicitud');
+
+    // Filtrar por estado (activo/inactivo)
+    if (estado !== undefined) {
+      queryBuilder.andWhere('associate.estado = :estado', { estado });
     }
-  
-    async findAll(query?: QueryAssociateDto) {
-      const { status, search, page = 1, limit = 20, sort } = query || {};
-  
-      const queryBuilder = this.associateRepository
-        .createQueryBuilder('associate')
-        .leftJoinAndSelect('associate.persona', 'persona');
-  
-      // Filtrar por estado
-      if (status) {
-        queryBuilder.andWhere('associate.estado = :status', { status });
-      }
-  
-      // Búsqueda por nombre, cédula o email
-      if (search) {
-        queryBuilder.andWhere(
-          '(persona.nombre ILIKE :search OR persona.apellido1 ILIKE :search OR persona.apellido2 ILIKE :search OR persona.cedula ILIKE :search OR persona.email ILIKE :search)',
-          { search: `%${search}%` },
-        );
-      }
-  
-      // Ordenamiento
-      if (sort) {
-        const [field, order] = sort.split(':');
-        const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-        
-        if (field.startsWith('persona.')) {
-          queryBuilder.orderBy(field, orderDirection);
-        } else {
-          queryBuilder.orderBy(`associate.${field}`, orderDirection);
-        }
+
+    // Búsqueda por nombre, cédula o email
+    if (search) {
+      queryBuilder.andWhere(
+        '(persona.nombre ILIKE :search OR persona.apellido1 ILIKE :search OR persona.apellido2 ILIKE :search OR persona.cedula ILIKE :search OR persona.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Ordenamiento
+    if (sort) {
+      const [field, order] = sort.split(':');
+      const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+      if (field.startsWith('persona.')) {
+        queryBuilder.orderBy(field, orderDirection);
       } else {
-        queryBuilder.orderBy('associate.createdAt', 'DESC');
+        queryBuilder.orderBy(`associate.${field}`, orderDirection);
       }
-  
-      // Paginación
-      queryBuilder.skip((page - 1) * limit).take(limit);
-  
-      const [data, total] = await queryBuilder.getManyAndCount();
-  
-      return {
-        data,
-        meta: {
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
-        },
-      };
+    } else {
+      queryBuilder.orderBy('associate.createdAt', 'DESC');
     }
-  
-    async findOne(id: number): Promise<Associate> {
-      const associate = await this.associateRepository.findOne({
-        where: { idAsociado: id },
-        relations: ['persona'],
-      });
-  
-      if (!associate) {
-        throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
-      }
-  
-      return associate;
-    }
-  
-    async findByCedula(cedula: string): Promise<Associate> {
-      const associate = await this.associateRepository
-        .createQueryBuilder('associate')
-        .leftJoinAndSelect('associate.persona', 'persona')
-        .where('persona.cedula = :cedula', { cedula })
-        .getOne();
-  
-      if (!associate) {
-        throw new NotFoundException(
-          `Asociado con cédula ${cedula} no encontrado`,
-        );
-      }
-  
-      return associate;
-    }
-  
-    async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
-      const associate = await this.findOne(id);
-  
-      // Actualizar datos de persona si vienen
-      if (updateDto.persona) {
-        // Verificar email único si se está actualizando
-        if (
-          updateDto.persona.email &&
-          updateDto.persona.email !== associate.persona.email
-        ) {
-          const existingByEmail = await this.personaRepository.findOne({
-            where: { email: updateDto.persona.email },
-          });
-  
-          if (existingByEmail) {
-            throw new ConflictException(
-              `Ya existe una persona con el email ${updateDto.persona.email}`,
-            );
-          }
-        }
-  
-        await this.personaRepository.update(
-          associate.persona.idPersona,
-          updateDto.persona,
-        );
-      }
-  
-      // Actualizar datos de asociado
-      Object.assign(associate, {
-        distanciaFinca: updateDto.distanciaFinca ?? associate.distanciaFinca,
-        viveEnFinca: updateDto.viveEnFinca ?? associate.viveEnFinca,
-        marcaGanado: updateDto.marcaGanado ?? associate.marcaGanado,
-        CVO: updateDto.CVO ?? associate.CVO,
-        estado: updateDto.estado ?? associate.estado,
-        motivoRechazo: updateDto.motivoRechazo ?? associate.motivoRechazo,
-      });
-  
-      return this.associateRepository.save(associate);
-    }
-  
-    async changeStatus(
-        id: number,
-        changeStatusDto: ChangeStatusDto,
-      ): Promise<Associate> {
-        const associate = await this.findOne(id);
-      
-        // Validar que si el estado es RECHAZADO, venga el motivo
-        if (
-          changeStatusDto.estado === AssociateStatus.RECHAZADO &&
-          !changeStatusDto.motivo
-        ) {
-          throw new BadRequestException(
-            'El motivo es obligatorio cuando se rechaza una solicitud',
-          );
-        }
-      
-        associate.estado = changeStatusDto.estado;
-        
-        // Corrección del tipo: asegurarse de que sea string | undefined
-        associate.motivoRechazo =
-          changeStatusDto.estado === AssociateStatus.RECHAZADO
-            ? (changeStatusDto.motivo ?? undefined) // Convertir null a undefined
-            : undefined; // Si no es rechazado, limpiar el motivo
-      
-        return this.associateRepository.save(associate);
-      }
-  
-    async remove(id: number): Promise<void> {
-      const associate = await this.findOne(id);
-      await this.associateRepository.remove(associate);
-    }
-  
-    // Métodos útiles para estadísticas
-    async getStatsByStatus() {
-      return this.associateRepository
-        .createQueryBuilder('associate')
-        .select('associate.estado', 'estado')
-        .addSelect('COUNT(*)', 'count')
-        .groupBy('associate.estado')
-        .getRawMany();
-    }
-  
-    async countByStatus(status: AssociateStatus): Promise<number> {
-      return this.associateRepository.count({
-        where: { estado: status },
-      });
-    }
+
+    // Paginación
+    queryBuilder.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
+
+  // Obtener solo asociados ACTIVOS (por defecto)
+  async findActive() {
+    return this.associateRepository.find({
+      where: { estado: true },
+      relations: ['persona', 'fincas', 'solicitud'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // Obtener solo asociados INACTIVOS
+  async findInactive() {
+    return this.associateRepository.find({
+      where: { estado: false },
+      relations: ['persona', 'fincas', 'solicitud'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOne(id: number): Promise<Associate> {
+    const associate = await this.associateRepository.findOne({
+      where: { idAsociado: id },
+      relations: ['persona', 'fincas', 'solicitud'],
+    });
+
+    if (!associate) {
+      throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
+    }
+
+    return associate;
+  }
+
+  async findByCedula(cedula: string): Promise<Associate> {
+    const associate = await this.associateRepository
+      .createQueryBuilder('associate')
+      .leftJoinAndSelect('associate.persona', 'persona')
+      .leftJoinAndSelect('associate.fincas', 'fincas')
+      .leftJoinAndSelect('associate.solicitud', 'solicitud')
+      .where('persona.cedula = :cedula', { cedula })
+      .getOne();
+
+    if (!associate) {
+      throw new NotFoundException(
+        `Asociado con cédula ${cedula} no encontrado`,
+      );
+    }
+
+    return associate;
+  }
+
+  async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
+    const associate = await this.findOne(id);
+
+    // Si se intenta cambiar el estado, validar que sea lógico
+    if (updateDto.estado !== undefined && updateDto.estado === true) {
+      // Solo se puede activar si la solicitud está aprobada
+      if (associate.solicitud?.estado !== 'APROBADO') {
+        throw new BadRequestException(
+          'No se puede activar un asociado cuya solicitud no está aprobada',
+        );
+      }
+    }
+
+    Object.assign(associate, updateDto);
+
+    return this.associateRepository.save(associate);
+  }
+
+  // Activar asociado manualmente
+  async activate(id: number): Promise<Associate> {
+    const associate = await this.findOne(id);
+
+    if (associate.solicitud?.estado !== 'APROBADO') {
+      throw new BadRequestException(
+        'No se puede activar un asociado cuya solicitud no está aprobada',
+      );
+    }
+
+    associate.estado = true;
+    return this.associateRepository.save(associate);
+  }
+
+  // Desactivar asociado manualmente
+  async deactivate(id: number): Promise<Associate> {
+    const associate = await this.findOne(id);
+    associate.estado = false;
+    return this.associateRepository.save(associate);
+  }
+
+  // Toggle estado (activar/desactivar)
+  async toggleStatus(id: number): Promise<Associate> {
+    const associate = await this.findOne(id);
+
+    // Si se quiere activar, validar solicitud aprobada
+    if (!associate.estado && associate.solicitud?.estado !== 'APROBADO') {
+      throw new BadRequestException(
+        'No se puede activar un asociado cuya solicitud no está aprobada',
+      );
+    }
+
+    associate.estado = !associate.estado;
+    return this.associateRepository.save(associate);
+  }
+
+  async remove(id: number): Promise<void> {
+    const associate = await this.findOne(id);
+
+    // No permitir eliminar si está activo
+    if (associate.estado) {
+      throw new BadRequestException(
+        'No se puede eliminar un asociado activo. Desactívelo primero.',
+      );
+    }
+
+    // No permitir eliminar si tiene fincas registradas
+    if (associate.fincas && associate.fincas.length > 0) {
+      throw new BadRequestException(
+        'No se puede eliminar un asociado con fincas registradas',
+      );
+    }
+
+    await this.associateRepository.remove(associate);
+  }
+
+  // Estadísticas
+  async getStats() {
+    const total = await this.associateRepository.count();
+    const activos = await this.associateRepository.count({
+      where: { estado: true },
+    });
+    const inactivos = await this.associateRepository.count({
+      where: { estado: false },
+    });
+
+    return {
+      total,
+      activos,
+      inactivos,
+      porcentajeActivos: total > 0 ? ((activos / total) * 100).toFixed(2) : 0,
+    };
+  }
+
+  async countByStatus(isActive: boolean): Promise<number> {
+    return this.associateRepository.count({
+      where: { estado: isActive },
+    });
+  }
+}
