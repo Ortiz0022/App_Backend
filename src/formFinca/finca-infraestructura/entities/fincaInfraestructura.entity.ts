@@ -4,7 +4,7 @@ import { Infraestructura } from 'src/formFinca/infraestructura/entities/infraest
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 
 
-@Entity('FincaInfraestructura')
+@Entity('fincainfraestructura')
 @Unique(['idFinca', 'idInfraestructura']) // evita duplicados
 export class FincaInfraestructura {
   @PrimaryGeneratedColumn({ name: 'idFincaInfraestructura', type: 'int' })

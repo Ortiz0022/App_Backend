@@ -2,7 +2,7 @@ import { FincaTipoCerca } from 'src/formFinca/finca-tipo-cerca/entities/finca-ti
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 
-@Entity('tiposCerca')
+@Entity('tiposcerca')
 export class TipoCerca {
   @PrimaryGeneratedColumn({ name: 'idTipoCerca', type: 'int' })
   idTipoCerca: number;
