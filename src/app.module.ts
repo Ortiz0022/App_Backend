@@ -52,6 +52,10 @@ import { PropietarioModule } from './formAssociates/propietario/propietario.modu
 import { NucleoFamiliarModule } from './formAssociates/nucleo-familiar/nucleo-familiar.module';
 import { RegistrosProductivosModule } from './formFinca/registros-productivos/registros-productivos.module';
 import { GeografiaModule } from './formFinca/geografia/geografia.module';
+import { InfraestructurasModule } from './formFinca/infraestructura/infraestructura.module';
+import { FincaInfraestructurasModule } from './formFinca/finca-infraestructura/fincaInfraestructura.module';
+import { TiposCercaModule } from './formFinca/tipo-cerca/tipo-cerca.module';
+import { FincaTipoCercaModule } from './formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
 
 
 
@@ -128,6 +132,10 @@ import { GeografiaModule } from './formFinca/geografia/geografia.module';
     NucleoFamiliarModule,
     RegistrosProductivosModule,
     GeografiaModule,
+    InfraestructurasModule,
+    FincaInfraestructurasModule,
+    TiposCercaModule,
+    FincaTipoCercaModule,
   ],
   controllers: [AppController],
   providers: [
