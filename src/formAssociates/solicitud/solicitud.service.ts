@@ -157,45 +157,52 @@ export class SolicitudService {
   }
 
   async findAllPaginated(params: {
-    estado?: SolicitudStatus;
+    page?: number;
+    limit?: number;
+    estado?: string;
     search?: string;
-    page: number;
-    limit: number;
     sort?: string;
-  }) {
-    const { estado, search, page, limit, sort } = params;
-
+  }): Promise<{ items: Solicitud[]; total: number; page: number; pages: number }> {
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const skip = (page - 1) * limit;
+  
     const queryBuilder = this.solicitudRepository
       .createQueryBuilder('solicitud')
+      .leftJoinAndSelect('solicitud.persona', 'persona')
       .leftJoinAndSelect('solicitud.asociado', 'asociado')
+      .leftJoinAndSelect('asociado.persona', 'asociadoPersona')
       .leftJoinAndSelect('asociado.nucleoFamiliar', 'nucleoFamiliar')
       .leftJoinAndSelect('asociado.fincas', 'fincas')
+      .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('fincas.propietario', 'propietario')
-      .leftJoinAndSelect('fincas.geografia', 'geografia');
-
-    if (estado) {
-      queryBuilder.andWhere('solicitud.estado = :estado', { estado });
+      .leftJoinAndSelect('propietario.persona', 'propietarioPersona');
+  
+    // Filtros
+    if (params.estado) {
+      queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
     }
-
-    if (search) {
+  
+    if (params.search) {
       queryBuilder.andWhere(
-        '(persona.cedula LIKE :search OR persona.nombre LIKE :search OR persona.apellido1 LIKE :search OR persona.apellido2 LIKE :search OR persona.email LIKE :search)',
-        { search: `%${search}%` },
+        '(persona.cedula LIKE :search OR persona.nombre LIKE :search OR persona.email LIKE :search)',
+        { search: `%${params.search}%` }
       );
     }
-
-    if (sort) {
-      const [field, order] = sort.split(':');
-      const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-      queryBuilder.orderBy(`solicitud.${field}`, orderDirection);
+  
+    // Ordenamiento
+    if (params.sort) {
+      const [field, order] = params.sort.split(':');
+      queryBuilder.orderBy(`solicitud.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
     } else {
       queryBuilder.orderBy('solicitud.createdAt', 'DESC');
     }
-
-    queryBuilder.skip((page - 1) * limit).take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
+  
+    const [items, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+  
     return {
       items,
       total,
@@ -215,19 +222,21 @@ export class SolicitudService {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitud: id },
       relations: [
+        'persona',
         'asociado',
         'asociado.persona',
         'asociado.nucleoFamiliar',
         'asociado.fincas',
-        'asociado.propietario',
         'asociado.fincas.geografia',
+        'asociado.fincas.propietario',
+        'asociado.fincas.propietario.persona',
       ],
     });
-
+  
     if (!solicitud) {
       throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
     }
-
+  
     return solicitud;
   }
 

@@ -29,6 +29,8 @@ export class AssociateService {
       .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
       .leftJoinAndSelect('associate.fincas', 'fincas')
       .leftJoinAndSelect('fincas.geografia', 'geografia')
+      .leftJoinAndSelect('fincas.propietario', 'propietario')              // ✅ Agregar
+      .leftJoinAndSelect('propietario.persona', 'propietarioPersona')      // ✅ Agregar
       .leftJoinAndSelect('associate.solicitud', 'solicitud');
   
     // ✅ Filtrar SOLO por asociados activos (estado = true)
@@ -69,7 +71,15 @@ export class AssociateService {
   async findActive() {
     return this.associateRepository.find({
       where: { estado: true },
-      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
+      relations: [
+        'persona',
+        'nucleoFamiliar',
+        'fincas',
+        'fincas.geografia',
+        'fincas.propietario',              // ✅ Agregar
+        'fincas.propietario.persona',      // ✅ Agregar
+        'solicitud',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -78,7 +88,15 @@ export class AssociateService {
   async findInactive() {
     return this.associateRepository.find({
       where: { estado: false },
-      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
+      relations: [
+        'persona',
+        'nucleoFamiliar',
+        'fincas',
+        'fincas.geografia',
+        'fincas.propietario',              // ✅ Agregar
+        'fincas.propietario.persona',      // ✅ Agregar
+        'solicitud',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -86,35 +104,45 @@ export class AssociateService {
   async findOne(id: number): Promise<Associate> {
     const associate = await this.associateRepository.findOne({
       where: { idAsociado: id },
-      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
+      relations: [
+        'persona',
+        'nucleoFamiliar',
+        'fincas',
+        'fincas.geografia',
+        'fincas.propietario',              // ✅ Agregar
+        'fincas.propietario.persona',      // ✅ Agregar
+        'solicitud',
+      ],
     });
-
+  
     if (!associate) {
       throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
     }
-
+  
     return associate;
   }
 
-  async findByCedula(cedula: string): Promise<Associate> {
-    const associate = await this.associateRepository
-      .createQueryBuilder('associate')
-      .leftJoinAndSelect('associate.persona', 'persona')
-      .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
-      .leftJoinAndSelect('associate.fincas', 'fincas')
-      .leftJoinAndSelect('fincas.geografia', 'geografia')
-      .leftJoinAndSelect('associate.solicitud', 'solicitud')
-      .where('persona.cedula = :cedula', { cedula })
-      .getOne();
+ async findByCedula(cedula: string): Promise<Associate> {
+  const associate = await this.associateRepository
+    .createQueryBuilder('associate')
+    .leftJoinAndSelect('associate.persona', 'persona')
+    .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
+    .leftJoinAndSelect('associate.fincas', 'fincas')
+    .leftJoinAndSelect('fincas.geografia', 'geografia')
+    .leftJoinAndSelect('fincas.propietario', 'propietario')              // ✅ Agregar
+    .leftJoinAndSelect('propietario.persona', 'propietarioPersona')      // ✅ Agregar
+    .leftJoinAndSelect('associate.solicitud', 'solicitud')
+    .where('persona.cedula = :cedula', { cedula })
+    .getOne();
 
-    if (!associate) {
-      throw new NotFoundException(
-        `Asociado con cédula ${cedula} no encontrado`,
-      );
-    }
-
-    return associate;
+  if (!associate) {
+    throw new NotFoundException(
+      `Asociado con cédula ${cedula} no encontrado`,
+    );
   }
+
+  return associate;
+}
 
   async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
     const associate = await this.findOne(id);
