@@ -20,6 +20,11 @@ import { Acceso } from 'src/formFinca/acceso/entities/acceso.entity';
 import { MetodoRiego } from 'src/formFinca/metodo-riego/entities/metodo-riego.entity';
 import { Necesidades } from 'src/formFinca/necesidades/entities/necesidades.entity';
 import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/corriente.entity';
+import { FincaInfraestructura } from 'src/formFinca/finca-infraestructura/entities/fincaInfraestructura.entity';
+import { FincaTipoCerca } from 'src/formFinca/finca-tipo-cerca/entities/finca-tipo-cerca.entity';
+import { CanalComercializacion } from 'src/formFinca/canal-comercializacion/entities/canal.entity';
+import { FuenteAgua } from 'src/formFinca/fuente-agua/entities/fuente-agua.entity';
+import { ActividadAgropecuaria } from 'src/formFinca/actividad-agropecuaria/entities/actividad.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -90,17 +95,26 @@ export class Finca {
   @OneToMany(() => MetodoRiego, (metodoRiego) => metodoRiego.finca)
   metodosRiego?: MetodoRiego[];
 
-  // --- Corriente eléctrica (catálogo) ---
-@Column({ name: 'idCorriente', type: 'int', nullable: true })
-idCorriente?: number;
+  @Column({ name: 'idCorriente', type: 'int', nullable: true })
+  idCorriente?: number;
 
-@ManyToOne(() => CorrienteElectrica, (c) => c.fincas, {
-  nullable: true,
-  eager: true, // si quieres que venga cargado automáticamente al hacer GET de la finca
-})
-@JoinColumn({
-  name: 'idCorriente',                       // FK en Finca
-  referencedColumnName: 'idCorrienteElectrica', // PK en CorrienteElectrica
-})
-corriente?: CorrienteElectrica;
+  @ManyToOne(() => CorrienteElectrica, (c) => c.fincas, { nullable: true, eager: true })
+  @JoinColumn({ name: 'idCorriente', referencedColumnName: 'idCorrienteElectrica' })
+  corriente?: CorrienteElectrica;
+
+  @OneToMany(() => FincaInfraestructura, (fi) => fi.finca)
+  fincaInfraestructuras?: FincaInfraestructura[];
+
+  @OneToMany(() => FincaTipoCerca, (ftc) => ftc.finca)
+  fincaTiposCerca?: FincaTipoCerca[];
+
+  @OneToMany(() => CanalComercializacion, (c) => c.finca)
+  canalesComercializacion?: CanalComercializacion[];
+
+  @OneToMany(() => FuenteAgua, (fa) => fa.finca)
+  fuentesAgua?: FuenteAgua[];
+
+  @OneToMany(() => ActividadAgropecuaria, (a) => a.finca)
+  actividadesAgropecuarias?: ActividadAgropecuaria[];
+
 }

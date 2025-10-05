@@ -64,6 +64,13 @@ export class FincaService {
       'fincasEquipos.equipo',
       'accesos',
       'metodosRiego',
+      'fincaInfraestructuras',
+      'fincaInfraestructuras.infraestructura',
+      'fincaTiposCerca',
+      'fincaTiposCerca.tipoCerca',
+      'canalesComercializacion',
+      'fuentesAgua',
+      'actividadesAgropecuarias',
     ],
     });
     if (!finca) throw new NotFoundException('Finca not found');
