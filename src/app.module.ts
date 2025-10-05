@@ -58,6 +58,7 @@ import { TiposCercaModule } from './formFinca/tipo-cerca/tipo-cerca.module';
 import { FincaTipoCercaModule } from './formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
 import { CanalesComercializacionModule } from './formFinca/canal-comercializacion/canal.module';
 import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
+import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
 //import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
 
 
@@ -142,6 +143,7 @@ import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
     CanalesComercializacionModule,
     //CorrienteElectricaModule,
     FuentesAguaModule,
+    ActividadesAgropecuariasModule,
   ],
   controllers: [AppController],
   providers: [
