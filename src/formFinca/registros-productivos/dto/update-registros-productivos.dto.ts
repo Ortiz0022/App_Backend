@@ -1,16 +1,11 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsPositive } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class UpdateRegistrosProductivosDto {
-  @IsNotEmpty({ message: 'El campo reproductivos es obligatorio' })
+  @IsOptional()
   @IsBoolean({ message: 'reproductivos debe ser un valor booleano' })
-  reproductivos: boolean;
+  reproductivos?: boolean;
 
-  @IsNotEmpty({ message: 'El campo costosProductivos es obligatorio' })
+  @IsOptional()
   @IsBoolean({ message: 'costosProductivos debe ser un valor booleano' })
-  costosProductivos: boolean;
-
-  @IsNotEmpty({ message: 'El ID de la finca es obligatorio' })
-  @IsInt({ message: 'El ID de la finca debe ser un entero' })
-  @IsPositive({ message: 'El ID de la finca debe ser positivo' })
-  idFinca: number;
+  costosProductivos?: boolean;
 }

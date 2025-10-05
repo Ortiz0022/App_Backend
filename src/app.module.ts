@@ -52,6 +52,15 @@ import { PropietarioModule } from './formAssociates/propietario/propietario.modu
 import { NucleoFamiliarModule } from './formAssociates/nucleo-familiar/nucleo-familiar.module';
 import { RegistrosProductivosModule } from './formFinca/registros-productivos/registros-productivos.module';
 import { GeografiaModule } from './formFinca/geografia/geografia.module';
+import { HatoModule } from './formFinca/hato/hato.module';
+import { AnimalModule } from './formFinca/animal/animal.module';
+import { FincaFuenteEnergiaModule } from './formFinca/finca-fuente-energia/finca-fuente-energia.module';
+import { FuenteEnergiaModule } from './formFinca/FuenteEnergia/fuente-energia.module';
+import { EquipoModule } from './formFinca/equipo/equipo.module';
+import { FincaEquipoModule } from './formFinca/finca-equipo/finca-equipo.module';
+import { AccesoModule } from './formFinca/acceso/acceso.module';
+import { MetodoRiegoModule } from './formFinca/metodo-riego/metodo-riego.module';
+import { NecesidadesModule } from './formFinca/necesidades/necesidades.module';
 
 
 
@@ -128,6 +137,15 @@ import { GeografiaModule } from './formFinca/geografia/geografia.module';
     NucleoFamiliarModule,
     RegistrosProductivosModule,
     GeografiaModule,
+    HatoModule,
+    AnimalModule,
+    FuenteEnergiaModule,
+    FincaFuenteEnergiaModule,
+    EquipoModule,
+    FincaEquipoModule,
+    AccesoModule,
+    MetodoRiegoModule,
+    NecesidadesModule,
   ],
   controllers: [AppController],
   providers: [

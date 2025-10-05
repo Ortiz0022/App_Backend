@@ -4,8 +4,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
@@ -25,10 +23,4 @@ export class RegistrosProductivos {
   @OneToOne(() => Finca, (finca) => finca.registrosProductivos)
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }
