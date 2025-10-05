@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpdateFincaDto {
   @IsOptional()
@@ -15,4 +15,9 @@ export class UpdateFincaDto {
   @IsString()
   @MaxLength(50)
   numeroPlano?: string;
+
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  idCorriente?: number;
 }
