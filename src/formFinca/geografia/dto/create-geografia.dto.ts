@@ -19,5 +19,5 @@ export class CreateGeografiaDto {
   @IsNotEmpty({ message: 'El caserío es obligatorio' })
   @IsString({ message: 'El caserío debe ser un texto' })
   @MaxLength(100, { message: 'El caserío no puede exceder 100 caracteres' })
-  caserio: string;
+  caserio?: string;
 }

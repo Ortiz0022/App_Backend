@@ -14,6 +14,7 @@ import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DataSource } from 'typeorm';
+import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';
 
 @Injectable()
 export class SolicitudService {
@@ -30,37 +31,36 @@ export class SolicitudService {
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
-    // Usar transacción
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-
+  
     try {
-      // 1. Validar duplicados
+      // 1. Validar duplicados de persona
       const existingByCedula = await queryRunner.manager.findOne(Persona, {
         where: { cedula: createDto.persona.cedula },
       });
-
+  
       if (existingByCedula) {
         throw new ConflictException(
           `Ya existe una persona con la cédula ${createDto.persona.cedula}`,
         );
       }
-
+  
       const existingByEmail = await queryRunner.manager.findOne(Persona, {
         where: { email: createDto.persona.email },
       });
-
+  
       if (existingByEmail) {
         throw new ConflictException(
           `Ya existe una persona con el email ${createDto.persona.email}`,
         );
       }
-
+  
       // 2. Crear Persona
       const persona = queryRunner.manager.create(Persona, createDto.persona);
       await queryRunner.manager.save(persona);
-
+  
       // 3. Crear Asociado
       const asociado = queryRunner.manager.create(Associate, {
         persona,
@@ -70,18 +70,38 @@ export class SolicitudService {
         estado: false,
       });
       await queryRunner.manager.save(asociado);
-
-      // 4. ✅ Crear Finca
+  
+      // 4. ✅ Buscar o crear Geografia
+      let geografia = await queryRunner.manager.findOne(Geografia, {
+        where: {
+          provincia: createDto.datosFinca.geografia.provincia,
+          canton: createDto.datosFinca.geografia.canton,
+          distrito: createDto.datosFinca.geografia.distrito,
+        },
+      });
+  
+      // Si no existe, crearla
+      if (!geografia) {
+        geografia = queryRunner.manager.create(Geografia, {
+          provincia: createDto.datosFinca.geografia.provincia,
+          canton: createDto.datosFinca.geografia.canton,
+          distrito: createDto.datosFinca.geografia.distrito,
+          caserio: createDto.datosFinca.geografia.caserio,
+        });
+        await queryRunner.manager.save(geografia);
+      }
+  
+      // 5. Crear Finca con geografia
       const finca = queryRunner.manager.create(Finca, {
         nombre: createDto.datosFinca.nombre,
         areaHa: createDto.datosFinca.areaHa,
         numeroPlano: createDto.datosFinca.numeroPlano,
         idAsociado: asociado.idAsociado,
-        asociado: asociado,
+        idGeografia: geografia.idGeografia,
       });
       await queryRunner.manager.save(finca);
-
-      // 5. Crear Solicitud
+  
+      // 6. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona,
         asociado,
@@ -89,11 +109,8 @@ export class SolicitudService {
         estado: SolicitudStatus.PENDIENTE,
       });
       await queryRunner.manager.save(solicitud);
-
-      // Commit
+  
       await queryRunner.commitTransaction();
-
-      // Retornar con relaciones
       return this.findOne(solicitud.idSolicitud);
     } catch (error) {
       await queryRunner.rollbackTransaction();
