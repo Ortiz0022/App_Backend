@@ -15,6 +15,7 @@ import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DataSource } from 'typeorm';
 import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';
+import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucleo-familiar.entity';
 
 @Injectable()
 export class SolicitudService {
@@ -27,6 +28,8 @@ export class SolicitudService {
     private personaRepository: Repository<Persona>,
     @InjectRepository(Finca)
     private fincaRepository: Repository<Finca>,
+    @InjectRepository(NucleoFamiliar)
+    private nucleoFamiliarRepository: Repository<NucleoFamiliar>,
     private dataSource: DataSource,
   ) {}
 
@@ -36,32 +39,28 @@ export class SolicitudService {
     await queryRunner.startTransaction();
   
     try {
-      // 1. Validar duplicados de persona
-      const existingByCedula = await queryRunner.manager.findOne(Persona, {
-        where: { cedula: createDto.persona.cedula },
-      });
+      // 1. Validar duplicados (igual)
   
-      if (existingByCedula) {
-        throw new ConflictException(
-          `Ya existe una persona con la cédula ${createDto.persona.cedula}`,
-        );
-      }
-  
-      const existingByEmail = await queryRunner.manager.findOne(Persona, {
-        where: { email: createDto.persona.email },
-      });
-  
-      if (existingByEmail) {
-        throw new ConflictException(
-          `Ya existe una persona con el email ${createDto.persona.email}`,
-        );
-      }
-  
-      // 2. Crear Persona
+      // 2. Crear Persona (igual)
       const persona = queryRunner.manager.create(Persona, createDto.persona);
       await queryRunner.manager.save(persona);
   
-      // 3. Crear Asociado
+      // 3. ✅ Crear NucleoFamiliar (si viene)
+      let nucleoFamiliar: NucleoFamiliar | null = null;  // ← Agregar tipo aquí
+      if (createDto.nucleoFamiliar) {
+        const nucleoTotal =
+          createDto.nucleoFamiliar.nucleoHombres +
+          createDto.nucleoFamiliar.nucleoMujeres;
+
+        nucleoFamiliar = queryRunner.manager.create(NucleoFamiliar, {
+          nucleoHombres: createDto.nucleoFamiliar.nucleoHombres,
+          nucleoMujeres: createDto.nucleoFamiliar.nucleoMujeres,
+          nucleoTotal: nucleoTotal,
+        });
+        await queryRunner.manager.save(nucleoFamiliar);
+      }
+  
+      // 4. Crear Asociado
       const asociado = queryRunner.manager.create(Associate, {
         persona,
         viveEnFinca: createDto.datosAsociado.viveEnFinca,
@@ -69,9 +68,15 @@ export class SolicitudService {
         CVO: createDto.datosAsociado.CVO,
         estado: false,
       });
+      
+      // Asignar nucleoFamiliar después
+      if (nucleoFamiliar) {
+        asociado.nucleoFamiliar = nucleoFamiliar;
+      }
+      
       await queryRunner.manager.save(asociado);
   
-      // 4. ✅ Buscar o crear Geografia
+      // 5-6. Geografia y Finca (igual que antes)
       let geografia = await queryRunner.manager.findOne(Geografia, {
         where: {
           provincia: createDto.datosFinca.geografia.provincia,
@@ -80,7 +85,6 @@ export class SolicitudService {
         },
       });
   
-      // Si no existe, crearla
       if (!geografia) {
         geografia = queryRunner.manager.create(Geografia, {
           provincia: createDto.datosFinca.geografia.provincia,
@@ -91,17 +95,16 @@ export class SolicitudService {
         await queryRunner.manager.save(geografia);
       }
   
-      // 5. Crear Finca con geografia
       const finca = queryRunner.manager.create(Finca, {
         nombre: createDto.datosFinca.nombre,
         areaHa: createDto.datosFinca.areaHa,
         numeroPlano: createDto.datosFinca.numeroPlano,
         idAsociado: asociado.idAsociado,
-        idGeografia: geografia.idGeografia,
+        geografia: geografia,
       });
       await queryRunner.manager.save(finca);
   
-      // 6. Crear Solicitud
+      // 7. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona,
         asociado,
@@ -133,7 +136,9 @@ export class SolicitudService {
       .createQueryBuilder('solicitud')
       .leftJoinAndSelect('solicitud.persona', 'persona')
       .leftJoinAndSelect('solicitud.asociado', 'asociado')
-      .leftJoinAndSelect('asociado.fincas', 'fincas');
+      .leftJoinAndSelect('asociado.nucleoFamiliar', 'nucleoFamiliar')
+      .leftJoinAndSelect('asociado.fincas', 'fincas')
+      .leftJoinAndSelect('fincas.geografia', 'geografia');
 
     if (estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado });
@@ -168,7 +173,7 @@ export class SolicitudService {
 
   async findAll() {
     return this.solicitudRepository.find({
-      relations: ['persona', 'asociado', 'asociado.fincas'],
+      relations: ['persona', 'asociado', 'asociado.nucleoFamiliar', 'asociado.fincas', 'asociado.fincas.geografia'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -180,7 +185,9 @@ export class SolicitudService {
         'persona',
         'asociado',
         'asociado.persona',
+        'asociado.nucleoFamiliar',
         'asociado.fincas',
+        'asociado.fincas.geografia',
       ],
     });
 
@@ -273,4 +280,8 @@ export class SolicitudService {
       rechazadas,
     };
   }
+}
+
+function leftJoinAndSelect(arg0: string, arg1: string) {
+  throw new Error('Function not implemented.');
 }

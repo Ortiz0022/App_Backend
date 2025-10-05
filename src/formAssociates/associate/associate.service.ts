@@ -26,7 +26,9 @@ export class AssociateService {
     const queryBuilder = this.associateRepository
       .createQueryBuilder('associate')
       .leftJoinAndSelect('associate.persona', 'persona')
+      .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
       .leftJoinAndSelect('associate.fincas', 'fincas')
+      .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('associate.solicitud', 'solicitud');
   
     // ✅ Filtrar SOLO por asociados activos (estado = true)
@@ -67,7 +69,7 @@ export class AssociateService {
   async findActive() {
     return this.associateRepository.find({
       where: { estado: true },
-      relations: ['persona', 'fincas', 'solicitud'],
+      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -76,7 +78,7 @@ export class AssociateService {
   async findInactive() {
     return this.associateRepository.find({
       where: { estado: false },
-      relations: ['persona', 'fincas', 'solicitud'],
+      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -84,7 +86,7 @@ export class AssociateService {
   async findOne(id: number): Promise<Associate> {
     const associate = await this.associateRepository.findOne({
       where: { idAsociado: id },
-      relations: ['persona', 'fincas', 'solicitud'],
+      relations: ['persona','nucleoFamiliar', 'fincas',  'fincas.geografia', 'solicitud'],
     });
 
     if (!associate) {
@@ -98,7 +100,9 @@ export class AssociateService {
     const associate = await this.associateRepository
       .createQueryBuilder('associate')
       .leftJoinAndSelect('associate.persona', 'persona')
+      .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
       .leftJoinAndSelect('associate.fincas', 'fincas')
+      .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('associate.solicitud', 'solicitud')
       .where('persona.cedula = :cedula', { cedula })
       .getOne();

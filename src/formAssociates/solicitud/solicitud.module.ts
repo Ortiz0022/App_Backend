@@ -6,7 +6,8 @@ import { Solicitud } from './entities/solicitud.entity';
 import { Associate } from 'src/formAssociates/associate/entities/associate.entity';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
-import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';  // ✅ Agregar
+import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';  
+import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucleo-familiar.entity';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';  
       Persona,
       Finca,
       Geografia, 
+      NucleoFamiliar,
     ]),
   ],
   controllers: [SolicitudController],
