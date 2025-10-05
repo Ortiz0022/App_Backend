@@ -61,6 +61,14 @@ import { FincaEquipoModule } from './formFinca/finca-equipo/finca-equipo.module'
 import { AccesoModule } from './formFinca/acceso/acceso.module';
 import { MetodoRiegoModule } from './formFinca/metodo-riego/metodo-riego.module';
 import { NecesidadesModule } from './formFinca/necesidades/necesidades.module';
+import { InfraestructurasModule } from './formFinca/infraestructura/infraestructura.module';
+import { FincaInfraestructurasModule } from './formFinca/finca-infraestructura/fincaInfraestructura.module';
+import { TiposCercaModule } from './formFinca/tipo-cerca/tipo-cerca.module';
+import { FincaTipoCercaModule } from './formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
+import { CanalesComercializacionModule } from './formFinca/canal-comercializacion/canal.module';
+import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
+import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
+import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
 
 
 
@@ -147,6 +155,15 @@ import { NecesidadesModule } from './formFinca/necesidades/necesidades.module';
     AccesoModule,
     MetodoRiegoModule,
     NecesidadesModule,
+    InfraestructurasModule,
+    FincaInfraestructurasModule,
+    TiposCercaModule,
+    FincaTipoCercaModule,
+    CanalesComercializacionModule,
+    CorrienteElectricaModule,
+    FuentesAguaModule,
+    ActividadesAgropecuariasModule,
+
   ],
   controllers: [AppController],
   providers: [

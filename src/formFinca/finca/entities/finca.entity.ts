@@ -19,6 +19,7 @@ import { FincaEquipo } from 'src/formFinca/finca-equipo/entities/finca-equipo.en
 import { Acceso } from 'src/formFinca/acceso/entities/acceso.entity';
 import { MetodoRiego } from 'src/formFinca/metodo-riego/entities/metodo-riego.entity';
 import { Necesidades } from 'src/formFinca/necesidades/entities/necesidades.entity';
+import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/corriente.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -88,4 +89,18 @@ export class Finca {
 
   @OneToMany(() => MetodoRiego, (metodoRiego) => metodoRiego.finca)
   metodosRiego?: MetodoRiego[];
+
+  // --- Corriente eléctrica (catálogo) ---
+@Column({ name: 'idCorriente', type: 'int', nullable: true })
+idCorriente?: number;
+
+@ManyToOne(() => CorrienteElectrica, (c) => c.fincas, {
+  nullable: true,
+  eager: true, // si quieres que venga cargado automáticamente al hacer GET de la finca
+})
+@JoinColumn({
+  name: 'idCorriente',                       // FK en Finca
+  referencedColumnName: 'idCorrienteElectrica', // PK en CorrienteElectrica
+})
+corriente?: CorrienteElectrica;
 }
