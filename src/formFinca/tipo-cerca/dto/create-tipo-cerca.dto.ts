@@ -1,8 +1,12 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsBoolean } from 'class-validator';
 
 export class CreateTipoCercaDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  nombre: string;
+  @IsBoolean()
+  viva: boolean;
+
+  @IsBoolean()
+  electrica: boolean;
+
+  @IsBoolean()
+  pMuerto: boolean; // "palo muerto"
 }

@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
-
 import { CreateTipoCercaDto } from './dto/create-tipo-cerca.dto';
 import { UpdateTipoCercaDto } from './dto/update-tipo-cerca.dto';
 import { TiposCercaService } from './tipo-cerca.service';

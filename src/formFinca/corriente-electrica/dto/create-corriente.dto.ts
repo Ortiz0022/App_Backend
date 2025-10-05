@@ -1,7 +1,9 @@
-// import { IsEnum } from 'class-validator';
-// import { CorrienteNombre } from '../entities/corriente.entity';
+import { IsBoolean } from 'class-validator';
 
-// export class CreateCorrienteDto {
-//   @IsEnum(CorrienteNombre)
-//   nombre: CorrienteNombre;
-// }
+export class CreateCorrienteDto {
+  @IsBoolean()
+  publica: boolean;
+
+  @IsBoolean()
+  privada: boolean;
+}

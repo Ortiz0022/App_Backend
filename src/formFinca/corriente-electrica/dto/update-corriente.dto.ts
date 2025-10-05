@@ -1,8 +1,11 @@
-// import { IsEnum, IsOptional } from 'class-validator';
-// import { CorrienteNombre } from '../entities/corriente.entity';
+import { IsBoolean, IsOptional } from 'class-validator';
 
-// export class UpdateCorrienteDto {
-//   @IsOptional()
-//   @IsEnum(CorrienteNombre)
-//   nombre?: CorrienteNombre;
-// }
+export class UpdateCorrienteDto {
+  @IsOptional()
+  @IsBoolean()
+  publica?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  privada?: boolean;
+}

@@ -1,8 +1,15 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class UpdateTipoCercaDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  nombre?: string;
+  @IsBoolean()
+  viva?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  electrica?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pMuerto?: boolean;
 }
