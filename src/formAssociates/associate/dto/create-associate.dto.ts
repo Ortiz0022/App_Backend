@@ -33,5 +33,8 @@ import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.
     @IsString()
     @MaxLength(100)
     CVO?: string;
+
+    @IsBoolean()
+    esPropietario: boolean;
   
   }

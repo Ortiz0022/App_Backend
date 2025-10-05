@@ -8,7 +8,7 @@ import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';  
 import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucleo-familiar.entity';
-
+import { Propietario } from 'src/formAssociates/propietario/entities/propietario.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -18,6 +18,7 @@ import { NucleoFamiliar } from 'src/formAssociates/nucleo-familiar/entities/nucl
       Finca,
       Geografia, 
       NucleoFamiliar,
+      Propietario,
     ]),
   ],
   controllers: [SolicitudController],

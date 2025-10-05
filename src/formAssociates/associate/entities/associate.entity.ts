@@ -38,6 +38,9 @@ export class Associate {
   @Column({ type: 'varchar', length: 100, nullable: true })
   CVO?: string;
 
+  @Column({ type: 'boolean', default: false })
+  esPropietario: boolean;
+
   // Estado del asociado
   // true = ACTIVO (solicitud aprobada y asociado puede operar)
   // false = INACTIVO (solicitud pendiente/rechazada o asociado desactivado manualmente)
@@ -58,13 +61,10 @@ export class Associate {
   @OneToOne(() => Solicitud, (solicitud) => solicitud.asociado)
   solicitud: Solicitud;
 
-
   @OneToOne(() => NucleoFamiliar, (nucleoFamiliar) => nucleoFamiliar.asociado)
     nucleoFamiliar?: NucleoFamiliar;
 
 
   @OneToMany(() => Necesidades, (necesidades) => necesidades.asociado)
   necesidades: Necesidades[];
-
-
 }

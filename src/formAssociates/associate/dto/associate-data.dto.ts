@@ -17,4 +17,7 @@ export class DatosAsociadoDto {
   @IsString()
   @MaxLength(100)
   CVO?: string;
+
+  @IsBoolean()
+  esPropietario: boolean;
 }
