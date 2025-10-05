@@ -12,6 +12,8 @@ import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class SolicitudService {
@@ -22,50 +24,83 @@ export class SolicitudService {
     private associateRepository: Repository<Associate>,
     @InjectRepository(Persona)
     private personaRepository: Repository<Persona>,
+    @InjectRepository(Finca)
+    private fincaRepository: Repository<Finca>,
+    private dataSource: DataSource,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
-    const existingByCedula = await this.personaRepository.findOne({
-      where: { cedula: createDto.persona.cedula },
-    });
+    // Usar transacción
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (existingByCedula) {
-      throw new ConflictException(
-        `Ya existe una persona con la cédula ${createDto.persona.cedula}`,
-      );
+    try {
+      // 1. Validar duplicados
+      const existingByCedula = await queryRunner.manager.findOne(Persona, {
+        where: { cedula: createDto.persona.cedula },
+      });
+
+      if (existingByCedula) {
+        throw new ConflictException(
+          `Ya existe una persona con la cédula ${createDto.persona.cedula}`,
+        );
+      }
+
+      const existingByEmail = await queryRunner.manager.findOne(Persona, {
+        where: { email: createDto.persona.email },
+      });
+
+      if (existingByEmail) {
+        throw new ConflictException(
+          `Ya existe una persona con el email ${createDto.persona.email}`,
+        );
+      }
+
+      // 2. Crear Persona
+      const persona = queryRunner.manager.create(Persona, createDto.persona);
+      await queryRunner.manager.save(persona);
+
+      // 3. Crear Asociado
+      const asociado = queryRunner.manager.create(Associate, {
+        persona,
+        viveEnFinca: createDto.datosAsociado.viveEnFinca,
+        marcaGanado: createDto.datosAsociado.marcaGanado,
+        CVO: createDto.datosAsociado.CVO,
+        estado: false,
+      });
+      await queryRunner.manager.save(asociado);
+
+      // 4. ✅ Crear Finca
+      const finca = queryRunner.manager.create(Finca, {
+        nombre: createDto.datosFinca.nombre,
+        areaHa: createDto.datosFinca.areaHa,
+        numeroPlano: createDto.datosFinca.numeroPlano,
+        idAsociado: asociado.idAsociado,
+        asociado: asociado,
+      });
+      await queryRunner.manager.save(finca);
+
+      // 5. Crear Solicitud
+      const solicitud = queryRunner.manager.create(Solicitud, {
+        persona,
+        asociado,
+        fechaSolicitud: new Date(),
+        estado: SolicitudStatus.PENDIENTE,
+      });
+      await queryRunner.manager.save(solicitud);
+
+      // Commit
+      await queryRunner.commitTransaction();
+
+      // Retornar con relaciones
+      return this.findOne(solicitud.idSolicitud);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const existingByEmail = await this.personaRepository.findOne({
-      where: { email: createDto.persona.email },
-    });
-
-    if (existingByEmail) {
-      throw new ConflictException(
-        `Ya existe una persona con el email ${createDto.persona.email}`,
-      );
-    }
-
-    const persona = this.personaRepository.create(createDto.persona);
-    await this.personaRepository.save(persona);
-
-    const asociado = this.associateRepository.create({
-      persona,
-      distanciaFinca: createDto.datosAsociado.distanciaFinca,
-      viveEnFinca: createDto.datosAsociado.viveEnFinca,
-      marcaGanado: createDto.datosAsociado.marcaGanado,
-      CVO: createDto.datosAsociado.CVO,
-      estado: false,
-    });
-    await this.associateRepository.save(asociado);
-
-    const solicitud = this.solicitudRepository.create({
-      persona,
-      asociado,
-      fechaSolicitud: new Date(),
-      estado: SolicitudStatus.PENDIENTE,
-    });
-
-    return this.solicitudRepository.save(solicitud);
   }
 
   async findAllPaginated(params: {
@@ -124,7 +159,12 @@ export class SolicitudService {
   async findOne(id: number): Promise<Solicitud> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitud: id },
-      relations: ['persona', 'asociado', 'asociado.fincas'],
+      relations: [
+        'persona',
+        'asociado',
+        'asociado.persona',
+        'asociado.fincas',
+      ],
     });
 
     if (!solicitud) {

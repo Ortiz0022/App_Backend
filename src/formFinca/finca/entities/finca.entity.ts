@@ -25,7 +25,6 @@ export class Finca {
   @PrimaryGeneratedColumn()
   idFinca: number;
 
-  // Relación Many-to-One con Associate
   @ManyToOne(() => Associate, { eager: false, nullable: false })
   @JoinColumn({ name: 'idAsociado' })
   asociado: Associate;
@@ -33,12 +32,11 @@ export class Finca {
   @Column({ type: 'int' })
   idAsociado: number;
 
-  // Datos de la finca
   @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  areaHa: number; // Área en hectáreas
+  areaHa: number;
 
   @Column({ type: 'varchar', length: 50 })
   numeroPlano: string;
@@ -49,29 +47,30 @@ export class Finca {
   @UpdateDateColumn()
   updatedAt: Date;
 
-
-  @ManyToOne(() => Propietario, (propietario) => propietario.fincas)
+  @ManyToOne(() => Propietario, (propietario) => propietario.fincas, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'idPropietario' })
-  propietario: Propietario;
-
+  propietario?: Propietario;
 
   @OneToOne(
     () => RegistrosProductivos,
     (registrosProductivos) => registrosProductivos.finca,
-    { eager: true }, // Carga automática
+    { nullable: true },
   )
   registrosProductivos?: RegistrosProductivos;
 
-
   @ManyToOne(() => Geografia, (geografia) => geografia.fincas, {
-    eager: true, // Carga automática
+    nullable: true,
   })
   @JoinColumn({ name: 'idGeografia' })
-  geografia: Geografia;
+  geografia?: Geografia;
 
+  @Column({ type: 'int', nullable: true })
+  idGeografia?: number;
 
   @OneToOne(() => Hato, (hato) => hato.finca, {
-    eager: true,
+    nullable: true,
   })
   hato?: Hato;
 
@@ -79,16 +78,14 @@ export class Finca {
     () => FincaFuenteEnergia,
     (fincaFuenteEnergia) => fincaFuenteEnergia.finca,
   )
-  fincasFuentesEnergia: FincaFuenteEnergia[];
+  fincasFuentesEnergia?: FincaFuenteEnergia[];
 
   @OneToMany(() => FincaEquipo, (fincaEquipo) => fincaEquipo.finca)
-  fincasEquipos: FincaEquipo[];
+  fincasEquipos?: FincaEquipo[];
 
   @OneToMany(() => Acceso, (acceso) => acceso.finca)
-  accesos: Acceso[];
+  accesos?: Acceso[];
 
   @OneToMany(() => MetodoRiego, (metodoRiego) => metodoRiego.finca)
-  metodosRiego: MetodoRiego[];
-
-
+  metodosRiego?: MetodoRiego[];
 }
