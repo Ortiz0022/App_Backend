@@ -56,6 +56,7 @@ import { InfraestructurasModule } from './formFinca/infraestructura/infraestruct
 import { FincaInfraestructurasModule } from './formFinca/finca-infraestructura/fincaInfraestructura.module';
 import { TiposCercaModule } from './formFinca/tipo-cerca/tipo-cerca.module';
 import { FincaTipoCercaModule } from './formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
+import { CanalesComercializacionModule } from './formFinca/canal-comercializacion/canal.module';
 
 
 
@@ -136,6 +137,7 @@ import { FincaTipoCercaModule } from './formFinca/finca-tipo-cerca/finca-tipo-ce
     FincaInfraestructurasModule,
     TiposCercaModule,
     FincaTipoCercaModule,
+    CanalesComercializacionModule,
   ],
   controllers: [AppController],
   providers: [
