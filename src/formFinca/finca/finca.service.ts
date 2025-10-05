@@ -56,7 +56,15 @@ export class FincaService {
       'propietario',
       'propietario.persona',
       'geografia',
-      'registrosProductivos,'],
+      'registrosProductivos',
+      'hato',
+      'fincasFuentesEnergia',
+      'fincasFuentesEnergia.fuenteEnergia',
+      'fincasEquipos.equipo',
+      'fincasEquipos.equipo',
+      'accesos',
+      'metodosRiego',
+    ],
     });
     if (!finca) throw new NotFoundException('Finca not found');
     return finca;

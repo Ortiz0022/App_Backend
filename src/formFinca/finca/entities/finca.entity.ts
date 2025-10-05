@@ -7,11 +7,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
 } from 'typeorm';
 import { Associate } from '../../../formAssociates/associate/entities/associate.entity';
 import { Propietario } from 'src/formAssociates/propietario/entities/propietario.entity';
 import { RegistrosProductivos } from 'src/formFinca/registros-productivos/entities/registros-productivos.entity';
 import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';
+import { Hato } from 'src/formFinca/hato/entities/hato.entity';
+import { FincaFuenteEnergia } from 'src/formFinca/finca-fuente-energia/entities/finca-fuente-energia.entity';
+import { FincaEquipo } from 'src/formFinca/finca-equipo/entities/finca-equipo.entity';
+import { Acceso } from 'src/formFinca/acceso/entities/acceso.entity';
+import { MetodoRiego } from 'src/formFinca/metodo-riego/entities/metodo-riego.entity';
+import { Necesidades } from 'src/formFinca/necesidades/entities/necesidades.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -62,6 +69,26 @@ export class Finca {
   @JoinColumn({ name: 'idGeografia' })
   geografia: Geografia;
 
+
+  @OneToOne(() => Hato, (hato) => hato.finca, {
+    eager: true,
+  })
+  hato?: Hato;
+
+  @OneToMany(
+    () => FincaFuenteEnergia,
+    (fincaFuenteEnergia) => fincaFuenteEnergia.finca,
+  )
+  fincasFuentesEnergia: FincaFuenteEnergia[];
+
+  @OneToMany(() => FincaEquipo, (fincaEquipo) => fincaEquipo.finca)
+  fincasEquipos: FincaEquipo[];
+
+  @OneToMany(() => Acceso, (acceso) => acceso.finca)
+  accesos: Acceso[];
+
+  @OneToMany(() => MetodoRiego, (metodoRiego) => metodoRiego.finca)
+  metodosRiego: MetodoRiego[];
 
 
 }

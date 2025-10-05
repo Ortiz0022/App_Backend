@@ -10,6 +10,7 @@ import { CreateRegistrosProductivosDto } from './dto/create-registros-productivo
 import { UpdateRegistrosProductivosDto } from './dto/update-registros-productivos.dto';
 import { Finca } from '../finca/entities/finca.entity';
 
+
 @Injectable()
 export class RegistrosProductivosService {
   constructor(
@@ -24,7 +25,6 @@ export class RegistrosProductivosService {
   ): Promise<RegistrosProductivos> {
     const { idFinca, reproductivos, costosProductivos } = createDto;
 
-    // Verificar que la finca existe
     const finca = await this.fincaRepository.findOne({
       where: { idFinca },
       relations: ['registrosProductivos'],
@@ -34,14 +34,12 @@ export class RegistrosProductivosService {
       throw new NotFoundException(`Finca con ID ${idFinca} no encontrada`);
     }
 
-    // Verificar que la finca no tenga ya registros productivos
     if (finca.registrosProductivos) {
       throw new ConflictException(
         'Esta finca ya tiene registros productivos asociados',
       );
     }
 
-    // Crear los registros productivos
     const registrosProductivos = this.registrosProductivosRepository.create({
       reproductivos,
       costosProductivos,
@@ -54,9 +52,6 @@ export class RegistrosProductivosService {
   async findAll(): Promise<RegistrosProductivos[]> {
     return await this.registrosProductivosRepository.find({
       relations: ['finca'],
-      order: {
-        createdAt: 'DESC',
-      },
     });
   }
 
@@ -98,7 +93,6 @@ export class RegistrosProductivosService {
   ): Promise<RegistrosProductivos> {
     const registrosProductivos = await this.findOne(id);
 
-    // Actualizar campos si se proporcionan
     if (updateDto.reproductivos !== undefined) {
       registrosProductivos.reproductivos = updateDto.reproductivos;
     }
@@ -114,7 +108,6 @@ export class RegistrosProductivosService {
     await this.registrosProductivosRepository.remove(registrosProductivos);
   }
 
-  // Método auxiliar para obtener estadísticas
   async getEstadisticas(): Promise<any> {
     const total = await this.registrosProductivosRepository.count();
     const conReproductivos = await this.registrosProductivosRepository.count({
