@@ -4,13 +4,10 @@ import { SolicitudService } from './solicitud.service';
 import { SolicitudController } from './solicitud.controller';
 import { Solicitud } from './entities/solicitud.entity';
 import { Associate } from 'src/formAssociates/associate/entities/associate.entity';
-import { PersonaModule } from 'src/formAssociates/persona/persona.module';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Solicitud, Associate]),
-    PersonaModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Solicitud, Associate, Persona])],
   controllers: [SolicitudController],
   providers: [SolicitudService],
   exports: [SolicitudService],

@@ -8,42 +8,41 @@ import { Repository } from 'typeorm';
 import { Associate } from './entities/associate.entity';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
 import { QueryAssociateDto } from './dto/query-associate.dto';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Injectable()
 export class AssociateService {
   constructor(
     @InjectRepository(Associate)
     private associateRepository: Repository<Associate>,
+    @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>,
   ) {}
 
   // Listar asociados con filtros
   async findAll(query?: QueryAssociateDto) {
     const { estado, search, page = 1, limit = 20, sort } = query || {};
-
+  
     const queryBuilder = this.associateRepository
       .createQueryBuilder('associate')
       .leftJoinAndSelect('associate.persona', 'persona')
       .leftJoinAndSelect('associate.fincas', 'fincas')
       .leftJoinAndSelect('associate.solicitud', 'solicitud');
-
-    // Filtrar por estado (activo/inactivo)
-    if (estado !== undefined) {
-      queryBuilder.andWhere('associate.estado = :estado', { estado });
-    }
-
-    // Búsqueda por nombre, cédula o email
+  
+    // ✅ Filtrar SOLO por asociados activos (estado = true)
+    queryBuilder.andWhere('associate.estado = :estado', { estado: true });
+  
     if (search) {
       queryBuilder.andWhere(
         '(persona.nombre ILIKE :search OR persona.apellido1 ILIKE :search OR persona.apellido2 ILIKE :search OR persona.cedula ILIKE :search OR persona.email ILIKE :search)',
         { search: `%${search}%` },
       );
     }
-
-    // Ordenamiento
+  
     if (sort) {
       const [field, order] = sort.split(':');
       const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-
+  
       if (field.startsWith('persona.')) {
         queryBuilder.orderBy(field, orderDirection);
       } else {
@@ -52,23 +51,18 @@ export class AssociateService {
     } else {
       queryBuilder.orderBy('associate.createdAt', 'DESC');
     }
-
-    // Paginación
+  
     queryBuilder.skip((page - 1) * limit).take(limit);
-
-    const [data, total] = await queryBuilder.getManyAndCount();
-
+  
+    const [items, total] = await queryBuilder.getManyAndCount();
+  
     return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      items,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
     };
   }
-
   // Obtener solo asociados ACTIVOS (por defecto)
   async findActive() {
     return this.associateRepository.find({
@@ -121,9 +115,8 @@ export class AssociateService {
   async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
     const associate = await this.findOne(id);
 
-    // Si se intenta cambiar el estado, validar que sea lógico
+    // Validar si se quiere activar
     if (updateDto.estado !== undefined && updateDto.estado === true) {
-      // Solo se puede activar si la solicitud está aprobada
       if (associate.solicitud?.estado !== 'APROBADO') {
         throw new BadRequestException(
           'No se puede activar un asociado cuya solicitud no está aprobada',
@@ -131,7 +124,36 @@ export class AssociateService {
       }
     }
 
-    Object.assign(associate, updateDto);
+    // Actualizar campos de Asociado
+    if (updateDto.distanciaFinca !== undefined) {
+      associate.distanciaFinca = updateDto.distanciaFinca;
+    }
+    if (updateDto.viveEnFinca !== undefined) {
+      associate.viveEnFinca = updateDto.viveEnFinca;
+    }
+    if (updateDto.marcaGanado !== undefined) {
+      associate.marcaGanado = updateDto.marcaGanado;
+    }
+    if (updateDto.CVO !== undefined) {
+      associate.CVO = updateDto.CVO;
+    }
+    if (updateDto.estado !== undefined) {
+      associate.estado = updateDto.estado;
+    }
+
+    // Actualizar campos de Persona
+    if (updateDto.telefono !== undefined) {
+      associate.persona.telefono = updateDto.telefono;
+      await this.personaRepository.save(associate.persona);
+    }
+    if (updateDto.email !== undefined) {
+      associate.persona.email = updateDto.email;
+      await this.personaRepository.save(associate.persona);
+    }
+    if (updateDto.direccion !== undefined) {
+      associate.persona.direccion = updateDto.direccion;
+      await this.personaRepository.save(associate.persona);
+    }
 
     return this.associateRepository.save(associate);
   }

@@ -1,12 +1,28 @@
 import {
   IsBoolean,
-  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  IsEmail,
+  MinLength,
 } from 'class-validator';
 
 export class UpdateAssociateDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(12)
+  telefono?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  direccion?: string;
+
   @IsOptional()
   @IsString()
   distanciaFinca?: string;
@@ -28,8 +44,4 @@ export class UpdateAssociateDto {
   @IsOptional()
   @IsBoolean()
   estado?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  idNucleoFamiliar?: number;
 }
