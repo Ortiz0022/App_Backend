@@ -69,6 +69,8 @@ import { CanalesComercializacionModule } from './formFinca/canal-comercializacio
 import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
 import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
 import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
+import { DocumentosModule } from './documentos/documentos.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 
 
@@ -163,6 +165,8 @@ import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corrie
     CorrienteElectricaModule,
     FuentesAguaModule,
     ActividadesAgropecuariasModule,
+    CloudinaryModule,
+    DocumentosModule,
 
   ],
   controllers: [AppController],
