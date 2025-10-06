@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Geografia } from './entities/geografia.entity';
 import { CreateGeografiaDto } from './dto/create-geografia.dto';
 import { UpdateGeografiaDto } from './dto/update-geografia.dto';
@@ -38,6 +38,37 @@ export class GeografiaService {
 
     const geografia = this.geografiaRepository.create(createDto);
     return await this.geografiaRepository.save(geografia);
+  }
+
+  async findOrCreateInTransaction(
+    dto: CreateGeografiaDto,
+    manager: EntityManager,
+  ): Promise<Geografia> {
+    // Construir where dinámicamente
+    const where: any = {
+      provincia: dto.provincia,
+      canton: dto.canton,
+      distrito: dto.distrito,
+    };
+  
+    // Solo agregar caserío si tiene valor (evita el problema de string | null)
+    if (dto.caserio) {
+      where.caserio = dto.caserio;
+    }
+  
+    let geografia = await manager.findOne(Geografia, { where });
+  
+    if (!geografia) {
+      geografia = manager.create(Geografia, {
+        provincia: dto.provincia,
+        canton: dto.canton,
+        distrito: dto.distrito,
+        caserio: dto.caserio,
+      });
+      await manager.save(geografia);
+    }
+  
+    return geografia;
   }
 
   async findAll(): Promise<Geografia[]> {

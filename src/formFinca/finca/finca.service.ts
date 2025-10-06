@@ -1,28 +1,51 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, Repository, EntityManager } from 'typeorm';
 import { Finca } from './entities/finca.entity';
-import { CreateFincaDto } from './dto/create-finca.dto';
 import { UpdateFincaDto } from './dto/update-finca.dto';
 import { QueryFincaDto } from './dto/query-finca.dto';
 import { AssociateService } from '../../formAssociates/associate/associate.service';
+import { Geografia } from '../geografia/entities/geografia.entity';
+import { Propietario } from '../../formAssociates/propietario/entities/propietario.entity';
+import { CreateFincaDto } from './dto/create-finca.dto';
+import { DatosFincaDto } from './dto/finca-data.dto';
+import { CreateFincaTransactionDto } from './dto/create-finca-transaction';
 
 @Injectable()
 export class FincaService {
   constructor(
     @InjectRepository(Finca)
     private readonly repo: Repository<Finca>,
-    private readonly associatesService: AssociateService, // Para validar que existe el asociado
+    private readonly associatesService: AssociateService,
   ) {}
 
+  // Método público (con validaciones)
   async create(dto: CreateFincaDto): Promise<Finca> {
-    // Validar que el asociado exista
     await this.associatesService.findOne(dto.idAsociado);
-
     const entity = this.repo.create(dto);
     return this.repo.save(entity);
   }
 
+  createInTransaction(
+    dto: CreateFincaTransactionDto, // ✅ DTO sin geografia
+    data: {
+      idAsociado: number;
+      geografia?: Geografia;
+      propietario?: Propietario;
+    },
+    manager: EntityManager,
+  ): Promise<Finca> {
+    const finca = manager.create(Finca, {
+      nombre: dto.nombre,
+      areaHa: dto.areaHa,
+      numeroPlano: dto.numeroPlano,
+      idAsociado: data.idAsociado,
+      geografia: data.geografia,
+      propietario: data.propietario,
+    });
+  
+    return manager.save(finca);
+  }
   async findAll(query: QueryFincaDto): Promise<Finca[]> {
     const where: any = {};
     if (query.idAsociado) {
@@ -51,34 +74,34 @@ export class FincaService {
   async findOne(id: number): Promise<Finca> {
     const finca = await this.repo.findOne({
       where: { idFinca: id },
-      relations: ['asociado',
-      'asociado.persona',
-      'propietario',
-      'propietario.persona',
-      'geografia',
-      'registrosProductivos',
-      'hato',
-      'fincasFuentesEnergia',
-      'fincasFuentesEnergia.fuenteEnergia',
-      'fincasEquipos.equipo',
-      'fincasEquipos.equipo',
-      'accesos',
-      'metodosRiego',
-      'fincaInfraestructuras',
-      'fincaInfraestructuras.infraestructura',
-      'fincaTiposCerca',
-      'fincaTiposCerca.tipoCerca',
-      'canalesComercializacion',
-      'fuentesAgua',
-      'actividadesAgropecuarias',
-    ],
+      relations: [
+        'asociado',
+        'asociado.persona',
+        'propietario',
+        'propietario.persona',
+        'geografia',
+        'registrosProductivos',
+        'hato',
+        'fincasFuentesEnergia',
+        'fincasFuentesEnergia.fuenteEnergia',
+        'fincasEquipos.equipo',
+        'accesos',
+        'metodosRiego',
+        'fincaInfraestructuras',
+        'fincaInfraestructuras.infraestructura',
+        'fincaTiposCerca',
+        'fincaTiposCerca.tipoCerca',
+        'canalesComercializacion',
+        'fuentesAgua',
+        'actividadesAgropecuarias',
+      ],
     });
     if (!finca) throw new NotFoundException('Finca not found');
     return finca;
   }
 
   async findByAssociate(idAsociado: number): Promise<Finca[]> {
-    await this.associatesService.findOne(idAsociado); // Validar que existe
+    await this.associatesService.findOne(idAsociado);
     return this.repo.find({
       where: { idAsociado },
       order: { nombre: 'ASC' },

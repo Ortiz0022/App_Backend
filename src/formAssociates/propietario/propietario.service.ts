@@ -5,12 +5,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Propietario } from './entities/propietario.entity';
 import { CreatePropietarioDto } from './dto/create-propietario.dto';
 
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { UpdatePropietarioDto } from './dto/update-propietario.dto';
+import { PersonaService } from '../persona/persona.service';
 
 @Injectable()
 export class PropietarioService {
@@ -19,6 +20,7 @@ export class PropietarioService {
     private readonly propietarioRepository: Repository<Propietario>,
     @InjectRepository(Persona)
     private readonly personaRepository: Repository<Persona>,
+    private personaService: PersonaService,
   ) {}
 
   async create(createPropietarioDto: CreatePropietarioDto): Promise<Propietario> {
@@ -58,6 +60,17 @@ export class PropietarioService {
     });
 
     return await this.propietarioRepository.save(nuevoPropietario);
+  }
+
+  createInTransaction(
+    persona: Persona,
+    manager: EntityManager,
+  ): Promise<Propietario> {
+    const propietario = manager.create(Propietario, {
+      persona,
+    });
+  
+    return manager.save(propietario);
   }
 
   async findAll(): Promise<Propietario[]> {

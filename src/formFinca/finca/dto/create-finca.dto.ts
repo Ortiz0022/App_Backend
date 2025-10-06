@@ -18,9 +18,10 @@ export class CreateFincaDto {
   @MaxLength(100)
   nombre: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01, { message: 'El área debe ser mayor a 0' })
-  areaHa: number;
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  areaHa: string; 
 
   @IsString()
   @IsNotEmpty()

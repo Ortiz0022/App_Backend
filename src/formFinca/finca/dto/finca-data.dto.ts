@@ -9,9 +9,9 @@ export class DatosFincaDto {
     @MaxLength(100)
     nombre: string;
   
-    @IsNumber({ maxDecimalPlaces: 2 })
-    @Min(0.01, { message: 'El área debe ser mayor a 0' })
-    areaHa: number;
+    @IsString() 
+    @MaxLength(20)
+    areaHa: string;  
   
     @IsString()
     @MaxLength(50)

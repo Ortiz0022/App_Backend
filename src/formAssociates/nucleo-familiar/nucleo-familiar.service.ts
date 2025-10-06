@@ -2,14 +2,14 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { NucleoFamiliar } from './entities/nucleo-familiar.entity';
 import { CreateNucleoFamiliarDto } from './dto/create-nucleo-familiar.dto';
 import { UpdateNucleoFamiliarDto } from './dto/update-nucleo-familiar.dto';
 import { Associate } from 'src/formAssociates/associate/entities/associate.entity';
+import { NucleoFamiliarDto } from './dto/nucleo-familiar-data.dto';
 
 @Injectable()
 export class NucleoFamiliarService {
@@ -24,10 +24,10 @@ export class NucleoFamiliarService {
     return hombres + mujeres;
   }
 
+  // Método público (con validaciones)
   async create(createNucleoFamiliarDto: CreateNucleoFamiliarDto): Promise<NucleoFamiliar> {
     const { idAsociado, nucleoHombres, nucleoMujeres } = createNucleoFamiliarDto;
 
-    // Verificar que el asociado existe
     const asociado = await this.associateRepository.findOne({
       where: { idAsociado },
       relations: ['nucleoFamiliar'],
@@ -37,17 +37,14 @@ export class NucleoFamiliarService {
       throw new NotFoundException(`Asociado con ID ${idAsociado} no encontrado`);
     }
 
-    // Verificar que el asociado no tenga ya un núcleo familiar
     if (asociado.nucleoFamiliar) {
       throw new ConflictException(
         'Este asociado ya tiene un núcleo familiar registrado',
       );
     }
 
-    // Calcular el total
     const nucleoTotal = this.calcularTotal(nucleoHombres, nucleoMujeres);
 
-    // Crear el núcleo familiar
     const nuevoNucleoFamiliar = this.nucleoFamiliarRepository.create({
       nucleoHombres,
       nucleoMujeres,
@@ -56,6 +53,18 @@ export class NucleoFamiliarService {
     });
 
     return await this.nucleoFamiliarRepository.save(nuevoNucleoFamiliar);
+  }
+
+  createInTransaction(dto: NucleoFamiliarDto, manager: EntityManager): Promise<NucleoFamiliar> {
+    const nucleoTotal = this.calcularTotal(dto.nucleoHombres, dto.nucleoMujeres);
+
+    const nucleoFamiliar = manager.create(NucleoFamiliar, {
+      nucleoHombres: dto.nucleoHombres,
+      nucleoMujeres: dto.nucleoMujeres,
+      nucleoTotal,
+    });
+
+    return manager.save(nucleoFamiliar);
   }
 
   async findAll(): Promise<NucleoFamiliar[]> {
@@ -103,7 +112,6 @@ export class NucleoFamiliarService {
 
     const { nucleoHombres, nucleoMujeres } = updateNucleoFamiliarDto;
 
-    // Actualizar valores si se proporcionan
     if (nucleoHombres !== undefined) {
       nucleoFamiliar.nucleoHombres = nucleoHombres;
     }
@@ -111,7 +119,6 @@ export class NucleoFamiliarService {
       nucleoFamiliar.nucleoMujeres = nucleoMujeres;
     }
 
-    // Recalcular el total
     nucleoFamiliar.nucleoTotal = this.calcularTotal(
       nucleoFamiliar.nucleoHombres,
       nucleoFamiliar.nucleoMujeres,
@@ -125,7 +132,6 @@ export class NucleoFamiliarService {
     await this.nucleoFamiliarRepository.remove(nucleoFamiliar);
   }
 
-  // Método auxiliar para obtener estadísticas
   async getEstadisticas(): Promise<any> {
     const result = await this.nucleoFamiliarRepository
       .createQueryBuilder('nucleo')

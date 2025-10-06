@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateGeografiaDto {
   @IsNotEmpty({ message: 'La provincia es obligatoria' })
@@ -16,7 +16,7 @@ export class CreateGeografiaDto {
   @MaxLength(100, { message: 'El distrito no puede exceder 100 caracteres' })
   distrito: string;
 
-  @IsNotEmpty({ message: 'El caserío es obligatorio' })
+  @IsOptional()
   @IsString({ message: 'El caserío debe ser un texto' })
   @MaxLength(100, { message: 'El caserío no puede exceder 100 caracteres' })
   caserio?: string;

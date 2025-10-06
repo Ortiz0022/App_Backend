@@ -23,8 +23,8 @@ export class Geografia {
   @Column({ type: 'varchar', length: 100 })
   distrito: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  caserio: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) 
+  caserio?: string;
 
   // Relación 1:N con Finca (una geografía puede tener múltiples fincas)
   @OneToMany(() => Finca, (finca) => finca.geografia)

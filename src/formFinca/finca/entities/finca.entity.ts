@@ -42,7 +42,7 @@ export class Finca {
   nombre: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  areaHa: number;
+  areaHa: string; 
 
   @Column({ type: 'varchar', length: 50 })
   numeroPlano: string;
@@ -71,9 +71,6 @@ export class Finca {
   })
   @JoinColumn({ name: 'idGeografia' })
   geografia?: Geografia;
-
-  @Column({ type: 'int', nullable: true })
-  idGeografia?: number;
 
   @OneToOne(() => Hato, (hato) => hato.finca, {
     nullable: true,
