@@ -25,49 +25,66 @@ export class PropietarioService {
 
   async create(createPropietarioDto: CreatePropietarioDto): Promise<Propietario> {
     const { persona: personaData } = createPropietarioDto;
-
-    // Verificar si la persona ya existe por cédula o email
-    const personaExistente = await this.personaRepository.findOne({
-      where: [
-        { cedula: personaData.cedula },
-        { email: personaData.email },
-      ],
+  
+    let persona = await this.personaRepository.findOne({
+      where: { cedula: personaData.cedula },
       relations: ['propietario'],
     });
-
-    if (personaExistente) {
-      // Si la persona existe y ya es propietario
-      if (personaExistente.propietario) {
-        throw new ConflictException(
-          'Esta persona ya está registrada como propietario',
-        );
+  
+    if (persona) {
+      // Si ya es propietario, devolverlo (NO lanzar error)
+      if (persona.propietario) {
+        return persona.propietario;
       }
-
-      // Si la persona existe pero no es propietario, crear el registro de propietario
+  
+      // Si existe pero no es propietario, crear el registro
       const nuevoPropietario = this.propietarioRepository.create({
-        persona: personaExistente,
+        persona: persona,
       });
-
+  
       return await this.propietarioRepository.save(nuevoPropietario);
     }
-
-    // Si la persona no existe, crear persona y propietario
+  
+    // Si no existe, crear ambos
     const nuevaPersona = this.personaRepository.create(personaData);
     const personaGuardada = await this.personaRepository.save(nuevaPersona);
-
+  
     const nuevoPropietario = this.propietarioRepository.create({
       persona: personaGuardada,
     });
-
+  
     return await this.propietarioRepository.save(nuevoPropietario);
   }
 
-  createInTransaction(
-    persona: Persona,
+  async createInTransaction(
+    personaData: any,
     manager: EntityManager,
   ): Promise<Propietario> {
+    // Buscar si la persona ya existe
+    let persona = await manager.findOne(Persona, {
+      where: { cedula: personaData.cedula },
+      relations: ['propietario'],
+    });
+  
+    if (persona) {
+      // Si ya es propietario, devolverlo (NO lanzar error)
+      if (persona.propietario) {
+        return persona.propietario;
+      }
+      
+      // Si existe pero no es propietario, crear propietario
+      const propietario = manager.create(Propietario, {
+        persona,
+      });
+      return manager.save(propietario);
+    }
+  
+    // Si no existe, crear persona y propietario
+    const nuevaPersona = manager.create(Persona, personaData);
+    const personaGuardada = await manager.save(nuevaPersona);
+  
     const propietario = manager.create(Propietario, {
-      persona,
+      persona: personaGuardada,
     });
   
     return manager.save(propietario);
