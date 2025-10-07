@@ -9,18 +9,24 @@ import { NucleoFamiliarModule } from '../nucleo-familiar/nucleo-familiar.module'
 import { FincaModule } from 'src/formFinca/finca/finca.module'; 
 import { GeografiaModule } from 'src/formFinca/geografia/geografia.module';
 import { PropietarioModule } from '../propietario/propietario.module';
+import { Persona } from '../persona/entities/persona.entity';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
+import { DropboxModule } from 'src/dropbox/dropbox.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Solicitud,
       Associate,
+      Persona,
+      Finca,
     ]),
     PersonaModule,
     NucleoFamiliarModule,
     FincaModule,
     GeografiaModule,
     PropietarioModule,
+    DropboxModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

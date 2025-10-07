@@ -69,6 +69,7 @@ import { CanalesComercializacionModule } from './formFinca/canal-comercializacio
 import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
 import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
 import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
+import { DropboxModule } from './dropbox/dropbox.module';
 
 
 
@@ -163,7 +164,7 @@ import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corrie
     CorrienteElectricaModule,
     FuentesAguaModule,
     ActividadesAgropecuariasModule,
-
+    DropboxModule,
   ],
   controllers: [AppController],
   providers: [

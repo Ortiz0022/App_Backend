@@ -35,6 +35,9 @@ import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Uni
   
     @Column({ type: 'varchar', length: 255, nullable: true })
     direccion?: string;
+
+    @Column({ type: 'varchar', length: 500, nullable: true })
+    cedulaUrl?: string;
   
     @CreateDateColumn()
     createdAt: Date;

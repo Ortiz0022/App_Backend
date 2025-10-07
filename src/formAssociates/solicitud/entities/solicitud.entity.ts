@@ -44,6 +44,12 @@ export class Solicitud {
   @Column({ type: 'varchar', length: 255, nullable: true })
   motivo?: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cedulaUrlTemp?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  planoFincaUrlTemp?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

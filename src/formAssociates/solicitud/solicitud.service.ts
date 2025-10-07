@@ -19,6 +19,8 @@ import { NucleoFamiliar } from '../nucleo-familiar/entities/nucleo-familiar.enti
 import { FincaService } from 'src/formFinca/finca/finca.service';
 import { GeografiaService } from 'src/formFinca/geografia/geografia.service';
 import { PropietarioService } from '../propietario/propietario.service';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
+import { DropboxService } from 'src/dropbox/dropbox.service';
 
 @Injectable()
 export class SolicitudService {
@@ -27,11 +29,16 @@ export class SolicitudService {
     private solicitudRepository: Repository<Solicitud>,
     @InjectRepository(Associate)
     private associateRepository: Repository<Associate>,
+    @InjectRepository(Persona)            
+    private personaRepository: Repository<Persona>, 
+    @InjectRepository(Finca)             
+    private fincaRepository: Repository<Finca>,     
     private personaService: PersonaService,
     private nucleoFamiliarService: NucleoFamiliarService, 
     private fincaService: FincaService,
     private geografiaService: GeografiaService,
     private propietarioService: PropietarioService,
+    private dropboxService: DropboxService,  
     private dataSource: DataSource,
   ) {}
 
@@ -259,42 +266,46 @@ export class SolicitudService {
   }
 
   async changeStatus(
-    id: number,
-    changeStatusDto: ChangeSolicitudStatusDto,
-  ): Promise<Solicitud> {
-    const solicitud = await this.findOne(id);
+  id: number,
+  changeStatusDto: ChangeSolicitudStatusDto,
+): Promise<Solicitud> {
+  const solicitud = await this.findOne(id);
 
-    if (
-      changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
-      !changeStatusDto.motivo
-    ) {
-      throw new BadRequestException(
-        'El motivo es obligatorio cuando se rechaza una solicitud',
-      );
-    }
-
-    if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
-      throw new BadRequestException(
-        'Solo se pueden procesar solicitudes pendientes',
-      );
-    }
-
-    solicitud.estado = changeStatusDto.estado;
-    solicitud.fechaResolucion = new Date();
-    solicitud.motivo =
-      changeStatusDto.estado === SolicitudStatus.RECHAZADO
-        ? changeStatusDto.motivo
-        : undefined;
-
-    await this.solicitudRepository.save(solicitud);
-
-    if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
-      solicitud.asociado.estado = true;
-      await this.associateRepository.save(solicitud.asociado);
-    }
-
-    return this.findOne(id);
+  if (
+    changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
+    !changeStatusDto.motivo
+  ) {
+    throw new BadRequestException(
+      'El motivo es obligatorio cuando se rechaza una solicitud',
+    );
   }
+
+  if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+    throw new BadRequestException(
+      'Solo se pueden procesar solicitudes pendientes',
+    );
+  }
+
+  solicitud.estado = changeStatusDto.estado;
+  solicitud.fechaResolucion = new Date();
+  solicitud.motivo =
+    changeStatusDto.estado === SolicitudStatus.RECHAZADO
+      ? changeStatusDto.motivo
+      : undefined;
+
+  await this.solicitudRepository.save(solicitud);
+
+  // MODIFICADO: Copiar documentos cuando se aprueba
+  if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
+    solicitud.asociado.estado = true;
+    await this.associateRepository.save(solicitud.asociado);
+    
+    // Copiar documentos de temporal a permanente
+    await this.copyDocumentsToEntities(solicitud);
+  }
+
+  return this.findOne(id);
+}
 
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);
@@ -339,4 +350,63 @@ export class SolicitudService {
       rechazadas,
     };
   }
+
+
+  async uploadDocuments(
+  id: number,
+  files: {
+    cedula?: Express.Multer.File[];
+    planoFinca?: Express.Multer.File[];
+  },
+) {
+  const solicitud = await this.findOne(id);
+
+  if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+    throw new BadRequestException(
+      'Solo se pueden subir documentos a solicitudes pendientes',
+    );
+  }
+
+  const updates: Partial<Solicitud> = {};
+
+  // Subir cédula si existe
+  if (files.cedula && files.cedula[0]) {
+    const cedulaUrl = await this.dropboxService.uploadFile(
+      files.cedula[0],
+      `solicitud-${id}/cedula`,
+    );
+    updates.cedulaUrlTemp = cedulaUrl;
+  }
+
+  // Subir plano de finca si existe
+  if (files.planoFinca && files.planoFinca[0]) {
+    const planoUrl = await this.dropboxService.uploadFile(
+      files.planoFinca[0],
+      `solicitud-${id}/plano`,
+    );
+    updates.planoFincaUrlTemp = planoUrl;
+  }
+
+  // Actualizar solicitud con las URLs temporales
+  await this.solicitudRepository.update(id, updates);
+
+  return this.findOne(id);
+}
+
+private async copyDocumentsToEntities(solicitud: Solicitud): Promise<void> {
+  // Copiar cédula a Persona
+  if (solicitud.cedulaUrlTemp && solicitud.persona) {
+    solicitud.persona.cedulaUrl = solicitud.cedulaUrlTemp;
+    await this.personaRepository.save(solicitud.persona);
+  }
+
+  // Copiar plano de finca a la primera Finca del asociado
+  if (solicitud.planoFincaUrlTemp && solicitud.asociado?.fincas?.[0]) {
+    const finca = solicitud.asociado.fincas[0];
+    finca.planoFincaUrl = solicitud.planoFincaUrlTemp;
+    await this.fincaRepository.save(finca);
+  }
+}
+
+
 }

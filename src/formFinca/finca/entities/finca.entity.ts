@@ -47,6 +47,9 @@ export class Finca {
   @Column({ type: 'varchar', length: 50 })
   numeroPlano: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  planoFincaUrl?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
