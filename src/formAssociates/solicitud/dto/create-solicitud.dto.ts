@@ -18,6 +18,7 @@ import { CreateHatoDto } from 'src/formFinca/hato/dto/create-hato.dto';
 import { CreateAnimalDto } from 'src/formFinca/animal/dto/create-animal.dto';
 import { CreateForrajeDto } from 'src/formFinca/forraje/dto/create-forraje.dto';
 import { CreateRegistrosProductivosDto } from 'src/formFinca/registros-productivos/dto/create-registros-productivos.dto';
+import { CreateFuenteAguaDto } from 'src/formFinca/fuente-agua/dto/create-fuente-agua';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -63,4 +64,9 @@ export class CreateSolicitudDto {
   @Type(() => CreateRegistrosProductivosDto)
   @IsOptional()
   registrosProductivos?: CreateRegistrosProductivosDto;
+
+  @ValidateNested()
+  @Type(() => CreateFuenteAguaDto)
+  @IsOptional()
+  fuentesAgua?: CreateFuenteAguaDto[];
 }

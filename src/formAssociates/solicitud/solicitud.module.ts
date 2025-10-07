@@ -16,6 +16,7 @@ import { HatoModule } from 'src/formFinca/hato/hato.module';
 import { AnimalModule } from 'src/formFinca/animal/animal.module';
 import { ForrajeModule } from 'src/formFinca/forraje/forraje.module';
 import { RegistrosProductivosModule } from 'src/formFinca/registros-productivos/registros-productivos.module';
+import { FuentesAguaModule } from 'src/formFinca/fuente-agua/fuente-agua.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { RegistrosProductivosModule } from 'src/formFinca/registros-productivos/
     AnimalModule,
     ForrajeModule,
     RegistrosProductivosModule,
+    FuentesAguaModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

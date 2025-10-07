@@ -25,6 +25,7 @@ import { HatoService } from 'src/formFinca/hato/hato.service';
 import { AnimalService } from 'src/formFinca/animal/animal.service';
 import { ForrajeService } from 'src/formFinca/forraje/forraje.service';
 import { RegistrosProductivosService } from 'src/formFinca/registros-productivos/registros-productivos.service';
+import { FuentesAguaService } from 'src/formFinca/fuente-agua/fuente-agua.service';
 
 @Injectable()
 export class SolicitudService {
@@ -48,6 +49,7 @@ export class SolicitudService {
     private dataSource: DataSource,
     private forrajeService: ForrajeService,
     private registrosProductivosService: RegistrosProductivosService,
+    private fuentesAguaService: FuentesAguaService,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -207,7 +209,16 @@ export class SolicitudService {
         );
       }
 
-      // 10. Crear Solicitud
+      // 10. Crear Fuentes Agua (si vienen)
+      if (createDto.fuentesAgua && createDto.fuentesAgua.length > 0) {
+        await this.fuentesAguaService.createManyInTransaction(
+          createDto.fuentesAgua,
+          finca,
+          queryRunner.manager,
+        );
+      }
+
+      // 11. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -249,7 +260,9 @@ export class SolicitudService {
       .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
       .leftJoinAndSelect('fincas.hato', 'hato')                    
       .leftJoinAndSelect('hato.animales', 'animales')
-      .leftJoinAndSelect('fincas.forrajes', 'forrajes');
+      .leftJoinAndSelect('fincas.forrajes', 'forrajes')
+      .leftJoinAndSelect('fincas.registrosProductivos', 'registrosProductivos')
+      .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua');
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -293,6 +306,8 @@ export class SolicitudService {
         'asociado.fincas.hato',                       
         'asociado.fincas.hato.animales',              
         'asociado.fincas.forrajes',                   
+        'asociado.fincas.registrosProductivos',       
+        'asociado.fincas.fuentesAgua',                
       ],
       order: { createdAt: 'DESC' },
     });
@@ -314,6 +329,7 @@ export class SolicitudService {
         'asociado.fincas.hato.animales',
         'asociado.fincas.forrajes',
         'asociado.fincas.registrosProductivos',  
+        'asociado.fincas.fuentesAgua',
       ],
     });
   
@@ -392,7 +408,9 @@ export class SolicitudService {
         'asociado.fincas.propietario.persona',        
         'asociado.fincas.hato',                       
         'asociado.fincas.hato.animales',              
-        'asociado.fincas.forrajes',                   
+        'asociado.fincas.forrajes',                  
+        'asociado.fincas.registrosProductivos',       
+        'asociado.fincas.fuentesAgua',                
       ],
       order: { createdAt: 'DESC' },
     });

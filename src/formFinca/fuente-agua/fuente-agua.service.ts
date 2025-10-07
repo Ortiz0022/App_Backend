@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { EntityManager, ILike, Repository } from 'typeorm';
 import { FuenteAgua } from './entities/fuente-agua.entity';
 import { Finca } from '../finca/entities/finca.entity';
 import { CreateFuenteAguaDto } from './dto/create-fuente-agua';
@@ -28,6 +28,22 @@ export class FuentesAguaService {
 
     const entity = this.repo.create({ ...dto, finca });
     return this.repo.save(entity);
+  }
+
+  async createManyInTransaction(
+    fuentes: CreateFuenteAguaDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<FuenteAgua[]> {
+    const fuenteEntities = fuentes.map((dto) =>
+      manager.create(FuenteAgua, {
+        nombre: dto.nombre,
+        finca,
+        idFinca: finca.idFinca,
+      }),
+    );
+  
+    return manager.save(fuenteEntities);
   }
 
   // Lista general con filtros: idFinca y search por nombre
