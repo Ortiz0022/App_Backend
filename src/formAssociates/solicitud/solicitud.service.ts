@@ -23,6 +23,7 @@ import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DropboxService } from 'src/dropbox/dropbox.service';
 import { HatoService } from 'src/formFinca/hato/hato.service';
 import { AnimalService } from 'src/formFinca/animal/animal.service';
+import { ForrajeService } from 'src/formFinca/forraje/forraje.service';
 
 @Injectable()
 export class SolicitudService {
@@ -44,6 +45,7 @@ export class SolicitudService {
     private hatoService: HatoService,
     private animalService: AnimalService,
     private dataSource: DataSource,
+    private forrajeService: ForrajeService,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -164,7 +166,7 @@ export class SolicitudService {
         queryRunner.manager,
       );
   
-      // 8. ✅ Crear Hato (si viene en el DTO)
+      // 7. Crear Hato 
       if (createDto.hato) {
         const hato = await this.hatoService.createInTransaction(
           createDto.hato,
@@ -172,7 +174,7 @@ export class SolicitudService {
           queryRunner.manager,
         );
 
-        // 9. ✅ Crear Animales (si vienen)
+        // 8. Crear Animales (si vienen)
         if (createDto.animales && createDto.animales.length > 0) {
           await this.animalService.createManyInTransaction(
             createDto.animales,
@@ -180,12 +182,21 @@ export class SolicitudService {
             queryRunner.manager,
           );
 
-          // 10. ✅ Recalcular total después de crear los animales
+          // 8. Recalcular total después de crear los animales
           await this.hatoService.updateTotalInTransaction(hato, queryRunner.manager);
         }
       }
 
-      // 7. Crear Solicitud
+      // 8. Crear Forraje (si vienen)
+      if (createDto.forrajes && createDto.forrajes.length > 0) {
+        await this.forrajeService.createManyInTransaction(
+          createDto.forrajes,
+          finca,
+          queryRunner.manager,
+        );
+      }
+
+      // 9. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -225,8 +236,9 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('fincas.propietario', 'propietario')
       .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
-      .leftJoinAndSelect('fincas.hato', 'hato')                    // ✅ Agregar
-      .leftJoinAndSelect('hato.animales', 'animales');              // ✅ Agregar
+      .leftJoinAndSelect('fincas.hato', 'hato')                    
+      .leftJoinAndSelect('hato.animales', 'animales')
+      .leftJoinAndSelect('fincas.forrajes', 'forrajes');
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -269,6 +281,7 @@ export class SolicitudService {
         'asociado.fincas.propietario.persona',        
         'asociado.fincas.hato',                       
         'asociado.fincas.hato.animales',              
+        'asociado.fincas.forrajes',                   
       ],
       order: { createdAt: 'DESC' },
     });
@@ -288,6 +301,7 @@ export class SolicitudService {
         'asociado.fincas.propietario.persona',
         'asociado.fincas.hato',                       
         'asociado.fincas.hato.animales',              
+        'asociado.fincas.forrajes',                   
       ],
     });
   
@@ -371,6 +385,7 @@ export class SolicitudService {
         'asociado.fincas.propietario.persona',        
         'asociado.fincas.hato',                       
         'asociado.fincas.hato.animales',              
+        'asociado.fincas.forrajes',                   
       ],
       order: { createdAt: 'DESC' },
     });

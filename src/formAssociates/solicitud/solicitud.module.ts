@@ -14,6 +14,7 @@ import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DropboxModule } from 'src/dropbox/dropbox.module';
 import { HatoModule } from 'src/formFinca/hato/hato.module';
 import { AnimalModule } from 'src/formFinca/animal/animal.module';
+import { ForrajeModule } from 'src/formFinca/forraje/forraje.module';
 
 @Module({
   imports: [
@@ -27,10 +28,11 @@ import { AnimalModule } from 'src/formFinca/animal/animal.module';
     NucleoFamiliarModule,
     FincaModule,
     GeografiaModule,
-    PropietarioModule,
+    PropietarioModule,  
     DropboxModule,
     HatoModule,
     AnimalModule,
+    ForrajeModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

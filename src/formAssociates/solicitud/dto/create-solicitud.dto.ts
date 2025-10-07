@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsOptional,
   IsString,
@@ -15,6 +16,7 @@ import { CreatePropietarioDto } from 'src/formAssociates/propietario/dto/create-
 import { PropietarioConditionalValidator } from '../validators/popietario-conditional.validator';
 import { CreateHatoDto } from 'src/formFinca/hato/dto/create-hato.dto';
 import { CreateAnimalDto } from 'src/formFinca/animal/dto/create-animal.dto';
+import { CreateForrajeDto } from 'src/formFinca/forraje/dto/create-forraje.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -49,4 +51,10 @@ export class CreateSolicitudDto {
   @Type(() => CreateAnimalDto)
   @IsOptional()
   animales?: CreateAnimalDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateForrajeDto)
+  forrajes?: CreateForrajeDto[];
 }

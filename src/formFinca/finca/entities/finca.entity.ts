@@ -25,6 +25,7 @@ import { FincaTipoCerca } from 'src/formFinca/finca-tipo-cerca/entities/finca-ti
 import { CanalComercializacion } from 'src/formFinca/canal-comercializacion/entities/canal.entity';
 import { FuenteAgua } from 'src/formFinca/fuente-agua/entities/fuente-agua.entity';
 import { ActividadAgropecuaria } from 'src/formFinca/actividad-agropecuaria/entities/actividad.entity';
+import { Forraje } from 'src/formFinca/forraje/entities/forraje.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -117,4 +118,6 @@ export class Finca {
   @OneToMany(() => ActividadAgropecuaria, (a) => a.finca)
   actividadesAgropecuarias?: ActividadAgropecuaria[];
 
+  @OneToMany(() => Forraje, (forraje) => forraje.finca)
+  forrajes?: Forraje[];
 }
