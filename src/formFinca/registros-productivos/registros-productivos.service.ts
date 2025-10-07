@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { RegistrosProductivos } from './entities/registros-productivos.entity';
 import { CreateRegistrosProductivosDto } from './dto/create-registros-productivos.dto';
 import { UpdateRegistrosProductivosDto } from './dto/update-registros-productivos.dto';
@@ -47,6 +47,20 @@ export class RegistrosProductivosService {
     });
 
     return await this.registrosProductivosRepository.save(registrosProductivos);
+  }
+
+  createInTransaction(
+    dto: CreateRegistrosProductivosDto,
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<RegistrosProductivos> {
+    const registros = manager.create(RegistrosProductivos, {
+      reproductivos: dto.reproductivos,
+      costosProductivos: dto.costosProductivos,
+      finca,
+    });
+  
+    return manager.save(registros);
   }
 
   async findAll(): Promise<RegistrosProductivos[]> {

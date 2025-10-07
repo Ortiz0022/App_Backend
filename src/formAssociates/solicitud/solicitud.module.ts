@@ -15,6 +15,7 @@ import { DropboxModule } from 'src/dropbox/dropbox.module';
 import { HatoModule } from 'src/formFinca/hato/hato.module';
 import { AnimalModule } from 'src/formFinca/animal/animal.module';
 import { ForrajeModule } from 'src/formFinca/forraje/forraje.module';
+import { RegistrosProductivosModule } from 'src/formFinca/registros-productivos/registros-productivos.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ForrajeModule } from 'src/formFinca/forraje/forraje.module';
     HatoModule,
     AnimalModule,
     ForrajeModule,
+    RegistrosProductivosModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

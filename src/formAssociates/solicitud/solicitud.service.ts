@@ -24,6 +24,7 @@ import { DropboxService } from 'src/dropbox/dropbox.service';
 import { HatoService } from 'src/formFinca/hato/hato.service';
 import { AnimalService } from 'src/formFinca/animal/animal.service';
 import { ForrajeService } from 'src/formFinca/forraje/forraje.service';
+import { RegistrosProductivosService } from 'src/formFinca/registros-productivos/registros-productivos.service';
 
 @Injectable()
 export class SolicitudService {
@@ -46,6 +47,7 @@ export class SolicitudService {
     private animalService: AnimalService,
     private dataSource: DataSource,
     private forrajeService: ForrajeService,
+    private registrosProductivosService: RegistrosProductivosService,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -196,7 +198,16 @@ export class SolicitudService {
         );
       }
 
-      // 9. Crear Solicitud
+      // 9. Crear Registros Productivos (si vienen)
+      if (createDto.registrosProductivos) {
+        await this.registrosProductivosService.createInTransaction(
+          createDto.registrosProductivos,
+          finca,
+          queryRunner.manager,
+        );
+      }
+
+      // 10. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -299,9 +310,10 @@ export class SolicitudService {
         'asociado.fincas.geografia',
         'asociado.fincas.propietario',
         'asociado.fincas.propietario.persona',
-        'asociado.fincas.hato',                       
-        'asociado.fincas.hato.animales',              
-        'asociado.fincas.forrajes',                   
+        'asociado.fincas.hato',
+        'asociado.fincas.hato.animales',
+        'asociado.fincas.forrajes',
+        'asociado.fincas.registrosProductivos',  
       ],
     });
   
@@ -311,14 +323,9 @@ export class SolicitudService {
   
     return solicitud;
   }
-  
 
-  async changeStatus(
-  id: number,
-  changeStatusDto: ChangeSolicitudStatusDto,
-): Promise<Solicitud> {
+  async changeStatus( id: number, changeStatusDto: ChangeSolicitudStatusDto): Promise<Solicitud> {
   const solicitud = await this.findOne(id);
-
   if (
     changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
     !changeStatusDto.motivo

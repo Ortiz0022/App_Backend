@@ -17,6 +17,7 @@ import { PropietarioConditionalValidator } from '../validators/popietario-condit
 import { CreateHatoDto } from 'src/formFinca/hato/dto/create-hato.dto';
 import { CreateAnimalDto } from 'src/formFinca/animal/dto/create-animal.dto';
 import { CreateForrajeDto } from 'src/formFinca/forraje/dto/create-forraje.dto';
+import { CreateRegistrosProductivosDto } from 'src/formFinca/registros-productivos/dto/create-registros-productivos.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -57,4 +58,9 @@ export class CreateSolicitudDto {
   @ValidateNested({ each: true })
   @Type(() => CreateForrajeDto)
   forrajes?: CreateForrajeDto[];
+
+  @ValidateNested()
+  @Type(() => CreateRegistrosProductivosDto)
+  @IsOptional()
+  registrosProductivos?: CreateRegistrosProductivosDto;
 }
