@@ -47,11 +47,11 @@ export class SolicitudService {
     private dropboxService: DropboxService,  
     private hatoService: HatoService,
     private animalService: AnimalService,
-    private dataSource: DataSource,
     private forrajeService: ForrajeService,
     private registrosProductivosService: RegistrosProductivosService,
     private fuentesAguaService: FuentesAguaService,
     private metodoRiegoService: MetodoRiegoService,
+    private dataSource: DataSource,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -69,7 +69,6 @@ export class SolicitudService {
       });
   
       if (personaAsociado) {
-        // Verificar si ya es asociado
         const existingAsociado = await queryRunner.manager.findOne(Associate, {
           where: { persona: { idPersona: personaAsociado.idPersona } }
         });
@@ -80,7 +79,6 @@ export class SolicitudService {
           );
         }
       } else {
-        // Crear nueva persona
         personaAsociado = await this.personaService.createInTransaction(
           createDto.persona,
           queryRunner.manager,
@@ -123,13 +121,11 @@ export class SolicitudService {
           createDto.propietario.persona.email === personaAsociado.email;
         
         if (esLaMismaPersona) {
-          // Reutilizar persona del asociado
           propietario = await this.propietarioService.createInTransaction(
             personaAsociado,
             queryRunner.manager,
           );
         } else {
-          // Buscar o crear persona del propietario
           let personaPropietario = await queryRunner.manager.findOne(Persona, {
             where: [
               { cedula: createDto.propietario.persona.cedula },
@@ -172,7 +168,7 @@ export class SolicitudService {
         queryRunner.manager,
       );
   
-      // 7. Crear Hato 
+      // 7. Crear Hato (si viene en el DTO)
       if (createDto.hato) {
         const hato = await this.hatoService.createInTransaction(
           createDto.hato,
@@ -188,12 +184,12 @@ export class SolicitudService {
             queryRunner.manager,
           );
 
-          // 8. Recalcular total después de crear los animales
+          // Recalcular total después de crear los animales
           await this.hatoService.updateTotalInTransaction(hato, queryRunner.manager);
         }
       }
 
-      // 8. Crear Forraje (si vienen)
+      // 9. Crear Forraje (si vienen)
       if (createDto.forrajes && createDto.forrajes.length > 0) {
         await this.forrajeService.createManyInTransaction(
           createDto.forrajes,
@@ -202,7 +198,7 @@ export class SolicitudService {
         );
       }
 
-      // 9. Crear Registros Productivos (si vienen)
+      // 10. Crear Registros Productivos (si vienen)
       if (createDto.registrosProductivos) {
         await this.registrosProductivosService.createInTransaction(
           createDto.registrosProductivos,
@@ -211,7 +207,7 @@ export class SolicitudService {
         );
       }
 
-      // 10. Crear Fuentes Agua (si vienen)
+      // 11. Crear Fuentes Agua (si vienen)
       if (createDto.fuentesAgua && createDto.fuentesAgua.length > 0) {
         await this.fuentesAguaService.createManyInTransaction(
           createDto.fuentesAgua,
@@ -220,7 +216,7 @@ export class SolicitudService {
         );
       }
 
-      // 11. Crear Metodos Riego (si vienen)
+      // 12. Crear Metodos Riego (si vienen)
       if (createDto.metodosRiego && createDto.metodosRiego.length > 0) {
         await this.metodoRiegoService.createManyInTransaction(
           createDto.metodosRiego,
@@ -229,7 +225,7 @@ export class SolicitudService {
         );
       }
 
-      // 12. Crear Solicitud
+      // 13. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -269,7 +265,7 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('fincas.propietario', 'propietario')
       .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
-      .leftJoinAndSelect('fincas.hato', 'hato')                    
+      .leftJoinAndSelect('fincas.hato', 'hato')
       .leftJoinAndSelect('hato.animales', 'animales')
       .leftJoinAndSelect('fincas.forrajes', 'forrajes')
       .leftJoinAndSelect('fincas.registrosProductivos', 'registrosProductivos')
@@ -307,20 +303,20 @@ export class SolicitudService {
   async findAll() {
     return this.solicitudRepository.find({
       relations: [
-        'persona',                                   
+        'persona',
         'asociado',
-        'asociado.persona',                           
+        'asociado.persona',
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
         'asociado.fincas.propietario',
-        'asociado.fincas.propietario.persona',        
-        'asociado.fincas.hato',                       
-        'asociado.fincas.hato.animales',              
-        'asociado.fincas.forrajes',                   
-        'asociado.fincas.registrosProductivos',       
-        'asociado.fincas.fuentesAgua',                
-        'asociado.fincas.metodosRiego',                
+        'asociado.fincas.propietario.persona',
+        'asociado.fincas.hato',
+        'asociado.fincas.hato.animales',
+        'asociado.fincas.forrajes',
+        'asociado.fincas.registrosProductivos',
+        'asociado.fincas.fuentesAgua',
+        'asociado.fincas.metodosRiego',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -341,7 +337,7 @@ export class SolicitudService {
         'asociado.fincas.hato',
         'asociado.fincas.hato.animales',
         'asociado.fincas.forrajes',
-        'asociado.fincas.registrosProductivos',  
+        'asociado.fincas.registrosProductivos',
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
       ],
@@ -353,44 +349,47 @@ export class SolicitudService {
   
     return solicitud;
   }
+  
+  async changeStatus(
+    id: number,
+    changeStatusDto: ChangeSolicitudStatusDto,
+  ): Promise<Solicitud> {
+    const solicitud = await this.findOne(id);
 
-  async changeStatus( id: number, changeStatusDto: ChangeSolicitudStatusDto): Promise<Solicitud> {
-  const solicitud = await this.findOne(id);
-  if (
-    changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
-    !changeStatusDto.motivo
-  ) {
-    throw new BadRequestException(
-      'El motivo es obligatorio cuando se rechaza una solicitud',
-    );
+    if (
+      changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
+      !changeStatusDto.motivo
+    ) {
+      throw new BadRequestException(
+        'El motivo es obligatorio cuando se rechaza una solicitud',
+      );
+    }
+
+    if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+      throw new BadRequestException(
+        'Solo se pueden procesar solicitudes pendientes',
+      );
+    }
+
+    solicitud.estado = changeStatusDto.estado;
+    solicitud.fechaResolucion = new Date();
+    solicitud.motivo =
+      changeStatusDto.estado === SolicitudStatus.RECHAZADO
+        ? changeStatusDto.motivo
+        : undefined;
+
+    await this.solicitudRepository.save(solicitud);
+
+    // Copiar documentos y activar asociado cuando se aprueba
+    if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
+      solicitud.asociado.estado = true;
+      await this.associateRepository.save(solicitud.asociado);
+      
+      await this.copyDocumentsToEntities(solicitud);
+    }
+
+    return this.findOne(id);
   }
-
-  if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
-    throw new BadRequestException(
-      'Solo se pueden procesar solicitudes pendientes',
-    );
-  }
-
-  solicitud.estado = changeStatusDto.estado;
-  solicitud.fechaResolucion = new Date();
-  solicitud.motivo =
-    changeStatusDto.estado === SolicitudStatus.RECHAZADO
-      ? changeStatusDto.motivo
-      : undefined;
-
-  await this.solicitudRepository.save(solicitud);
-
-  // MODIFICADO: Copiar documentos cuando se aprueba
-  if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
-    solicitud.asociado.estado = true;
-    await this.associateRepository.save(solicitud.asociado);
-    
-    // Copiar documentos de temporal a permanente
-    await this.copyDocumentsToEntities(solicitud);
-  }
-
-  return this.findOne(id);
-}
 
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);
@@ -414,18 +413,18 @@ export class SolicitudService {
       relations: [
         'persona',
         'asociado',
-        'asociado.persona',                           
-        'asociado.nucleoFamiliar',                    
+        'asociado.persona',
+        'asociado.nucleoFamiliar',
         'asociado.fincas',
-        'asociado.fincas.geografia',                  
-        'asociado.fincas.propietario',                
-        'asociado.fincas.propietario.persona',        
-        'asociado.fincas.hato',                       
-        'asociado.fincas.hato.animales',              
-        'asociado.fincas.forrajes',                  
-        'asociado.fincas.registrosProductivos',       
-        'asociado.fincas.fuentesAgua',                    
-        'asociado.fincas.metodosRiego',                
+        'asociado.fincas.geografia',
+        'asociado.fincas.propietario',
+        'asociado.fincas.propietario.persona',
+        'asociado.fincas.hato',
+        'asociado.fincas.hato.animales',
+        'asociado.fincas.forrajes',
+        'asociado.fincas.registrosProductivos',
+        'asociado.fincas.fuentesAgua',
+        'asociado.fincas.metodosRiego',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -451,60 +450,59 @@ export class SolicitudService {
     };
   }
 
+  // ========== MÉTODOS DE DROPBOX ==========
 
   async uploadDocuments(
-  id: number,
-  files: {
-    cedula?: Express.Multer.File[];
-    planoFinca?: Express.Multer.File[];
-  },
-) {
-  const solicitud = await this.findOne(id);
+    id: number,
+    files: {
+      cedula?: Express.Multer.File[];
+      planoFinca?: Express.Multer.File[];
+    },
+  ) {
+    const solicitud = await this.findOne(id);
 
-  if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
-    throw new BadRequestException(
-      'Solo se pueden subir documentos a solicitudes pendientes',
-    );
+    if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+      throw new BadRequestException(
+        'Solo se pueden subir documentos a solicitudes pendientes',
+      );
+    }
+
+    // Subir cédula si existe
+    if (files.cedula && files.cedula[0]) {
+      const cedulaUrl = await this.dropboxService.uploadFile(
+        files.cedula[0],
+        `solicitud-${id}/cedula`,
+      );
+      solicitud.cedulaUrlTemp = cedulaUrl;
+    }
+
+    // Subir plano de finca si existe
+    if (files.planoFinca && files.planoFinca[0]) {
+      const planoUrl = await this.dropboxService.uploadFile(
+        files.planoFinca[0],
+        `solicitud-${id}/plano`,
+      );
+      solicitud.planoFincaUrlTemp = planoUrl;
+    }
+
+    // Guardar solicitud con las URLs temporales
+    await this.solicitudRepository.save(solicitud);
+
+    return this.findOne(id);
   }
 
-  const updates: Partial<Solicitud> = {};
+  private async copyDocumentsToEntities(solicitud: Solicitud): Promise<void> {
+    // Copiar cédula a Persona
+    if (solicitud.cedulaUrlTemp && solicitud.persona) {
+      solicitud.persona.cedulaUrl = solicitud.cedulaUrlTemp;
+      await this.personaRepository.save(solicitud.persona);
+    }
 
-  // Subir cédula si existe
-  if (files.cedula && files.cedula[0]) {
-    const cedulaUrl = await this.dropboxService.uploadFile(
-      files.cedula[0],
-      `solicitud-${id}/cedula`,
-    );
-    updates.cedulaUrlTemp = cedulaUrl;
+    // Copiar plano de finca a la primera Finca del asociado
+    if (solicitud.planoFincaUrlTemp && solicitud.asociado?.fincas?.[0]) {
+      const finca = solicitud.asociado.fincas[0];
+      finca.planoFincaUrl = solicitud.planoFincaUrlTemp;
+      await this.fincaRepository.save(finca);
+    }
   }
-
-  // Subir plano de finca si existe
-  if (files.planoFinca && files.planoFinca[0]) {
-    const planoUrl = await this.dropboxService.uploadFile(
-      files.planoFinca[0],
-      `solicitud-${id}/plano`,
-    );
-    updates.planoFincaUrlTemp = planoUrl;
-  }
-
-  // Actualizar solicitud con las URLs temporales
-  await this.solicitudRepository.update(id, updates);
-
-  return this.findOne(id);
-}
-
-private async copyDocumentsToEntities(solicitud: Solicitud): Promise<void> {
-  // Copiar cédula a Persona
-  if (solicitud.cedulaUrlTemp && solicitud.persona) {
-    solicitud.persona.cedulaUrl = solicitud.cedulaUrlTemp;
-    await this.personaRepository.save(solicitud.persona);
-  }
-
-  // Copiar plano de finca a la primera Finca del asociado
-  if (solicitud.planoFincaUrlTemp && solicitud.asociado?.fincas?.[0]) {
-    const finca = solicitud.asociado.fincas[0];
-    finca.planoFincaUrl = solicitud.planoFincaUrlTemp;
-    await this.fincaRepository.save(finca);
-  }
-}
 }
