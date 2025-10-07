@@ -19,6 +19,7 @@ import { CreateAnimalDto } from 'src/formFinca/animal/dto/create-animal.dto';
 import { CreateForrajeDto } from 'src/formFinca/forraje/dto/create-forraje.dto';
 import { CreateRegistrosProductivosDto } from 'src/formFinca/registros-productivos/dto/create-registros-productivos.dto';
 import { CreateFuenteAguaDto } from 'src/formFinca/fuente-agua/dto/create-fuente-agua';
+import { CreateMetodoRiegoDto } from 'src/formFinca/metodo-riego/dto/create-metodo-riego.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -69,4 +70,9 @@ export class CreateSolicitudDto {
   @Type(() => CreateFuenteAguaDto)
   @IsOptional()
   fuentesAgua?: CreateFuenteAguaDto[];
+
+  @ValidateNested()
+  @Type(() => CreateMetodoRiegoDto)
+  @IsOptional()
+  metodosRiego?: CreateMetodoRiegoDto[];
 }

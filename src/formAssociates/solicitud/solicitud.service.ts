@@ -26,6 +26,7 @@ import { AnimalService } from 'src/formFinca/animal/animal.service';
 import { ForrajeService } from 'src/formFinca/forraje/forraje.service';
 import { RegistrosProductivosService } from 'src/formFinca/registros-productivos/registros-productivos.service';
 import { FuentesAguaService } from 'src/formFinca/fuente-agua/fuente-agua.service';
+import { MetodoRiegoService } from 'src/formFinca/metodo-riego/metodo-riego.service';
 
 @Injectable()
 export class SolicitudService {
@@ -50,6 +51,7 @@ export class SolicitudService {
     private forrajeService: ForrajeService,
     private registrosProductivosService: RegistrosProductivosService,
     private fuentesAguaService: FuentesAguaService,
+    private metodoRiegoService: MetodoRiegoService,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -218,7 +220,16 @@ export class SolicitudService {
         );
       }
 
-      // 11. Crear Solicitud
+      // 11. Crear Metodos Riego (si vienen)
+      if (createDto.metodosRiego && createDto.metodosRiego.length > 0) {
+        await this.metodoRiegoService.createManyInTransaction(
+          createDto.metodosRiego,
+          finca,
+          queryRunner.manager,
+        );
+      }
+
+      // 12. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -262,7 +273,8 @@ export class SolicitudService {
       .leftJoinAndSelect('hato.animales', 'animales')
       .leftJoinAndSelect('fincas.forrajes', 'forrajes')
       .leftJoinAndSelect('fincas.registrosProductivos', 'registrosProductivos')
-      .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua');
+      .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
+      .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego');
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -308,6 +320,7 @@ export class SolicitudService {
         'asociado.fincas.forrajes',                   
         'asociado.fincas.registrosProductivos',       
         'asociado.fincas.fuentesAgua',                
+        'asociado.fincas.metodosRiego',                
       ],
       order: { createdAt: 'DESC' },
     });
@@ -330,6 +343,7 @@ export class SolicitudService {
         'asociado.fincas.forrajes',
         'asociado.fincas.registrosProductivos',  
         'asociado.fincas.fuentesAgua',
+        'asociado.fincas.metodosRiego',
       ],
     });
   
@@ -410,7 +424,8 @@ export class SolicitudService {
         'asociado.fincas.hato.animales',              
         'asociado.fincas.forrajes',                  
         'asociado.fincas.registrosProductivos',       
-        'asociado.fincas.fuentesAgua',                
+        'asociado.fincas.fuentesAgua',                    
+        'asociado.fincas.metodosRiego',                
       ],
       order: { createdAt: 'DESC' },
     });
@@ -492,6 +507,4 @@ private async copyDocumentsToEntities(solicitud: Solicitud): Promise<void> {
     await this.fincaRepository.save(finca);
   }
 }
-
-
 }

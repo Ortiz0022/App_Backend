@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { MetodoRiego } from './entities/metodo-riego.entity';
 import { CreateMetodoRiegoDto } from './dto/create-metodo-riego.dto';
 import { UpdateMetodoRiegoDto } from './dto/update-metodo-riego.dto';
@@ -51,6 +51,21 @@ export class MetodoRiegoService {
     });
 
     return await this.metodoRiegoRepository.save(metodoRiego);
+  }
+
+  async createManyInTransaction(
+    metodos: CreateMetodoRiegoDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<MetodoRiego[]> {
+    const metodoEntities = metodos.map((dto) =>
+      manager.create(MetodoRiego, {
+        nombre: dto.nombre,
+        finca,
+      }),
+    );
+  
+    return manager.save(metodoEntities);
   }
 
   async findAll(): Promise<MetodoRiego[]> {
