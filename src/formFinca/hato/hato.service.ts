@@ -4,11 +4,12 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Hato } from './entities/hato.entity';
 import { CreateHatoDto } from './dto/create-hato.dto';
 import { UpdateHatoDto } from './dto/update-hato.dto';
 import { Finca } from '../finca/entities/finca.entity';
+import { Animal } from '../animal/entities/animal.entity';
 
 @Injectable()
 export class HatoService {
@@ -21,30 +22,43 @@ export class HatoService {
 
   async create(createDto: CreateHatoDto): Promise<Hato> {
     const { idFinca, tipoExplotacion, totalGanado, razaPredominante } = createDto;
-
-    // Verificar que la finca existe
+  
     const finca = await this.fincaRepository.findOne({
       where: { idFinca },
       relations: ['hato'],
     });
-
+  
     if (!finca) {
       throw new NotFoundException(`Finca con ID ${idFinca} no encontrada`);
     }
-
-    // Verificar que la finca no tenga ya un hato
+  
     if (finca.hato) {
       throw new ConflictException('Esta finca ya tiene un hato registrado');
     }
-
+  
     const hato = this.hatoRepository.create({
       tipoExplotacion,
-      totalGanado,
+      totalGanado: totalGanado || 0,  // ✅ Default 0 si no viene
       razaPredominante,
       finca,
     });
-
+  
     return await this.hatoRepository.save(hato);
+  }
+
+  createInTransaction(
+    dto: CreateHatoDto,
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<Hato> {
+    const hato = manager.create(Hato, {
+      tipoExplotacion: dto.tipoExplotacion,
+      totalGanado: dto.totalGanado || 0,
+      razaPredominante: dto.razaPredominante,
+      finca,
+    });
+  
+    return manager.save(hato);
   }
 
   async findAll(): Promise<Hato[]> {
@@ -91,6 +105,20 @@ export class HatoService {
     return await this.hatoRepository.save(hato);
   }
 
+  async updateTotalInTransaction(
+    hato: Hato,
+    manager: EntityManager,
+  ): Promise<Hato> {
+    const animales = await manager.find(Animal, {
+      where: { hato: { idHato: hato.idHato } },
+    });
+  
+    const total = animales.reduce((sum, animal) => sum + animal.cantidad, 0);
+    hato.totalGanado = total;
+  
+    return manager.save(hato);
+  }
+
   async remove(id: number): Promise<void> {
     const hato = await this.hatoRepository.findOne({
       where: { idHato: id },
@@ -104,16 +132,19 @@ export class HatoService {
     await this.hatoRepository.remove(hato);
   }
 
-  // Método auxiliar para obtener hatos con conteo de animales
-  async findAllWithAnimalesCount(): Promise<any[]> {
-    const hatos = await this.hatoRepository
-      .createQueryBuilder('hato')
-      .leftJoinAndSelect('hato.finca', 'finca')
-      .leftJoin('hato.animales', 'animal')
-      .loadRelationCountAndMap('hato.animalesCount', 'hato.animales')
-      .orderBy('hato.createdAt', 'DESC')
-      .getMany();
-
-    return hatos;
+  async recalcularTotal(idHato: number): Promise<Hato> {
+    const hato = await this.hatoRepository.findOne({
+      where: { idHato },
+      relations: ['animales'],
+    });
+  
+    if (!hato) {
+      throw new NotFoundException(`Hato con ID ${idHato} no encontrado`);
+    }
+  
+    const total = hato.animales.reduce((sum, animal) => sum + animal.cantidad, 0);
+    
+    hato.totalGanado = total;
+    return await this.hatoRepository.save(hato);
   }
 }

@@ -21,17 +21,15 @@ export class Hato {
   tipoExplotacion: string;
 
   @Column({ type: 'int' })
-  totalGanado: number;
+  totalGanado?: number;
 
   @Column({ type: 'varchar', length: 100 })
   razaPredominante: string;
 
-  // Relación 1:1 con Finca
   @OneToOne(() => Finca, (finca) => finca.hato)
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;
 
-  // Relación 1:N con Animal
   @OneToMany(() => Animal, (animal) => animal.hato)
   animales: Animal[];
 

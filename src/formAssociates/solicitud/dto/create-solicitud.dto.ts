@@ -13,6 +13,8 @@ import { DatosFincaDto } from 'src/formFinca/finca/dto/finca-data.dto';
 import { NucleoFamiliarDto } from 'src/formAssociates/nucleo-familiar/dto/nucleo-familiar-data.dto';
 import { CreatePropietarioDto } from 'src/formAssociates/propietario/dto/create-propietario.dto';
 import { PropietarioConditionalValidator } from '../validators/popietario-conditional.validator';
+import { CreateHatoDto } from 'src/formFinca/hato/dto/create-hato.dto';
+import { CreateAnimalDto } from 'src/formFinca/animal/dto/create-animal.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -37,4 +39,14 @@ export class CreateSolicitudDto {
   @ValidateNested()
   @Type(() => DatosFincaDto)
   datosFinca: DatosFincaDto;  
+
+  @ValidateNested()
+  @Type(() => CreateHatoDto)
+  @IsOptional()
+  hato?: CreateHatoDto;
+
+  @ValidateNested()
+  @Type(() => CreateAnimalDto)
+  @IsOptional()
+  animales?: CreateAnimalDto[];
 }

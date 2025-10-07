@@ -12,6 +12,8 @@ import { PropietarioModule } from '../propietario/propietario.module';
 import { Persona } from '../persona/entities/persona.entity';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DropboxModule } from 'src/dropbox/dropbox.module';
+import { HatoModule } from 'src/formFinca/hato/hato.module';
+import { AnimalModule } from 'src/formFinca/animal/animal.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { DropboxModule } from 'src/dropbox/dropbox.module';
     GeografiaModule,
     PropietarioModule,
     DropboxModule,
+    HatoModule,
+    AnimalModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

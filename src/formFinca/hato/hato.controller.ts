@@ -29,11 +29,6 @@ export class HatoController {
     return this.hatoService.findAll();
   }
 
-  @Get('with-animales-count')
-  findAllWithAnimalesCount() {
-    return this.hatoService.findAllWithAnimalesCount();
-  }
-
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.hatoService.findOne(id);

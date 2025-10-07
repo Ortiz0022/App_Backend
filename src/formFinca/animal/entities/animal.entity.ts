@@ -20,7 +20,9 @@ export class Animal {
   @Column({ type: 'int' })
   edad: number;
 
-  // Relación N:1 con Hato
+  @Column({ type: 'int' }) 
+  cantidad: number;
+
   @ManyToOne(() => Hato, (hato) => hato.animales, {
     eager: true,
   })

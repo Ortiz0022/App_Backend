@@ -1,18 +1,20 @@
 import { IsInt, IsNotEmpty, IsPositive, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateAnimalDto {
-  @IsNotEmpty({ message: 'El nombre es obligatorio' })
-  @IsString({ message: 'El nombre debe ser un texto' })
-  @MaxLength(100, { message: 'El nombre no puede exceder 100 caracteres' })
+  @IsInt()
+  @IsPositive()
+  idHato: number;
+
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(100)
   nombre: string;
 
-  @IsNotEmpty({ message: 'La edad es obligatoria' })
-  @IsInt({ message: 'La edad debe ser un entero' })
-  @Min(0, { message: 'La edad no puede ser negativa' })
+  @IsInt()
+  @Min(0)
   edad: number;
 
-  @IsNotEmpty({ message: 'El ID del hato es obligatorio' })
-  @IsInt({ message: 'El ID del hato debe ser un entero' })
-  @IsPositive({ message: 'El ID del hato debe ser positivo' })
-  idHato: number;
+  @IsInt()  
+  @Min(1, { message: 'La cantidad debe ser al menos 1' })
+  cantidad: number;
 }

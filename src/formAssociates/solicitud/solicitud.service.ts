@@ -21,6 +21,8 @@ import { GeografiaService } from 'src/formFinca/geografia/geografia.service';
 import { PropietarioService } from '../propietario/propietario.service';
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { DropboxService } from 'src/dropbox/dropbox.service';
+import { HatoService } from 'src/formFinca/hato/hato.service';
+import { AnimalService } from 'src/formFinca/animal/animal.service';
 
 @Injectable()
 export class SolicitudService {
@@ -39,6 +41,8 @@ export class SolicitudService {
     private geografiaService: GeografiaService,
     private propietarioService: PropietarioService,
     private dropboxService: DropboxService,  
+    private hatoService: HatoService,
+    private animalService: AnimalService,
     private dataSource: DataSource,
   ) {}
 
@@ -160,6 +164,27 @@ export class SolicitudService {
         queryRunner.manager,
       );
   
+      // 8. ✅ Crear Hato (si viene en el DTO)
+      if (createDto.hato) {
+        const hato = await this.hatoService.createInTransaction(
+          createDto.hato,
+          finca,
+          queryRunner.manager,
+        );
+
+        // 9. ✅ Crear Animales (si vienen)
+        if (createDto.animales && createDto.animales.length > 0) {
+          await this.animalService.createManyInTransaction(
+            createDto.animales,
+            hato,
+            queryRunner.manager,
+          );
+
+          // 10. ✅ Recalcular total después de crear los animales
+          await this.hatoService.updateTotalInTransaction(hato, queryRunner.manager);
+        }
+      }
+
       // 7. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
@@ -179,7 +204,6 @@ export class SolicitudService {
     }
   }
 
-  // ... resto de métodos igual
   async findAllPaginated(params: {
     page?: number;
     limit?: number;
@@ -190,7 +214,7 @@ export class SolicitudService {
     const page = params.page || 1;
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
-
+  
     const queryBuilder = this.solicitudRepository
       .createQueryBuilder('solicitud')
       .leftJoinAndSelect('solicitud.persona', 'persona')
@@ -200,28 +224,30 @@ export class SolicitudService {
       .leftJoinAndSelect('asociado.fincas', 'fincas')
       .leftJoinAndSelect('fincas.geografia', 'geografia')
       .leftJoinAndSelect('fincas.propietario', 'propietario')
-      .leftJoinAndSelect('propietario.persona', 'propietarioPersona');
-
+      .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
+      .leftJoinAndSelect('fincas.hato', 'hato')                    // ✅ Agregar
+      .leftJoinAndSelect('hato.animales', 'animales');              // ✅ Agregar
+  
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
     }
-
+  
     if (params.search) {
       queryBuilder.andWhere(
         '(persona.cedula LIKE :search OR persona.nombre LIKE :search OR persona.email LIKE :search)',
         { search: `%${params.search}%` },
       );
     }
-
+  
     if (params.sort) {
       const [field, order] = params.sort.split(':');
       queryBuilder.orderBy(`solicitud.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
     } else {
       queryBuilder.orderBy('solicitud.createdAt', 'DESC');
     }
-
+  
     const [items, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
-
+  
     return {
       items,
       total,
@@ -229,15 +255,20 @@ export class SolicitudService {
       pages: Math.ceil(total / limit),
     };
   }
-
+ 
   async findAll() {
     return this.solicitudRepository.find({
       relations: [
+        'persona',                                   
         'asociado',
+        'asociado.persona',                           
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
         'asociado.fincas.propietario',
+        'asociado.fincas.propietario.persona',        
+        'asociado.fincas.hato',                       
+        'asociado.fincas.hato.animales',              
       ],
       order: { createdAt: 'DESC' },
     });
@@ -255,15 +286,18 @@ export class SolicitudService {
         'asociado.fincas.geografia',
         'asociado.fincas.propietario',
         'asociado.fincas.propietario.persona',
+        'asociado.fincas.hato',                       
+        'asociado.fincas.hato.animales',              
       ],
     });
-
+  
     if (!solicitud) {
       throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
     }
-
+  
     return solicitud;
   }
+  
 
   async changeStatus(
   id: number,
@@ -326,7 +360,18 @@ export class SolicitudService {
   async findByStatus(status: SolicitudStatus) {
     return this.solicitudRepository.find({
       where: { estado: status },
-      relations: ['persona', 'asociado', 'asociado.fincas'],
+      relations: [
+        'persona',
+        'asociado',
+        'asociado.persona',                           
+        'asociado.nucleoFamiliar',                    
+        'asociado.fincas',
+        'asociado.fincas.geografia',                  
+        'asociado.fincas.propietario',                
+        'asociado.fincas.propietario.persona',        
+        'asociado.fincas.hato',                       
+        'asociado.fincas.hato.animales',              
+      ],
       order: { createdAt: 'DESC' },
     });
   }
