@@ -32,6 +32,12 @@ export class AssociateController {
     return this.associateService.findByCedula(cedula);
   }
 
+  // ✅ NUEVO: Endpoint básico (sin toda la info de fincas)
+  @Get(':id/basic')
+  findOneBasic(@Param('id') id: string) {
+    return this.associateService.findOneBasic(+id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.associateService.findOne(+id);

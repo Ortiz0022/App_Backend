@@ -386,21 +386,30 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
+        // ✅ SOLO hasta aquí - SIN propietario, hato, forrajes, etc.
+      ],
+    });
+  
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
+    }
+  
+    return solicitud;
+  }
+  
+  async findOneComplete(id: number): Promise<Solicitud> {
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitud: id },
+      relations: [
+        'persona',
+        'asociado',
+        'asociado.persona',
+        'asociado.nucleoFamiliar',
+        'asociado.fincas',
+        'asociado.fincas.geografia',
         'asociado.fincas.propietario',
         'asociado.fincas.propietario.persona',
-        'asociado.fincas.hato',
-        'asociado.fincas.hato.animales',
-        'asociado.fincas.forrajes',
-        'asociado.fincas.registrosProductivos',
-        'asociado.fincas.fuentesAgua',
-        'asociado.fincas.metodosRiego',
-        'asociado.fincas.actividades',
-        'asociado.fincas.infraestructura',
-        'asociado.fincas.otrosEquipos',
-        'asociado.fincas.tipoCercaLinks',
-        'asociado.fincas.tipoCercaLinks.tipoCerca',
-        'asociado.fincas.infraLinks',
-        'asociado.fincas.infraLinks.infraestructura',
+        // ✅ SOLO hasta aquí - NADA MÁS
       ],
     });
   

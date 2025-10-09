@@ -74,6 +74,11 @@ export class SolicitudController {
     return this.solicitudService.findOne(id);
   }
 
+  @Get(':id/complete')
+  findOneComplete(@Param('id', ParseIntPipe) id: number) {
+    return this.solicitudService.findOneComplete(id);
+  }
+
   @Patch(':id/status')
   changeStatus(
     @Param('id', ParseIntPipe) id: number,
