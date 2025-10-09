@@ -24,6 +24,7 @@ import { CreateActividadDto } from 'src/formFinca/actividad-agropecuaria/dto/cre
 import { CreateInfraestructuraProduccionDto } from 'src/formFinca/equipo/dto/create-equipo.dto';
 import { CreateFincaOtroEquipoDto } from 'src/formFinca/otros-equipos/dto/create-otros-equipos.dto';
 import { CreateTipoCercaDto } from 'src/formFinca/tipo-cerca/dto/create-tipo-cerca.dto';
+import { CreateFincaInfraestructuraDto } from 'src/formFinca/finca-infraestructura/dto/create-fincaInfraestructura.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -101,4 +102,10 @@ export class CreateSolicitudDto {
   @ValidateNested()
   @Type(() => CreateTipoCercaDto)
   tipoCerca?: CreateTipoCercaDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateFincaInfraestructuraDto)
+  infraestructuras?: CreateFincaInfraestructuraDto[];
 }

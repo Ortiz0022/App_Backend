@@ -15,5 +15,6 @@ import { FincaInfraestructurasService } from './fincaInfraestructura.service';
   ],
   controllers: [FincaInfraestructurasController],
   providers: [FincaInfraestructurasService],
+  exports: [FincaInfraestructurasService],
 })
 export class FincaInfraestructurasModule {}

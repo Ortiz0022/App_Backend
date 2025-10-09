@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Infraestructura } from './entities/infraestructura.entity';
 import { CreateInfraestructuraDto } from './dto/create-infraestructura.dto';
 import { UpdateInfraestructuraDto } from './dto/update-infraestructura.dto';
@@ -15,6 +15,26 @@ export class InfraestructurasService {
   create(dto: CreateInfraestructuraDto) {
     const entity = this.repo.create(dto);
     return this.repo.save(entity);
+  }
+
+  async findOrCreateInTransaction(
+    nombre: string,
+    descripcion: string | undefined,
+    manager: EntityManager,
+  ): Promise<Infraestructura> {
+    let infraestructura = await manager.findOne(Infraestructura, {
+      where: { nombre },
+    });
+  
+    if (!infraestructura) {
+      infraestructura = manager.create(Infraestructura, {
+        nombre,
+        descripcion,
+      });
+      await manager.save(infraestructura);
+    }
+  
+    return infraestructura;
   }
 
   findAll() {

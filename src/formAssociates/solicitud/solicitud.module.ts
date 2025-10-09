@@ -23,6 +23,8 @@ import { FincaOtroEquipoModule } from 'src/formFinca/otros-equipos/finca-equipo.
 import { InfraestructuraProduccionModule } from 'src/formFinca/equipo/equipo.module';
 import { TiposCercaModule } from 'src/formFinca/tipo-cerca/tipo-cerca.module';
 import { FincaTipoCercaModule } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
+import { InfraestructurasModule } from 'src/formFinca/infraestructura/infraestructura.module';
+import { FincaInfraestructurasModule } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.module';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { FincaTipoCercaModule } from 'src/formFinca/finca-tipo-cerca/finca-tipo-
     FincaOtroEquipoModule,   
     TiposCercaModule,          
     FincaTipoCercaModule, 
+    InfraestructurasModule,           
+    FincaInfraestructurasModule,    
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

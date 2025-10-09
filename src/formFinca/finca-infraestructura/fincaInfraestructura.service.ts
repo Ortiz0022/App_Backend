@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { FincaInfraestructura } from './entities/fincaInfraestructura.entity';
 import { Finca } from '../finca/entities/finca.entity';
 import { Infraestructura } from '../infraestructura/entities/infraestructura.entity';
@@ -42,6 +42,41 @@ export class FincaInfraestructurasService {
     });
 
     return this.repo.save(entity);
+  }
+
+  async linkManyInTransaction(
+    infraestructuras: CreateFincaInfraestructuraDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<FincaInfraestructura[]> {
+    if (!infraestructuras || infraestructuras.length === 0) {
+      return [];
+    }
+  
+    const links: FincaInfraestructura[] = [];
+  
+    for (const dto of infraestructuras) {
+      const infraestructura = await manager.findOne(Infraestructura, {
+        where: { idInfraestructura: dto.idInfraestructura },
+      });
+  
+      if (!infraestructura) {
+        throw new NotFoundException(
+          `Infraestructura con ID ${dto.idInfraestructura} no encontrada`,
+        );
+      }
+  
+      const link = manager.create(FincaInfraestructura, {
+        idFinca: finca.idFinca,
+        idInfraestructura: infraestructura.idInfraestructura,
+        finca,
+        infraestructura,
+      });
+  
+      links.push(link);
+    }
+  
+    return manager.save(links);
   }
 
   // Lista las infraestructuras de una finca (incluye el objeto Infraestructura)

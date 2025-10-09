@@ -32,6 +32,8 @@ import { FincaOtroEquipoService } from 'src/formFinca/otros-equipos/finca-otro-e
 import { InfraestructuraProduccionService } from 'src/formFinca/equipo/equipo.service';
 import { TiposCercaService } from 'src/formFinca/tipo-cerca/tipo-cerca.service';
 import { FincaTipoCercaService } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.service';
+import { InfraestructurasService } from 'src/formFinca/infraestructura/infraestructura.service';
+import { FincaInfraestructurasService } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.service';
 
 @Injectable()
 export class SolicitudService {
@@ -61,6 +63,8 @@ export class SolicitudService {
     private fincaOtroEquipoService: FincaOtroEquipoService,
     private tiposCercaService: TiposCercaService,
     private fincaTipoCercaService: FincaTipoCercaService,
+    private infraestructurasService: InfraestructurasService,
+    private fincaInfraestructurasService: FincaInfraestructurasService,
     private dataSource: DataSource,
 
   ) {}
@@ -281,7 +285,16 @@ export class SolicitudService {
         );
       }
 
-      // 17. Crear Solicitud
+       // 17. Crear Infraestructuras (si vienen)
+    if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
+      await this.fincaInfraestructurasService.linkManyInTransaction(
+        createDto.infraestructuras,
+        finca,
+        queryRunner.manager,
+      );
+    }
+
+      // 18. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -333,7 +346,9 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')
       .leftJoinAndSelect('infraestructura.otrosEquipos', 'otrosEquipos')
       .leftJoinAndSelect('infraestructura.tipoCercaLinks', 'tipoCercaLinks')
-      .leftJoinAndSelect('infraestructura.tipoCercaLinks.tipoCerca', 'tipoCerca');
+      .leftJoinAndSelect('infraestructura.tipoCercaLinks.tipoCerca', 'tipoCerca')
+      .leftJoinAndSelect('fincas.infraLinks', 'infraLinks')
+      .leftJoinAndSelect('infraLinks.infraestructura', 'infraestructura');
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -385,6 +400,8 @@ export class SolicitudService {
         'asociado.fincas.otrosEquipos',
         'asociado.fincas.tipoCercaLinks',             
         'asociado.fincas.tipoCercaLinks.tipoCerca',
+        'asociado.fincas.infraLinks',
+        'asociado.fincas.infraLinks.infraestructura',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -413,6 +430,8 @@ export class SolicitudService {
       'asociado.fincas.otrosEquipos',
       'asociado.fincas.tipoCercaLinks',           
       'asociado.fincas.tipoCercaLinks.tipoCerca',
+      'asociado.fincas.infraLinks',
+      'asociado.fincas.infraLinks.infraestructura',
       ],
     });
   
@@ -503,6 +522,8 @@ export class SolicitudService {
         'asociado.fincas.fincasEquipos.tipoEquipo',
         'asociado.fincas.tipoCercaLinks',           
       'asociado.fincas.tipoCercaLinks.tipoCerca',
+      'asociado.fincas.infraLinks',
+      'asociado.fincas.infraLinks.infraestructura',
       ],
       order: { createdAt: 'DESC' },
     });
