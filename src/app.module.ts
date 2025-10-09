@@ -70,6 +70,7 @@ import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corrie
 import { DropboxModule } from './dropbox/dropbox.module';
 import { FincaOtroEquipoModule } from './formFinca/otros-equipos/finca-equipo.module';
 import { InfraestructuraProduccionModule } from './formFinca/equipo/equipo.module';
+import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
 
 
 

@@ -44,7 +44,7 @@ export class Solicitud {
   @Column({ type: 'varchar', length: 255, nullable: true })
   motivo?: string;
 
-  @Column({ type: 'json', nullable: true })
+   @Column({ type: 'json', nullable: true })
   formData?: {
     cedula: string[];
     planoFinca: string[];
