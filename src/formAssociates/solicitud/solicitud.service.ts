@@ -27,6 +27,7 @@ import { ForrajeService } from 'src/formFinca/forraje/forraje.service';
 import { RegistrosProductivosService } from 'src/formFinca/registros-productivos/registros-productivos.service';
 import { FuentesAguaService } from 'src/formFinca/fuente-agua/fuente-agua.service';
 import { MetodoRiegoService } from 'src/formFinca/metodo-riego/metodo-riego.service';
+import { ActividadesAgropecuariasService } from 'src/formFinca/actividad-agropecuaria/actividad.service';
 
 @Injectable()
 export class SolicitudService {
@@ -51,6 +52,7 @@ export class SolicitudService {
     private registrosProductivosService: RegistrosProductivosService,
     private fuentesAguaService: FuentesAguaService,
     private metodoRiegoService: MetodoRiegoService,
+    private actividadesAgropecuariasService: ActividadesAgropecuariasService,
     private dataSource: DataSource,
   ) {}
 
@@ -224,8 +226,23 @@ export class SolicitudService {
           queryRunner.manager,
         );
       }
+      console.log('🔍 DTO actividades:', createDto.actividades); 
+      // 13. Crear Actividades Agropecuarias (si vienen)
+      if (createDto.actividades && createDto.actividades.length > 0) {
+        console.log('✅ Intentando crear', createDto.actividades.length, 'actividades'); // ✅ Debug
+        
+        const actividadesCreadas = await this.actividadesAgropecuariasService.createManyInTransaction(
+          createDto.actividades,
+          finca,
+          queryRunner.manager,
+        );
+        
+        console.log('✅ Actividades creadas:', actividadesCreadas); // ✅ Debug
+      } else {
+        console.log('⚠️ No hay actividades en el DTO'); // ✅ Debug
+      }
 
-      // 13. Crear Solicitud
+      // 14. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -237,6 +254,7 @@ export class SolicitudService {
       await queryRunner.commitTransaction();
       return this.findOne(solicitud.idSolicitud);
     } catch (error) {
+      console.error('❌ Error en transacción:', error);
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
@@ -270,7 +288,8 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.forrajes', 'forrajes')
       .leftJoinAndSelect('fincas.registrosProductivos', 'registrosProductivos')
       .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
-      .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego');
+      .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego')
+      .leftJoinAndSelect('fincas.actividades', 'actividades')
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -317,6 +336,7 @@ export class SolicitudService {
         'asociado.fincas.registrosProductivos',
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
+        'asociado.fincas.actividades',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -340,6 +360,7 @@ export class SolicitudService {
         'asociado.fincas.registrosProductivos',
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
+        'asociado.fincas.actividades',
       ],
     });
   
@@ -425,6 +446,7 @@ export class SolicitudService {
         'asociado.fincas.registrosProductivos',
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
+        'asociado.fincas.actividades',
       ],
       order: { createdAt: 'DESC' },
     });

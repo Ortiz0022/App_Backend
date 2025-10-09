@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { EntityManager, ILike, Repository } from 'typeorm';
 import { ActividadAgropecuaria } from './entities/actividad.entity';
 import { Finca } from '../finca/entities/finca.entity';
 import { CreateActividadDto } from './dto/create-actividad';
@@ -31,6 +31,35 @@ export class ActividadesAgropecuariasService {
     return this.repo.save(entity);
   }
 
+  async createManyInTransaction(
+    actividades: CreateActividadDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<ActividadAgropecuaria[]> {
+    console.log('🔍 Datos recibidos:', { actividades, fincaId: finca.idFinca }); // ✅ Debug
+  
+    if (!actividades || actividades.length === 0) {
+      console.log('⚠️ Array vacío'); // ✅ Debug
+      return [];
+    }
+  
+    const actividadEntities = actividades.map((dto) => {
+      console.log('🔍 Creando entidad:', dto); // ✅ Debug
+      return manager.create(ActividadAgropecuaria, {
+        nombre: dto.nombre,
+        finca,
+        idFinca: finca.idFinca,
+      });
+    });
+  
+    console.log('🔍 Entidades antes de guardar:', actividadEntities); // ✅ Debug
+  
+    const saved = await manager.save(actividadEntities);
+    
+    console.log('✅ Actividades guardadas:', saved); // ✅ Debug
+  
+    return saved;
+  }
   // listado general con filtros opcionales
   async findAll(params?: { idFinca?: number; search?: string }) {
     const where: any = {};

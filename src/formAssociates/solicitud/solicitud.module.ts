@@ -18,6 +18,7 @@ import { ForrajeModule } from 'src/formFinca/forraje/forraje.module';
 import { RegistrosProductivosModule } from 'src/formFinca/registros-productivos/registros-productivos.module';
 import { FuentesAguaModule } from 'src/formFinca/fuente-agua/fuente-agua.module';
 import { MetodoRiegoModule } from 'src/formFinca/metodo-riego/metodo-riego.module';
+import { ActividadesAgropecuariasModule } from 'src/formFinca/actividad-agropecuaria/actividad.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { MetodoRiegoModule } from 'src/formFinca/metodo-riego/metodo-riego.modul
     RegistrosProductivosModule,
     FuentesAguaModule,
     MetodoRiegoModule,
+    ActividadesAgropecuariasModule, 
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

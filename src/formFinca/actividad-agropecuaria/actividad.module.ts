@@ -11,5 +11,6 @@ import { Finca } from '../finca/entities/finca.entity';
   imports: [TypeOrmModule.forFeature([ActividadAgropecuaria, Finca])],
   controllers: [ActividadesAgropecuariasController],
   providers: [ActividadesAgropecuariasService],
+  exports: [ActividadesAgropecuariasService], 
 })
 export class ActividadesAgropecuariasModule {}

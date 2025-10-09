@@ -115,8 +115,8 @@ export class Finca {
   @OneToMany(() => FuenteAgua, (fa) => fa.finca)
   fuentesAgua?: FuenteAgua[];
 
-  @OneToMany(() => ActividadAgropecuaria, (a) => a.finca)
-  actividadesAgropecuarias?: ActividadAgropecuaria[];
+  @OneToMany(() => ActividadAgropecuaria, (actividad) => actividad.finca)
+  actividades?: ActividadAgropecuaria[];
 
   @OneToMany(() => Forraje, (forraje) => forraje.finca)
   forrajes?: Forraje[];
