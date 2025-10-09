@@ -21,6 +21,8 @@ import { CreateRegistrosProductivosDto } from 'src/formFinca/registros-productiv
 import { CreateFuenteAguaDto } from 'src/formFinca/fuente-agua/dto/create-fuente-agua';
 import { CreateMetodoRiegoDto } from 'src/formFinca/metodo-riego/dto/create-metodo-riego.dto';
 import { CreateActividadDto } from 'src/formFinca/actividad-agropecuaria/dto/create-actividad';
+import { CreateInfraestructuraProduccionDto } from 'src/formFinca/equipo/dto/create-equipo.dto';
+import { CreateFincaOtroEquipoDto } from 'src/formFinca/otros-equipos/dto/create-otros-equipos.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -82,4 +84,15 @@ export class CreateSolicitudDto {
   @ValidateNested({ each: true })
   @Type(() => CreateActividadDto)
   actividades?: CreateActividadDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateInfraestructuraProduccionDto)
+  infraestructuraProduccion?: CreateInfraestructuraProduccionDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateFincaOtroEquipoDto)
+  otrosEquipos?: CreateFincaOtroEquipoDto[];
 }

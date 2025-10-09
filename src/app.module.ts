@@ -56,8 +56,6 @@ import { HatoModule } from './formFinca/hato/hato.module';
 import { AnimalModule } from './formFinca/animal/animal.module';
 import { FincaFuenteEnergiaModule } from './formFinca/finca-fuente-energia/finca-fuente-energia.module';
 import { FuenteEnergiaModule } from './formFinca/FuenteEnergia/fuente-energia.module';
-import { EquipoModule } from './formFinca/equipo/equipo.module';
-import { FincaEquipoModule } from './formFinca/finca-equipo/finca-equipo.module';
 import { AccesoModule } from './formFinca/acceso/acceso.module';
 import { MetodoRiegoModule } from './formFinca/metodo-riego/metodo-riego.module';
 import { NecesidadesModule } from './formFinca/necesidades/necesidades.module';
@@ -70,6 +68,8 @@ import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
 import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
 import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
 import { DropboxModule } from './dropbox/dropbox.module';
+import { FincaOtroEquipoModule } from './formFinca/otros-equipos/finca-equipo.module';
+import { InfraestructuraProduccionModule } from './formFinca/equipo/equipo.module';
 
 
 
@@ -151,8 +151,6 @@ import { DropboxModule } from './dropbox/dropbox.module';
     AnimalModule,
     FuenteEnergiaModule,
     FincaFuenteEnergiaModule,
-    EquipoModule,
-    FincaEquipoModule,
     AccesoModule,
     MetodoRiegoModule,
     NecesidadesModule,
@@ -165,6 +163,8 @@ import { DropboxModule } from './dropbox/dropbox.module';
     FuentesAguaModule,
     ActividadesAgropecuariasModule,
     DropboxModule,
+    FincaOtroEquipoModule,
+    InfraestructuraProduccionModule
   ],
   controllers: [AppController],
   providers: [

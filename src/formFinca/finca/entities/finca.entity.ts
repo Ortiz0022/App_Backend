@@ -15,7 +15,7 @@ import { RegistrosProductivos } from 'src/formFinca/registros-productivos/entiti
 import { Geografia } from 'src/formFinca/geografia/entities/geografia.entity';
 import { Hato } from 'src/formFinca/hato/entities/hato.entity';
 import { FincaFuenteEnergia } from 'src/formFinca/finca-fuente-energia/entities/finca-fuente-energia.entity';
-import { FincaEquipo } from 'src/formFinca/finca-equipo/entities/finca-equipo.entity';
+import {FincaOtroEquipo } from 'src/formFinca/otros-equipos/entities/finca-equipo.entity';
 import { Acceso } from 'src/formFinca/acceso/entities/acceso.entity';
 import { MetodoRiego } from 'src/formFinca/metodo-riego/entities/metodo-riego.entity';
 import { Necesidades } from 'src/formFinca/necesidades/entities/necesidades.entity';
@@ -26,6 +26,7 @@ import { CanalComercializacion } from 'src/formFinca/canal-comercializacion/enti
 import { FuenteAgua } from 'src/formFinca/fuente-agua/entities/fuente-agua.entity';
 import { ActividadAgropecuaria } from 'src/formFinca/actividad-agropecuaria/entities/actividad.entity';
 import { Forraje } from 'src/formFinca/forraje/entities/forraje.entity';
+import { InfraestructuraProduccion } from 'src/formFinca/equipo/entities/equipo.entity';
 
 @Entity('fincas')
 export class Finca {
@@ -87,9 +88,6 @@ export class Finca {
   )
   fincasFuentesEnergia?: FincaFuenteEnergia[];
 
-  @OneToMany(() => FincaEquipo, (fincaEquipo) => fincaEquipo.finca)
-  fincasEquipos?: FincaEquipo[];
-
   @OneToMany(() => Acceso, (acceso) => acceso.finca)
   accesos?: Acceso[];
 
@@ -120,4 +118,10 @@ export class Finca {
 
   @OneToMany(() => Forraje, (forraje) => forraje.finca)
   forrajes?: Forraje[];
+
+  @OneToOne(() => InfraestructuraProduccion, (infra) => infra.finca)
+  infraestructura?: InfraestructuraProduccion;
+
+  @OneToMany(() => FincaOtroEquipo, (equipo) => equipo.finca)
+  otrosEquipos?: FincaOtroEquipo[];
 }

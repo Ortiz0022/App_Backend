@@ -1,116 +1,74 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Equipo } from './entities/equipo.entity';
-import { CreateEquipoDto } from './dto/create-equipo.dto';
-import { UpdateEquipoDto } from './dto/update-equipo.dto';
+import { Repository, EntityManager } from 'typeorm';
+import { Finca } from '../finca/entities/finca.entity';
+import { InfraestructuraProduccion } from './entities/equipo.entity';
+import { CreateInfraestructuraProduccionDto } from './dto/create-equipo.dto';
+import { UpdateInfraestructuraProduccionDto } from './dto/update-equipo.dto';
 
 @Injectable()
-export class EquipoService {
+export class InfraestructuraProduccionService {
   constructor(
-    @InjectRepository(Equipo)
-    private readonly equipoRepository: Repository<Equipo>,
+    @InjectRepository(InfraestructuraProduccion)
+    private readonly repo: Repository<InfraestructuraProduccion>,
+    @InjectRepository(Finca)
+    private readonly fincaRepo: Repository<Finca>,
   ) {}
 
-  async create(createDto: CreateEquipoDto): Promise<Equipo> {
-    const { nombre } = createDto;
+  async create(dto: CreateInfraestructuraProduccionDto): Promise<InfraestructuraProduccion> {
+    const finca = await this.fincaRepo.findOne({ where: { idFinca: dto.idFinca } });
+    if (!finca) throw new NotFoundException(`Finca con ID ${dto.idFinca} no encontrada`);
 
-    // Verificar si ya existe un equipo con el mismo nombre
-    const existente = await this.equipoRepository.findOne({
-      where: { nombre },
-    });
-
+    // Verificar que la finca no tenga ya infraestructura
+    const existente = await this.repo.findOne({ where: { finca: { idFinca: dto.idFinca } } });
     if (existente) {
-      throw new ConflictException(
-        `Ya existe un equipo con el nombre "${nombre}"`,
-      );
+      throw new ConflictException('Esta finca ya tiene infraestructura registrada');
     }
 
-    const equipo = this.equipoRepository.create(createDto);
-    return await this.equipoRepository.save(equipo);
-  }
-
-  async findAll(): Promise<Equipo[]> {
-    return await this.equipoRepository.find({
-      order: {
-        nombre: 'ASC',
-      },
-    });
-  }
-
-  async findOne(id: number): Promise<Equipo> {
-    const equipo = await this.equipoRepository.findOne({
-      where: { idEquipo: id },
-      relations: ['fincasEquipos', 'fincasEquipos.finca'],
+    const infraestructura = this.repo.create({
+      numeroAparatos: dto.numeroAparatos,
+      numeroBebederos: dto.numeroBebederos,
+      numeroSaleros: dto.numeroSaleros,
+      finca,
     });
 
-    if (!equipo) {
-      throw new NotFoundException(`Equipo con ID ${id} no encontrado`);
-    }
-
-    return equipo;
+    return this.repo.save(infraestructura);
   }
 
-  async update(id: number, updateDto: UpdateEquipoDto): Promise<Equipo> {
-    const equipo = await this.equipoRepository.findOne({
-      where: { idEquipo: id },
-    });
+  async findByFinca(idFinca: number): Promise<InfraestructuraProduccion | null> {
+    return this.repo.findOne({ where: { finca: { idFinca } } });
+  }
 
-    if (!equipo) {
-      throw new NotFoundException(`Equipo con ID ${id} no encontrado`);
-    }
+  async findOne(id: number): Promise<InfraestructuraProduccion> {
+    const item = await this.repo.findOne({ where: { idInfraestructura: id } });
+    if (!item) throw new NotFoundException(`Infraestructura con ID ${id} no encontrada`);
+    return item;
+  }
 
-    // Si se actualiza el nombre, verificar duplicados
-    if (updateDto.nombre) {
-      const existente = await this.equipoRepository.findOne({
-        where: { nombre: updateDto.nombre },
-      });
-
-      if (existente && existente.idEquipo !== id) {
-        throw new ConflictException(
-          `Ya existe un equipo con el nombre "${updateDto.nombre}"`,
-        );
-      }
-    }
-
-    Object.assign(equipo, updateDto);
-    return await this.equipoRepository.save(equipo);
+  async update(id: number, dto: UpdateInfraestructuraProduccionDto): Promise<InfraestructuraProduccion> {
+    const infraestructura = await this.findOne(id);
+    Object.assign(infraestructura, dto);
+    return this.repo.save(infraestructura);
   }
 
   async remove(id: number): Promise<void> {
-    const equipo = await this.equipoRepository.findOne({
-      where: { idEquipo: id },
-      relations: ['fincasEquipos'],
-    });
-
-    if (!equipo) {
-      throw new NotFoundException(`Equipo con ID ${id} no encontrado`);
-    }
-
-    // Verificar si tiene fincas asociadas
-    if (equipo.fincasEquipos && equipo.fincasEquipos.length > 0) {
-      throw new BadRequestException(
-        'No se puede eliminar el equipo porque tiene fincas asociadas',
-      );
-    }
-
-    await this.equipoRepository.remove(equipo);
+    const item = await this.findOne(id);
+    await this.repo.remove(item);
   }
 
-  // Método auxiliar para obtener equipos con conteo de fincas
-  async findAllWithFincasCount(): Promise<any[]> {
-    const equipos = await this.equipoRepository
-      .createQueryBuilder('equipo')
-      .leftJoin('equipo.fincasEquipos', 'fincaEquipo')
-      .loadRelationCountAndMap('equipo.fincasCount', 'equipo.fincasEquipos')
-      .orderBy('equipo.nombre', 'ASC')
-      .getMany();
+  // ✅ Método transaccional (para SolicitudService)
+  async createInTransaction(
+    dto: CreateInfraestructuraProduccionDto,
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<InfraestructuraProduccion> {
+    const infraestructura = manager.create(InfraestructuraProduccion, {
+      numeroAparatos: dto.numeroAparatos,
+      numeroBebederos: dto.numeroBebederos,
+      numeroSaleros: dto.numeroSaleros,
+      finca,
+    });
 
-    return equipos;
+    return manager.save(infraestructura);
   }
 }

@@ -28,6 +28,8 @@ import { RegistrosProductivosService } from 'src/formFinca/registros-productivos
 import { FuentesAguaService } from 'src/formFinca/fuente-agua/fuente-agua.service';
 import { MetodoRiegoService } from 'src/formFinca/metodo-riego/metodo-riego.service';
 import { ActividadesAgropecuariasService } from 'src/formFinca/actividad-agropecuaria/actividad.service';
+import { FincaOtroEquipoService } from 'src/formFinca/otros-equipos/finca-otro-equipo.service';
+import { InfraestructuraProduccionService } from 'src/formFinca/equipo/equipo.service';
 
 @Injectable()
 export class SolicitudService {
@@ -53,7 +55,10 @@ export class SolicitudService {
     private fuentesAguaService: FuentesAguaService,
     private metodoRiegoService: MetodoRiegoService,
     private actividadesAgropecuariasService: ActividadesAgropecuariasService,
+    private infraestructuraProduccionService: InfraestructuraProduccionService,
+    private fincaOtroEquipoService: FincaOtroEquipoService,
     private dataSource: DataSource,
+
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -226,23 +231,35 @@ export class SolicitudService {
           queryRunner.manager,
         );
       }
-      console.log('🔍 DTO actividades:', createDto.actividades); 
+
       // 13. Crear Actividades Agropecuarias (si vienen)
       if (createDto.actividades && createDto.actividades.length > 0) {
-        console.log('✅ Intentando crear', createDto.actividades.length, 'actividades'); // ✅ Debug
-        
-        const actividadesCreadas = await this.actividadesAgropecuariasService.createManyInTransaction(
+        await this.actividadesAgropecuariasService.createManyInTransaction(
           createDto.actividades,
           finca,
           queryRunner.manager,
         );
-        
-        console.log('✅ Actividades creadas:', actividadesCreadas); // ✅ Debug
-      } else {
-        console.log('⚠️ No hay actividades en el DTO'); // ✅ Debug
+      } 
+
+        // 14. Crear Infraestructura de Producción (si viene)
+      if (createDto.infraestructuraProduccion) {
+        await this.infraestructuraProduccionService.createInTransaction(
+          createDto.infraestructuraProduccion,
+          finca,
+          queryRunner.manager,
+        );
       }
 
-      // 14. Crear Solicitud
+      // 15. Crear Otros Equipos (si vienen)
+      if (createDto.otrosEquipos && createDto.otrosEquipos.length > 0) {
+        await this.fincaOtroEquipoService.createManyInTransaction(
+          createDto.otrosEquipos,
+          finca,
+          queryRunner.manager,
+        );
+      }
+      
+      // 16. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -290,6 +307,9 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
       .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego')
       .leftJoinAndSelect('fincas.actividades', 'actividades')
+      .leftJoinAndSelect('fincas.fincasEquipos', 'fincasEquipos')
+      .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')
+      .leftJoinAndSelect('infraestructura.otrosEquipos', 'otrosEquipos')
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -337,6 +357,8 @@ export class SolicitudService {
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
         'asociado.fincas.actividades',
+        'asociado.fincas.infraestructura',   
+      'asociado.fincas.otrosEquipos',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -361,6 +383,8 @@ export class SolicitudService {
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
         'asociado.fincas.actividades',
+        'asociado.fincas.infraestructura',   
+      'asociado.fincas.otrosEquipos',
       ],
     });
   
@@ -447,6 +471,8 @@ export class SolicitudService {
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
         'asociado.fincas.actividades',
+        'asociado.fincas.fincasEquipos',
+        'asociado.fincas.fincasEquipos.tipoEquipo',
       ],
       order: { createdAt: 'DESC' },
     });

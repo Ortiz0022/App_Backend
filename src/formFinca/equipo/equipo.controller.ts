@@ -6,50 +6,43 @@ import {
   Patch,
   Param,
   Delete,
-  ParseIntPipe,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
-import { EquipoService } from './equipo.service';
-import { CreateEquipoDto } from './dto/create-equipo.dto';
-import { UpdateEquipoDto } from './dto/update-equipo.dto';
+import { InfraestructuraProduccionService } from './equipo.service';
+import { CreateInfraestructuraProduccionDto } from './dto/create-equipo.dto';
+import { UpdateInfraestructuraProduccionDto } from './dto/update-equipo.dto';
 
-@Controller('equipos')
-export class EquipoController {
-  constructor(private readonly equipoService: EquipoService) {}
+
+@Controller('infraestructura-produccion')
+export class InfraestructuraProduccionController {
+  constructor(
+    private readonly infraestructuraProduccionService: InfraestructuraProduccionService,
+  ) {}
 
   @Post()
-  @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateEquipoDto) {
-    return this.equipoService.create(createDto);
+  create(@Body() createDto: CreateInfraestructuraProduccionDto) {
+    return this.infraestructuraProduccionService.create(createDto);
   }
 
-  @Get()
-  findAll() {
-    return this.equipoService.findAll();
-  }
-
-  @Get('with-fincas-count')
-  findAllWithFincasCount() {
-    return this.equipoService.findAllWithFincasCount();
+  @Get('finca/:idFinca')
+  findByFinca(@Param('idFinca') idFinca: string) {
+    return this.infraestructuraProduccionService.findByFinca(+idFinca);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.equipoService.findOne(id);
+  findOne(@Param('id') id: string) {
+    return this.infraestructuraProduccionService.findOne(+id);
   }
 
   @Patch(':id')
   update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateDto: UpdateEquipoDto,
+    @Param('id') id: string,
+    @Body() updateDto: UpdateInfraestructuraProduccionDto,
   ) {
-    return this.equipoService.update(id, updateDto);
+    return this.infraestructuraProduccionService.update(+id, updateDto);
   }
 
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.equipoService.remove(id);
+  remove(@Param('id') id: string) {
+    return this.infraestructuraProduccionService.remove(+id);
   }
 }

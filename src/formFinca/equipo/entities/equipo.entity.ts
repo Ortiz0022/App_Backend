@@ -1,34 +1,31 @@
-
-import { FincaEquipo } from 'src/formFinca/finca-equipo/entities/finca-equipo.entity';
+import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 
-@Entity('equipos')
-export class Equipo {
+@Entity('infraestructura_produccion')
+export class InfraestructuraProduccion {
   @PrimaryGeneratedColumn()
-  idEquipo: number;
+  idInfraestructura: number;
 
-  @Column({ type: 'varchar', length: 100 })
-  nombre: string;
+  @Column({ type: 'int', default: 0 })
+  numeroAparatos: number;
 
-  @Column({ type: 'int' })
-  noAparatos: number;
+  @Column({ type: 'int', default: 0 })
+  numeroBebederos: number;
 
-  @Column({ type: 'int' })
-  noBebederos: number;
+  @Column({ type: 'int', default: 0 })
+  numeroSaleros: number;
 
-  @Column({ type: 'int' })
-  noSaleros: number;
-
-  // Relación con la tabla intermedia
-  @OneToMany(() => FincaEquipo, (fincaEquipo) => fincaEquipo.equipo)
-  fincasEquipos: FincaEquipo[];
+  @OneToOne(() => Finca, (finca) => finca.infraestructura)
+  @JoinColumn({ name: 'idFinca' })
+  finca: Finca;
 
   @CreateDateColumn()
   createdAt: Date;
