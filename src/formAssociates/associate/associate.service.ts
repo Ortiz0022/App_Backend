@@ -2,8 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,7 +9,6 @@ import { Associate } from './entities/associate.entity';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
 import { QueryAssociateDto } from './dto/query-associate.dto';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
-import { FincaService } from 'src/formFinca/finca/finca.service';
 
 @Injectable()
 export class AssociateService {
@@ -20,10 +17,9 @@ export class AssociateService {
     private associateRepository: Repository<Associate>,
     @InjectRepository(Persona)
     private personaRepository: Repository<Persona>,
-    @Inject(forwardRef(() => FincaService)) // ✅ Inyectar con forwardRef
-    private fincaService: FincaService,
   ) {}
 
+  // ✅ Listado ligero para tablas
   async findAll(query?: QueryAssociateDto) {
     const { estado, search, page = 1, limit = 20, sort } = query || {};
 
@@ -97,12 +93,30 @@ export class AssociateService {
     });
   }
 
+  // ✅ Detalle completo con TODO (UN SOLO QUERY)
   async findOne(id: number): Promise<Associate> {
     const associate = await this.associateRepository.findOne({
       where: { idAsociado: id },
       relations: [
         'persona',
         'nucleoFamiliar',
+        'fincas',
+        'fincas.geografia',
+        'fincas.propietario',
+        'fincas.propietario.persona',
+        'fincas.hato',
+        'fincas.hato.animales',
+        'fincas.forrajes',
+        'fincas.registrosProductivos',
+        'fincas.fuentesAgua',
+        'fincas.metodosRiego',
+        'fincas.actividades',
+        'fincas.infraestructura',
+        'fincas.otrosEquipos',
+        'fincas.tipoCercaLinks',
+        'fincas.tipoCercaLinks.tipoCerca',
+        'fincas.infraLinks',
+        'fincas.infraLinks.infraestructura',
         'solicitud',
       ],
     });
@@ -110,9 +124,6 @@ export class AssociateService {
     if (!associate) {
       throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
     }
-
-    // ✅ Reutilizar findByAssociate del FincaService
-    associate.fincas = await this.fincaService.findByAssociate(id);
 
     return associate;
   }
@@ -122,6 +133,22 @@ export class AssociateService {
       .createQueryBuilder('associate')
       .leftJoinAndSelect('associate.persona', 'persona')
       .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
+      .leftJoinAndSelect('associate.fincas', 'fincas')
+      .leftJoinAndSelect('fincas.geografia', 'geografia')
+      .leftJoinAndSelect('fincas.propietario', 'propietario')
+      .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
+      .leftJoinAndSelect('fincas.hato', 'hato')
+      .leftJoinAndSelect('hato.animales', 'animales')
+      .leftJoinAndSelect('fincas.forrajes', 'forrajes')
+      .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
+      .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego')
+      .leftJoinAndSelect('fincas.actividades', 'actividades')
+      .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')
+      .leftJoinAndSelect('fincas.otrosEquipos', 'otrosEquipos')
+      .leftJoinAndSelect('fincas.tipoCercaLinks', 'tipoCercaLinks')
+      .leftJoinAndSelect('tipoCercaLinks.tipoCerca', 'tipoCerca')
+      .leftJoinAndSelect('fincas.infraLinks', 'infraLinks')
+      .leftJoinAndSelect('infraLinks.infraestructura', 'infraestructuraDetalle')
       .leftJoinAndSelect('associate.solicitud', 'solicitud')
       .where('persona.cedula = :cedula', { cedula })
       .getOne();
@@ -132,16 +159,13 @@ export class AssociateService {
       );
     }
 
-    // ✅ Reutilizar findByAssociate del FincaService
-    associate.fincas = await this.fincaService.findByAssociate(associate.idAsociado);
-
     return associate;
   }
 
   async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
     const associate = await this.associateRepository.findOne({
       where: { idAsociado: id },
-      relations: ['persona', 'nucleoFamiliar', 'solicitud'],
+      relations: ['persona', 'solicitud'],
     });
 
     if (!associate) {

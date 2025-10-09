@@ -376,7 +376,6 @@ export class SolicitudService {
     });
   }
 
-  // ✅ DETALLE COMPLETO - Para el modal (reutiliza findByAssociate)
   async findOne(id: number): Promise<Solicitud> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitud: id },
@@ -385,20 +384,30 @@ export class SolicitudService {
         'asociado',
         'asociado.persona',
         'asociado.nucleoFamiliar',
+        'asociado.fincas',
+        'asociado.fincas.geografia',
+        'asociado.fincas.propietario',
+        'asociado.fincas.propietario.persona',
+        'asociado.fincas.hato',
+        'asociado.fincas.hato.animales',
+        'asociado.fincas.forrajes',
+        'asociado.fincas.registrosProductivos',
+        'asociado.fincas.fuentesAgua',
+        'asociado.fincas.metodosRiego',
+        'asociado.fincas.actividades',
+        'asociado.fincas.infraestructura',
+        'asociado.fincas.otrosEquipos',
+        'asociado.fincas.tipoCercaLinks',
+        'asociado.fincas.tipoCercaLinks.tipoCerca',
+        'asociado.fincas.infraLinks',
+        'asociado.fincas.infraLinks.infraestructura',
       ],
     });
-
+  
     if (!solicitud) {
       throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
     }
-
-    // ✅ Reutilizar findByAssociate para traer TODAS las fincas con TODO su detalle
-    if (solicitud.asociado) {
-      solicitud.asociado.fincas = await this.fincaService.findByAssociate(
-        solicitud.asociado.idAsociado,
-      );
-    }
-
+  
     return solicitud;
   }
 

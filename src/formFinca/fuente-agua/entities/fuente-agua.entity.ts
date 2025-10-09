@@ -14,7 +14,7 @@ export class FuenteAgua {
   @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
-  @ManyToOne(() => Finca, (f) => (f as any).fuentesAgua, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Finca, (finca) => finca.fuentesAgua, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;
 }

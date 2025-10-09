@@ -15,7 +15,7 @@ export class FincaOtroEquipo {
   idFincaOtroEquipo: number;
 
   @ManyToOne(() => Finca, (finca) => finca.otrosEquipos, {
-    eager: true,
+    eager: false,
   })
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;

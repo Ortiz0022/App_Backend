@@ -16,13 +16,13 @@ export class Solicitud {
   @PrimaryGeneratedColumn()
   idSolicitud: number;
 
-  @OneToOne(() => Persona, { eager: true, cascade: true })
+  @OneToOne(() => Persona, { eager: false, cascade: true })
   @JoinColumn({ name: 'idPersona' })
   persona: Persona;
 
   // FK al Asociado (se crea en el mismo momento que la solicitud)
   @OneToOne(() => Associate, (asociado) => asociado.solicitud, {
-    eager: true,
+    eager: false,
     cascade: true,
   })
   @JoinColumn({ name: 'idAsociado' })

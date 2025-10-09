@@ -14,7 +14,10 @@ export class ActividadAgropecuaria {
   @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
-  @ManyToOne(() => Finca, (f) => (f as any).actividades, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Finca, (finca) => finca.actividades, { 
+    eager: false, 
+    onDelete: 'CASCADE' 
+  })
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;
 }

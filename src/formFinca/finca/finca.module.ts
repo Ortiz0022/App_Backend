@@ -8,7 +8,7 @@ import { AssociateModule } from 'src/formAssociates/associate/associate.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Finca]),
-    forwardRef(() => AssociateModule), // ✅ Resolver dependencia circular
+    forwardRef(() => AssociateModule) // ✅ Resolver dependencia circular
   ],
   controllers: [FincaController],
   providers: [FincaService],
