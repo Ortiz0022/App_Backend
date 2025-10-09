@@ -1,14 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssociateService } from './associate.service';
 import { AssociateController } from './associate.controller';
 import { Associate } from './entities/associate.entity';
-import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
+import { Persona } from '../persona/entities/persona.entity';
+import { FincaModule } from 'src/formFinca/finca/finca.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Associate, Persona])],
+  imports: [
+    TypeOrmModule.forFeature([Associate, Persona]),
+    forwardRef(() => FincaModule), // ✅ Resolver dependencia circular
+  ],
   controllers: [AssociateController],
   providers: [AssociateService],
-  exports: [AssociateService, TypeOrmModule], // Exportar para usar en otros módulos
+  exports: [AssociateService],
 })
 export class AssociateModule {}

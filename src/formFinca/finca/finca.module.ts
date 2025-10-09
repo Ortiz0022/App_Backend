@@ -1,14 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FincaService } from './finca.service';
 import { FincaController } from './finca.controller';
 import { Finca } from './entities/finca.entity';
-import { AssociateModule } from '../../formAssociates/associate/associate.module';
+import { AssociateModule } from 'src/formAssociates/associate/associate.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Finca]),
-    AssociateModule, 
+    forwardRef(() => AssociateModule), // ✅ Resolver dependencia circular
   ],
   controllers: [FincaController],
   providers: [FincaService],

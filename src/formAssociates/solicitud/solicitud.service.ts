@@ -324,7 +324,7 @@ export class SolicitudService {
     const page = params.page || 1;
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
-  
+
     const queryBuilder = this.solicitudRepository
       .createQueryBuilder('solicitud')
       .leftJoinAndSelect('solicitud.persona', 'persona')
@@ -332,43 +332,28 @@ export class SolicitudService {
       .leftJoinAndSelect('asociado.persona', 'asociadoPersona')
       .leftJoinAndSelect('asociado.nucleoFamiliar', 'nucleoFamiliar')
       .leftJoinAndSelect('asociado.fincas', 'fincas')
-      .leftJoinAndSelect('fincas.geografia', 'geografia')
-      .leftJoinAndSelect('fincas.propietario', 'propietario')
-      .leftJoinAndSelect('propietario.persona', 'propietarioPersona')
-      .leftJoinAndSelect('fincas.hato', 'hato')
-      .leftJoinAndSelect('hato.animales', 'animales')
-      .leftJoinAndSelect('fincas.forrajes', 'forrajes')
-      .leftJoinAndSelect('fincas.registrosProductivos', 'registrosProductivos')
-      .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
-      .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego')
-      .leftJoinAndSelect('fincas.actividades', 'actividades')
-      .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')  // ✅ InfraestructuraProduccion (1:1)
-      .leftJoinAndSelect('fincas.otrosEquipos', 'otrosEquipos')        // ✅ CORREGIDO
-      .leftJoinAndSelect('fincas.tipoCercaLinks', 'tipoCercaLinks')    // ✅ CORREGIDO
-      .leftJoinAndSelect('tipoCercaLinks.tipoCerca', 'tipoCerca')
-      .leftJoinAndSelect('fincas.infraLinks', 'infraLinks')            // ✅ CORREGIDO
-      .leftJoinAndSelect('infraLinks.infraestructura', 'infraestructuraDetalle'); // ✅ Cambié el alias
-  
+      .leftJoinAndSelect('fincas.geografia', 'geografia');
+
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
     }
-  
+
     if (params.search) {
       queryBuilder.andWhere(
         '(persona.cedula LIKE :search OR persona.nombre LIKE :search OR persona.email LIKE :search)',
         { search: `%${params.search}%` },
       );
     }
-  
+
     if (params.sort) {
       const [field, order] = params.sort.split(':');
       queryBuilder.orderBy(`solicitud.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
     } else {
       queryBuilder.orderBy('solicitud.createdAt', 'DESC');
     }
-  
+
     const [items, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
-  
+
     return {
       items,
       total,
@@ -376,7 +361,7 @@ export class SolicitudService {
       pages: Math.ceil(total / limit),
     };
   }
- 
+
   async findAll() {
     return this.solicitudRepository.find({
       relations: [
@@ -386,27 +371,41 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
-        'asociado.fincas.propietario',
-        'asociado.fincas.propietario.persona',
-        'asociado.fincas.hato',
-        'asociado.fincas.hato.animales',
-        'asociado.fincas.forrajes',
-        'asociado.fincas.registrosProductivos',
-        'asociado.fincas.fuentesAgua',
-        'asociado.fincas.metodosRiego',
-        'asociado.fincas.actividades',
-        'asociado.fincas.infraestructura',   
-        'asociado.fincas.otrosEquipos',
-        'asociado.fincas.tipoCercaLinks',             
-        'asociado.fincas.tipoCercaLinks.tipoCerca',
-        'asociado.fincas.infraLinks',
-        'asociado.fincas.infraLinks.infraestructura',
       ],
       order: { createdAt: 'DESC' },
     });
   }
 
+  // ✅ DETALLE COMPLETO - Para el modal (reutiliza findByAssociate)
   async findOne(id: number): Promise<Solicitud> {
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitud: id },
+      relations: [
+        'persona',
+        'asociado',
+        'asociado.persona',
+        'asociado.nucleoFamiliar',
+      ],
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
+    }
+
+    // ✅ Reutilizar findByAssociate para traer TODAS las fincas con TODO su detalle
+    if (solicitud.asociado) {
+      solicitud.asociado.fincas = await this.fincaService.findByAssociate(
+        solicitud.asociado.idAsociado,
+      );
+    }
+
+    return solicitud;
+  }
+
+  async changeStatus(
+    id: number,
+    changeStatusDto: ChangeSolicitudStatusDto,
+  ): Promise<Solicitud> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitud: id },
       relations: [
@@ -416,21 +415,6 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
-        'asociado.fincas.propietario',
-        'asociado.fincas.propietario.persona',
-        'asociado.fincas.hato',
-        'asociado.fincas.hato.animales',
-        'asociado.fincas.forrajes',
-        'asociado.fincas.registrosProductivos',
-        'asociado.fincas.fuentesAgua',
-        'asociado.fincas.metodosRiego',
-        'asociado.fincas.actividades',
-        'asociado.fincas.infraestructura',   
-      'asociado.fincas.otrosEquipos',
-      'asociado.fincas.tipoCercaLinks',           
-      'asociado.fincas.tipoCercaLinks.tipoCerca',
-      'asociado.fincas.infraLinks',
-      'asociado.fincas.infraLinks.infraestructura',
       ],
     });
   
@@ -438,15 +422,6 @@ export class SolicitudService {
       throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
     }
   
-    return solicitud;
-  }
-  
-  async changeStatus(
-    id: number,
-    changeStatusDto: ChangeSolicitudStatusDto,
-  ): Promise<Solicitud> {
-    const solicitud = await this.findOne(id);
-
     if (
       changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
       !changeStatusDto.motivo
@@ -455,35 +430,44 @@ export class SolicitudService {
         'El motivo es obligatorio cuando se rechaza una solicitud',
       );
     }
-
+  
     if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
       throw new BadRequestException(
         'Solo se pueden procesar solicitudes pendientes',
       );
     }
-
+  
     solicitud.estado = changeStatusDto.estado;
     solicitud.fechaResolucion = new Date();
     solicitud.motivo =
       changeStatusDto.estado === SolicitudStatus.RECHAZADO
         ? changeStatusDto.motivo
         : undefined;
-
+  
     await this.solicitudRepository.save(solicitud);
-
-    // Copiar documentos y activar asociado cuando se aprueba
+  
     if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
       solicitud.asociado.estado = true;
       await this.associateRepository.save(solicitud.asociado);
-      
-      await this.copyDocumentsToEntities(solicitud);
+  
+      // ✅ Copiar documentos sin esperar (asíncrono)
+      this.copyDocumentsToEntities(solicitud).catch(err => {
+        console.error('Error copiando documentos:', err);
+      });
     }
-
-    return this.findOne(id);
+  
+    // ✅ Retornar el objeto que ya tienes (sin hacer otro query)
+    return solicitud;
   }
-
   async remove(id: number): Promise<void> {
-    const solicitud = await this.findOne(id);
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitud: id },
+      relations: ['asociado'],
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
+    }
 
     if (solicitud.estado === SolicitudStatus.APROBADO) {
       throw new BadRequestException(
@@ -508,19 +492,6 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
-        'asociado.fincas.propietario',
-        'asociado.fincas.propietario.persona',
-        'asociado.fincas.hato',
-        'asociado.fincas.hato.animales',
-        'asociado.fincas.forrajes',
-        'asociado.fincas.registrosProductivos',
-        'asociado.fincas.fuentesAgua',
-        'asociado.fincas.metodosRiego',
-        'asociado.fincas.actividades',
-        'asociado.fincas.tipoCercaLinks',           
-      'asociado.fincas.tipoCercaLinks.tipoCerca',
-      'asociado.fincas.infraLinks',
-      'asociado.fincas.infraLinks.infraestructura',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -545,7 +516,6 @@ export class SolicitudService {
       rechazadas,
     };
   }
-
   // ========== MÉTODOS DE DROPBOX ==========
 
   async uploadDocuments(

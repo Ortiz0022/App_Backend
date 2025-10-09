@@ -1,16 +1,4 @@
-import {
-  Controller,
-  Get,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  ParseIntPipe,
-  HttpCode,
-  HttpStatus,
-  ParseBoolPipe,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { AssociateService } from './associate.service';
 import { UpdateAssociateDto } from './dto/update-associate.dto';
 import { QueryAssociateDto } from './dto/query-associate.dto';
@@ -39,47 +27,38 @@ export class AssociateController {
     return this.associateService.getStats();
   }
 
-  @Get('count/:status')
-  countByStatus(@Param('status', ParseBoolPipe) status: boolean) {
-    return this.associateService.countByStatus(status);
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.associateService.findOne(id);
-  }
-
   @Get('cedula/:cedula')
   findByCedula(@Param('cedula') cedula: string) {
     return this.associateService.findByCedula(cedula);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.associateService.findOne(+id);
+  }
+
   @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateAssociateDto: UpdateAssociateDto,
-  ) {
-    return this.associateService.update(id, updateAssociateDto);
+  update(@Param('id') id: string, @Body() updateAssociateDto: UpdateAssociateDto) {
+    return this.associateService.update(+id, updateAssociateDto);
   }
 
   @Patch(':id/activate')
-  activate(@Param('id', ParseIntPipe) id: number) {
-    return this.associateService.activate(id);
+  activate(@Param('id') id: string) {
+    return this.associateService.activate(+id);
   }
 
   @Patch(':id/deactivate')
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.associateService.deactivate(id);
+  deactivate(@Param('id') id: string) {
+    return this.associateService.deactivate(+id);
   }
 
-  @Patch(':id/toggle-status')
-  toggleStatus(@Param('id', ParseIntPipe) id: number) {
-    return this.associateService.toggleStatus(id);
+  @Patch(':id/toggle')
+  toggleStatus(@Param('id') id: string) {
+    return this.associateService.toggleStatus(+id);
   }
 
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.associateService.remove(id);
+  remove(@Param('id') id: string) {
+    return this.associateService.remove(+id);
   }
 }
