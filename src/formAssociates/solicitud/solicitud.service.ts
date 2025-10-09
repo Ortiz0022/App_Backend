@@ -342,13 +342,12 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.fuentesAgua', 'fuentesAgua')
       .leftJoinAndSelect('fincas.metodosRiego', 'metodosRiego')
       .leftJoinAndSelect('fincas.actividades', 'actividades')
-      .leftJoinAndSelect('fincas.fincasEquipos', 'fincasEquipos')
-      .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')
-      .leftJoinAndSelect('infraestructura.otrosEquipos', 'otrosEquipos')
-      .leftJoinAndSelect('infraestructura.tipoCercaLinks', 'tipoCercaLinks')
-      .leftJoinAndSelect('infraestructura.tipoCercaLinks.tipoCerca', 'tipoCerca')
-      .leftJoinAndSelect('fincas.infraLinks', 'infraLinks')
-      .leftJoinAndSelect('infraLinks.infraestructura', 'infraestructura');
+      .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')  // ✅ InfraestructuraProduccion (1:1)
+      .leftJoinAndSelect('fincas.otrosEquipos', 'otrosEquipos')        // ✅ CORREGIDO
+      .leftJoinAndSelect('fincas.tipoCercaLinks', 'tipoCercaLinks')    // ✅ CORREGIDO
+      .leftJoinAndSelect('tipoCercaLinks.tipoCerca', 'tipoCerca')
+      .leftJoinAndSelect('fincas.infraLinks', 'infraLinks')            // ✅ CORREGIDO
+      .leftJoinAndSelect('infraLinks.infraestructura', 'infraestructuraDetalle'); // ✅ Cambié el alias
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -518,8 +517,6 @@ export class SolicitudService {
         'asociado.fincas.fuentesAgua',
         'asociado.fincas.metodosRiego',
         'asociado.fincas.actividades',
-        'asociado.fincas.fincasEquipos',
-        'asociado.fincas.fincasEquipos.tipoEquipo',
         'asociado.fincas.tipoCercaLinks',           
       'asociado.fincas.tipoCercaLinks.tipoCerca',
       'asociado.fincas.infraLinks',

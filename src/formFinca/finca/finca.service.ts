@@ -84,7 +84,6 @@ export class FincaService {
         'hato',
         'fincasFuentesEnergia',
         'fincasFuentesEnergia.fuenteEnergia',
-        'fincasEquipos.equipo',
         'accesos',
         'metodosRiego',
         'fincaInfraestructuras',
