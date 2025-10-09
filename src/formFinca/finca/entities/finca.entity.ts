@@ -124,4 +124,7 @@ export class Finca {
 
   @OneToMany(() => FincaOtroEquipo, (equipo) => equipo.finca)
   otrosEquipos?: FincaOtroEquipo[];
+
+  @OneToMany(() => FincaTipoCerca, (link) => link.finca)
+  tipoCercaLinks?: FincaTipoCerca[];
 }

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { EntityManager, Not, Repository } from 'typeorm';
 import { TipoCerca } from './entities/tipo-cerca.entity';
 import { CreateTipoCercaDto } from './dto/create-tipo-cerca.dto';
 import { UpdateTipoCercaDto } from './dto/update-tipo-cerca.dto';
@@ -28,6 +28,32 @@ export class TiposCercaService {
 
     const entity = this.repo.create(dto);
     return this.repo.save(entity);
+  }
+
+  async findOrCreateInTransaction(
+    dto: CreateTipoCercaDto,
+    manager: EntityManager,
+  ): Promise<TipoCerca> {
+    if (!atLeastOneTrue(dto.viva, dto.electrica, dto.pMuerto)) {
+      throw new BadRequestException('Debe activar al menos una opción (viva, eléctrica o p. muerto).');
+    }
+  
+    // Buscar combinación existente
+    let tipoCerca = await manager.findOne(TipoCerca, {
+      where: {
+        viva: dto.viva,
+        electrica: dto.electrica,
+        pMuerto: dto.pMuerto,
+      },
+    });
+  
+    if (!tipoCerca) {
+      // Crear nueva combinación
+      tipoCerca = manager.create(TipoCerca, dto);
+      await manager.save(tipoCerca);
+    }
+  
+    return tipoCerca;
   }
 
   findAll() {

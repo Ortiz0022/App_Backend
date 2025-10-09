@@ -21,6 +21,8 @@ import { MetodoRiegoModule } from 'src/formFinca/metodo-riego/metodo-riego.modul
 import { ActividadesAgropecuariasModule } from 'src/formFinca/actividad-agropecuaria/actividad.module';
 import { FincaOtroEquipoModule } from 'src/formFinca/otros-equipos/finca-equipo.module';
 import { InfraestructuraProduccionModule } from 'src/formFinca/equipo/equipo.module';
+import { TiposCercaModule } from 'src/formFinca/tipo-cerca/tipo-cerca.module';
+import { FincaTipoCercaModule } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { InfraestructuraProduccionModule } from 'src/formFinca/equipo/equipo.mod
     ActividadesAgropecuariasModule, 
     InfraestructuraProduccionModule,  
     FincaOtroEquipoModule,   
+    TiposCercaModule,          
+    FincaTipoCercaModule, 
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

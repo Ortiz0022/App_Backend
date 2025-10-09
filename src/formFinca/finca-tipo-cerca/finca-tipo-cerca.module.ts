@@ -15,5 +15,6 @@ import { TiposCercaModule } from '../tipo-cerca/tipo-cerca.module';
   ],
   controllers: [FincaTipoCercaController],
   providers: [FincaTipoCercaService],
+  exports: [FincaTipoCercaService],
 })
 export class FincaTipoCercaModule {}

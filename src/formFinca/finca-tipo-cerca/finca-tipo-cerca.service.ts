@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { FincaTipoCerca } from './entities/finca-tipo-cerca.entity';
 import { Finca } from '../finca/entities/finca.entity';
 import { TipoCerca } from '../tipo-cerca/entities/tipo-cerca.entity';
@@ -59,5 +59,21 @@ export class FincaTipoCercaService {
   async unlinkByKeys(idFinca: number, idTipoCerca: number) {
     const res = await this.repo.delete({ idFinca, idTipoCerca });
     if (!res.affected) throw new NotFoundException('Enlace Finca-TipoCerca no encontrado');
+  }
+
+  async linkInTransaction(
+    dto: CreateFincaTipoCercaDto,
+    finca: Finca,
+    tipoCerca: TipoCerca,
+    manager: EntityManager,
+  ): Promise<FincaTipoCerca> {
+    const entity = manager.create(FincaTipoCerca, {
+      idFinca: finca.idFinca,
+      idTipoCerca: tipoCerca.idTipoCerca,
+      finca,
+      tipoCerca,
+    });
+  
+    return manager.save(entity);
   }
 }

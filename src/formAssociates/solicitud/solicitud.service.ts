@@ -30,6 +30,8 @@ import { MetodoRiegoService } from 'src/formFinca/metodo-riego/metodo-riego.serv
 import { ActividadesAgropecuariasService } from 'src/formFinca/actividad-agropecuaria/actividad.service';
 import { FincaOtroEquipoService } from 'src/formFinca/otros-equipos/finca-otro-equipo.service';
 import { InfraestructuraProduccionService } from 'src/formFinca/equipo/equipo.service';
+import { TiposCercaService } from 'src/formFinca/tipo-cerca/tipo-cerca.service';
+import { FincaTipoCercaService } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.service';
 
 @Injectable()
 export class SolicitudService {
@@ -57,6 +59,8 @@ export class SolicitudService {
     private actividadesAgropecuariasService: ActividadesAgropecuariasService,
     private infraestructuraProduccionService: InfraestructuraProduccionService,
     private fincaOtroEquipoService: FincaOtroEquipoService,
+    private tiposCercaService: TiposCercaService,
+    private fincaTipoCercaService: FincaTipoCercaService,
     private dataSource: DataSource,
 
   ) {}
@@ -259,7 +263,25 @@ export class SolicitudService {
         );
       }
       
-      // 16. Crear Solicitud
+       // 16. ✅ Crear Tipo de Cerca (si viene)
+      if (createDto.tipoCerca) {
+        const tipoCerca = await this.tiposCercaService.findOrCreateInTransaction(
+          createDto.tipoCerca,
+          queryRunner.manager,
+        );
+
+        await this.fincaTipoCercaService.linkInTransaction(
+          {
+            idFinca: finca.idFinca,
+            idTipoCerca: tipoCerca.idTipoCerca,
+          },
+          finca,
+          tipoCerca,
+          queryRunner.manager,
+        );
+      }
+
+      // 17. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
         persona: personaAsociado,
         asociado,
@@ -310,6 +332,8 @@ export class SolicitudService {
       .leftJoinAndSelect('fincas.fincasEquipos', 'fincasEquipos')
       .leftJoinAndSelect('fincas.infraestructura', 'infraestructura')
       .leftJoinAndSelect('infraestructura.otrosEquipos', 'otrosEquipos')
+      .leftJoinAndSelect('infraestructura.tipoCercaLinks', 'tipoCercaLinks')
+      .leftJoinAndSelect('infraestructura.tipoCercaLinks.tipoCerca', 'tipoCerca');
   
     if (params.estado) {
       queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
@@ -358,7 +382,9 @@ export class SolicitudService {
         'asociado.fincas.metodosRiego',
         'asociado.fincas.actividades',
         'asociado.fincas.infraestructura',   
-      'asociado.fincas.otrosEquipos',
+        'asociado.fincas.otrosEquipos',
+        'asociado.fincas.tipoCercaLinks',             
+        'asociado.fincas.tipoCercaLinks.tipoCerca',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -385,6 +411,8 @@ export class SolicitudService {
         'asociado.fincas.actividades',
         'asociado.fincas.infraestructura',   
       'asociado.fincas.otrosEquipos',
+      'asociado.fincas.tipoCercaLinks',           
+      'asociado.fincas.tipoCercaLinks.tipoCerca',
       ],
     });
   
@@ -473,6 +501,8 @@ export class SolicitudService {
         'asociado.fincas.actividades',
         'asociado.fincas.fincasEquipos',
         'asociado.fincas.fincasEquipos.tipoEquipo',
+        'asociado.fincas.tipoCercaLinks',           
+      'asociado.fincas.tipoCercaLinks.tipoCerca',
       ],
       order: { createdAt: 'DESC' },
     });

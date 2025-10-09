@@ -23,6 +23,7 @@ import { CreateMetodoRiegoDto } from 'src/formFinca/metodo-riego/dto/create-meto
 import { CreateActividadDto } from 'src/formFinca/actividad-agropecuaria/dto/create-actividad';
 import { CreateInfraestructuraProduccionDto } from 'src/formFinca/equipo/dto/create-equipo.dto';
 import { CreateFincaOtroEquipoDto } from 'src/formFinca/otros-equipos/dto/create-otros-equipos.dto';
+import { CreateTipoCercaDto } from 'src/formFinca/tipo-cerca/dto/create-tipo-cerca.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -95,4 +96,9 @@ export class CreateSolicitudDto {
   @ValidateNested({ each: true })
   @Type(() => CreateFincaOtroEquipoDto)
   otrosEquipos?: CreateFincaOtroEquipoDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateTipoCercaDto)
+  tipoCerca?: CreateTipoCercaDto;
 }
