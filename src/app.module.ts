@@ -163,6 +163,7 @@ import { InfraestructuraProduccionModule } from './formFinca/equipo/equipo.modul
     FuentesAguaModule,
     ActividadesAgropecuariasModule,
     DropboxModule,
+    DropboxAuthModule,
     FincaOtroEquipoModule,
     InfraestructuraProduccionModule
   ],
