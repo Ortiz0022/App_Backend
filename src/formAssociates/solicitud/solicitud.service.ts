@@ -453,44 +453,66 @@ export class SolicitudService {
 
 
   async uploadDocuments(
-  id: number,
+  idSolicitud: number,
   files: {
     cedula?: Express.Multer.File[];
     planoFinca?: Express.Multer.File[];
   },
-) {
-  const solicitud = await this.findOne(id);
+): Promise<any> {
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitud },
+    relations: ['persona', 'asociado'],
+  });
 
-  if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+  if (!solicitud) {
+    throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+  }
+
+  const formData = {
+    cedula: [] as string[],
+    planoFinca: [] as string[],
+  };
+
+  try {
+    // Asegurar que existan las carpetas base
+    await this.dropboxService.ensureFolder('/solicitudes');
+    await this.dropboxService.ensureFolder(`/solicitudes/solicitud-${idSolicitud}`);
+
+    // Subir cédulas
+    if (files.cedula && files.cedula.length > 0) {
+      for (const file of files.cedula) {
+        const url = await this.dropboxService.uploadFile(
+          file,
+          `/solicitudes/solicitud-${idSolicitud}/cedula`,
+        );
+        formData.cedula.push(url);
+      }
+    }
+
+    // Subir planos de finca
+    if (files.planoFinca && files.planoFinca.length > 0) {
+      for (const file of files.planoFinca) {
+        const url = await this.dropboxService.uploadFile(
+          file,
+          `/solicitudes/solicitud-${idSolicitud}/plano`,
+        );
+        formData.planoFinca.push(url);
+      }
+    }
+
+    solicitud.formData = formData;
+    await this.solicitudRepository.save(solicitud);
+
+    return { 
+      message: 'Documentos subidos exitosamente',
+      urls: formData 
+    };
+  } catch (error: any) {
+    console.error('[Service] Error al subir documentos:', error.message);
     throw new BadRequestException(
-      'Solo se pueden subir documentos a solicitudes pendientes',
+      `Error al subir documentos: ${error.message}`,
     );
   }
-
-  const updates: Partial<Solicitud> = {};
-
-  // Subir cédula si existe
-  if (files.cedula && files.cedula[0]) {
-    const cedulaUrl = await this.dropboxService.uploadFile(
-      files.cedula[0],
-      `solicitud-${id}/cedula`,
-    );
-    updates.cedulaUrlTemp = cedulaUrl;
-  }
-
-  // Subir plano de finca si existe
-  if (files.planoFinca && files.planoFinca[0]) {
-    const planoUrl = await this.dropboxService.uploadFile(
-      files.planoFinca[0],
-      `solicitud-${id}/plano`,
-    );
-    updates.planoFincaUrlTemp = planoUrl;
-  }
-
-  // Actualizar solicitud con las URLs temporales
-  await this.solicitudRepository.update(id, updates);
-
-  return this.findOne(id);
 }
 
 private async copyDocumentsToEntities(solicitud: Solicitud): Promise<void> {
