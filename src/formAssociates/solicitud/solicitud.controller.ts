@@ -40,8 +40,8 @@ export class SolicitudController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles()
     files: {
-      cedula?: Express.Multer.File[];
-      planoFinca?: Express.Multer.File[];
+      cedula?: Express.Multer.File[]; 
+      planoFinca?: Express.Multer.File[]; 
     },
   ) {
     return this.solicitudService.uploadDocuments(id, files);

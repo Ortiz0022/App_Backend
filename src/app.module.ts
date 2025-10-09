@@ -70,6 +70,7 @@ import { FuentesAguaModule } from './formFinca/fuente-agua/fuente-agua.module';
 import { ActividadesAgropecuariasModule } from './formFinca/actividad-agropecuaria/actividad.module';
 import { CorrienteElectricaModule } from './formFinca/corriente-electrica/corriente.module';
 import { DropboxModule } from './dropbox/dropbox.module';
+import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
 
 
 
@@ -165,6 +166,7 @@ import { DropboxModule } from './dropbox/dropbox.module';
     FuentesAguaModule,
     ActividadesAgropecuariasModule,
     DropboxModule,
+    DropboxAuthModule,
   ],
   controllers: [AppController],
   providers: [
