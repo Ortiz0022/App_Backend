@@ -37,6 +37,7 @@ import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/c
 import { CorrienteElectricaService } from 'src/formFinca/corriente-electrica/corriente.service';
 import { AccesoService } from 'src/formFinca/acceso/acceso.service';
 import { CanalesComercializacionService } from 'src/formFinca/canal-comercializacion/canal.service';
+import { NecesidadesService } from 'src/formFinca/necesidades/necesidades.service';
 
 @Injectable()
 export class SolicitudService {
@@ -70,6 +71,7 @@ export class SolicitudService {
     private corrienteElectricaService: CorrienteElectricaService,
     private accesoService: AccesoService,
     private canalesComercializacionService: CanalesComercializacionService,
+    private necesidadesService: NecesidadesService,
     private dataSource: DataSource,
 
   ) {}
@@ -132,6 +134,14 @@ export class SolicitudService {
   
       await queryRunner.manager.save(asociado);
   
+      if (createDto.necesidades && createDto.necesidades.length > 0) {
+        await this.necesidadesService.createManyInTransaction(
+          createDto.necesidades,
+          asociado,
+          queryRunner.manager,
+        );
+      }
+
       // 4. Procesar Propietario
       let propietario: Propietario | null = null;
   
@@ -416,7 +426,7 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
-        // ✅ SOLO hasta aquí - SIN propietario, hato, forrajes, etc.
+
       ],
     });
   
@@ -463,7 +473,7 @@ export class SolicitudService {
         'asociado.nucleoFamiliar',
         'asociado.fincas',
         'asociado.fincas.geografia',
-      ],
+        ],
     });
   
     if (!solicitud) {

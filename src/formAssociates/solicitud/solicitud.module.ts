@@ -28,6 +28,7 @@ import { FincaInfraestructurasModule } from 'src/formFinca/finca-infraestructura
 import { CorrienteElectricaModule } from 'src/formFinca/corriente-electrica/corriente.module';
 import { AccesoModule } from 'src/formFinca/acceso/acceso.module';
 import { CanalesComercializacionModule } from 'src/formFinca/canal-comercializacion/canal.module';
+import { NecesidadesModule } from 'src/formFinca/necesidades/necesidades.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -58,6 +59,7 @@ import { CanalesComercializacionModule } from 'src/formFinca/canal-comercializac
     CorrienteElectricaModule, 
     AccesoModule,
     CanalesComercializacionModule,
+    NecesidadesModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

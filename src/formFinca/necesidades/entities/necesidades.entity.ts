@@ -21,12 +21,10 @@ export class Necesidades {
   descripcion: string;
 
   // Relación N:1 con Asociado
-  @ManyToOne(() => Associate, (asociado) => asociado.necesidades, {
-    eager: true,
-  })
+  @ManyToOne(() => Associate, (asociado) => asociado.necesidades)
   @JoinColumn({ name: 'idAsociado' })
   asociado: Associate;
-
+  
   @CreateDateColumn()
   createdAt: Date;
 
