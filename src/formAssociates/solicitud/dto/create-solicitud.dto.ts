@@ -29,6 +29,7 @@ import { CreateCorrienteDto } from 'src/formFinca/corriente-electrica/dto/create
 import { CreateAccesoDto } from 'src/formFinca/acceso/dto/create-acceso.dto';
 import { CreateCanalDto } from 'src/formFinca/canal-comercializacion/dto/create-canal';
 import { CreateInfraestructuraDto } from 'src/formFinca/infraestructura/dto/create-infraestructura.dto';
+import { CreateNecesidadesDto } from 'src/formFinca/necesidades/dto/create-necesidades.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
