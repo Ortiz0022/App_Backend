@@ -13,6 +13,8 @@ export class FincaInfraestructurasController {
     return this.service.link(dto);
   }
 
+  
+
   // Listar infraestructuras de una finca
   @Get('by-finca/:idFinca')
   listByFinca(@Param('idFinca', ParseIntPipe) idFinca: number) {
