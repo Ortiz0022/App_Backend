@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Necesidades } from './entities/necesidades.entity';
 import { CreateNecesidadesDto } from './dto/create-necesidades.dto';
 import { UpdateNecesidadesDto } from './dto/update-necesidades.dto';
@@ -18,7 +18,6 @@ export class NecesidadesService {
   async create(createDto: CreateNecesidadesDto): Promise<Necesidades> {
     const { idAsociado, orden, descripcion } = createDto;
 
-    // Verificar que el asociado existe
     const asociado = await this.associateRepository.findOne({
       where: { idAsociado },
     });
@@ -36,9 +35,29 @@ export class NecesidadesService {
     return await this.necesidadesRepository.save(necesidad);
   }
 
+  // ✅ NUEVO: Método transaccional para crear múltiples necesidades
+  async createManyInTransaction(
+    necesidades: CreateNecesidadesDto[],
+    asociado: Associate,
+    manager: EntityManager,
+  ): Promise<Necesidades[]> {
+    if (!necesidades || necesidades.length === 0) {
+      return [];
+    }
+
+    const necesidadEntities = necesidades.map((dto, index) =>
+      manager.create(Necesidades, {
+        orden: dto.orden ?? index + 1, // Auto-asignar orden si no viene
+        descripcion: dto.descripcion,
+        asociado,
+      }),
+    );
+
+    return manager.save(necesidadEntities);
+  }
+
   async findAll(): Promise<Necesidades[]> {
     return await this.necesidadesRepository.find({
-      relations: ['asociado', 'asociado.persona'],
       order: {
         orden: 'ASC',
       },
@@ -48,7 +67,6 @@ export class NecesidadesService {
   async findOne(id: number): Promise<Necesidades> {
     const necesidad = await this.necesidadesRepository.findOne({
       where: { idNecesidad: id },
-      relations: ['asociado', 'asociado.persona'],
     });
 
     if (!necesidad) {
@@ -61,7 +79,6 @@ export class NecesidadesService {
   async findByAsociado(idAsociado: number): Promise<Necesidades[]> {
     return await this.necesidadesRepository.find({
       where: { asociado: { idAsociado } },
-      relations: ['asociado', 'asociado.persona'],
       order: {
         orden: 'ASC',
       },
@@ -83,14 +100,12 @@ export class NecesidadesService {
     await this.necesidadesRepository.remove(necesidad);
   }
 
-  // Método auxiliar para contar necesidades por asociado
   async countByAsociado(idAsociado: number): Promise<number> {
     return await this.necesidadesRepository.count({
       where: { asociado: { idAsociado } },
     });
   }
 
-  // Método para reordenar necesidades de un asociado
   async reorderByAsociado(idAsociado: number): Promise<void> {
     const necesidades = await this.findByAsociado(idAsociado);
 
