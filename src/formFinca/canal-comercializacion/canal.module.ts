@@ -11,5 +11,6 @@ import { Finca } from '../finca/entities/finca.entity';
   imports: [TypeOrmModule.forFeature([CanalComercializacion, Finca])],
   controllers: [CanalesComercializacionController],
   providers: [CanalesComercializacionService],
+  exports: [CanalesComercializacionService],
 })
 export class CanalesComercializacionModule {}

@@ -32,11 +32,11 @@ import { FincaOtroEquipoService } from 'src/formFinca/otros-equipos/finca-otro-e
 import { InfraestructuraProduccionService } from 'src/formFinca/equipo/equipo.service';
 import { TiposCercaService } from 'src/formFinca/tipo-cerca/tipo-cerca.service';
 import { FincaTipoCercaService } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.service';
-import { InfraestructurasService } from 'src/formFinca/infraestructura/infraestructura.service';
 import { FincaInfraestructurasService } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.service';
 import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/corriente.entity';
 import { CorrienteElectricaService } from 'src/formFinca/corriente-electrica/corriente.service';
 import { AccesoService } from 'src/formFinca/acceso/acceso.service';
+import { CanalesComercializacionService } from 'src/formFinca/canal-comercializacion/canal.service';
 
 @Injectable()
 export class SolicitudService {
@@ -69,6 +69,7 @@ export class SolicitudService {
     private fincaInfraestructurasService: FincaInfraestructurasService,
     private corrienteElectricaService: CorrienteElectricaService,
     private accesoService: AccesoService,
+    private canalesComercializacionService: CanalesComercializacionService,
     private dataSource: DataSource,
 
   ) {}
@@ -302,6 +303,14 @@ export class SolicitudService {
           },
           finca,
           tipoCerca,
+          queryRunner.manager,
+        );
+      }
+
+      if (createDto.canales && createDto.canales.length > 0) {
+        await this.canalesComercializacionService.createManyInTransaction(
+          createDto.canales,
+          finca,
           queryRunner.manager,
         );
       }

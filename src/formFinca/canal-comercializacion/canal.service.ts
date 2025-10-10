@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { EntityManager, ILike, Repository } from 'typeorm';
 import { CanalComercializacion } from './entities/canal.entity';
 import { Finca } from '../finca/entities/finca.entity';
 import { CreateCanalDto } from './dto/create-canal';
 import { UpdateCanalDto } from './dto/update-canal';
-
 
 @Injectable()
 export class CanalesComercializacionService {
@@ -17,7 +16,6 @@ export class CanalesComercializacionService {
   ) {}
 
   async create(dto: CreateCanalDto) {
-    // validar que la finca exista
     const finca = await this.fincaRepo.findOne({ where: { idFinca: dto.idFinca } });
     if (!finca) throw new NotFoundException('Finca no encontrada');
 
@@ -25,7 +23,26 @@ export class CanalesComercializacionService {
     return this.repo.save(entity);
   }
 
-  // listado general con filtros opcionales
+  // ✅ NUEVO: Método transaccional para crear múltiples canales
+  async createManyInTransaction(
+    canales: CreateCanalDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<CanalComercializacion[]> {
+    if (!canales || canales.length === 0) {
+      return [];
+    }
+
+    const canalEntities = canales.map((dto) =>
+      manager.create(CanalComercializacion, {
+        nombre: dto.nombre,
+        finca,
+      }),
+    );
+
+    return manager.save(canalEntities);
+  }
+
   async findAll(params?: { idFinca?: number; search?: string }) {
     const where: any = {};
     if (params?.idFinca) where.idFinca = params.idFinca;
@@ -48,13 +65,9 @@ export class CanalesComercializacionService {
   }
 
   async listByFinca(idFinca: number) {
-    // asegura que la finca existe (opcional, pero útil)
-    const finca = await this.fincaRepo.findOne({ where: { idFinca } });
-    if (!finca) throw new NotFoundException('Finca no encontrada');
-
     return this.repo.find({
       where: { idFinca },
-      order: { idCanal: 'DESC' },
+      order: { nombre: 'ASC' },
     });
   }
 
