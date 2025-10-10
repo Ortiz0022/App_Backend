@@ -174,7 +174,7 @@ export class AssociateService {
         'fincas.propietario',
         'fincas.propietario.persona',
         'fincas.registrosProductivos',
-        'fincas.corriente', // ✅ ASEGURAR QUE ESTÉ AQUÍ
+        'fincas.corriente', 
         'solicitud',
       ],
     });

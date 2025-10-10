@@ -26,6 +26,7 @@ import { FincaTipoCercaModule } from 'src/formFinca/finca-tipo-cerca/finca-tipo-
 import { InfraestructurasModule } from 'src/formFinca/infraestructura/infraestructura.module';
 import { FincaInfraestructurasModule } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.module';
 import { CorrienteElectricaModule } from 'src/formFinca/corriente-electrica/corriente.module';
+import { AccesoModule } from 'src/formFinca/acceso/acceso.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { CorrienteElectricaModule } from 'src/formFinca/corriente-electrica/corr
     InfraestructurasModule,           
     FincaInfraestructurasModule,    
     CorrienteElectricaModule, 
+    AccesoModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService],

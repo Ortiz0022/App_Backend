@@ -17,9 +17,7 @@ export class Acceso {
   nombre: string;
 
   // Relación N:1 con Finca
-  @ManyToOne(() => Finca, (finca) => finca.accesos, {
-    eager: true,
-  })
+  @ManyToOne(() => Finca, (finca) => finca.accesos)
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;
 }

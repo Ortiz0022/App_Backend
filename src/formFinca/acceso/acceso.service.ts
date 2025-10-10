@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Acceso } from './entities/acceso.entity';
 import { CreateAccesoDto } from './dto/create-acceso.dto';
 import { UpdateAccesoDto } from './dto/update-acceso.dto';
 import { Finca } from '../finca/entities/finca.entity';
-
 
 @Injectable()
 export class AccesoService {
@@ -33,6 +32,26 @@ export class AccesoService {
     });
 
     return await this.accesoRepository.save(acceso);
+  }
+
+  // ✅ NUEVO: Método transaccional para crear múltiples accesos
+  async createManyInTransaction(
+    accesos: CreateAccesoDto[],
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<Acceso[]> {
+    if (!accesos || accesos.length === 0) {
+      return [];
+    }
+
+    const accesoEntities = accesos.map((dto) =>
+      manager.create(Acceso, {
+        nombre: dto.nombre,
+        finca,
+      }),
+    );
+
+    return manager.save(accesoEntities);
   }
 
   async findAll(): Promise<Acceso[]> {

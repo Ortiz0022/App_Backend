@@ -36,6 +36,7 @@ import { InfraestructurasService } from 'src/formFinca/infraestructura/infraestr
 import { FincaInfraestructurasService } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.service';
 import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/corriente.entity';
 import { CorrienteElectricaService } from 'src/formFinca/corriente-electrica/corriente.service';
+import { AccesoService } from 'src/formFinca/acceso/acceso.service';
 
 @Injectable()
 export class SolicitudService {
@@ -65,9 +66,9 @@ export class SolicitudService {
     private fincaOtroEquipoService: FincaOtroEquipoService,
     private tiposCercaService: TiposCercaService,
     private fincaTipoCercaService: FincaTipoCercaService,
-    private infraestructurasService: InfraestructurasService,
     private fincaInfraestructurasService: FincaInfraestructurasService,
     private corrienteElectricaService: CorrienteElectricaService,
+    private accesoService: AccesoService,
     private dataSource: DataSource,
 
   ) {}
@@ -274,6 +275,14 @@ export class SolicitudService {
       if (createDto.otrosEquipos && createDto.otrosEquipos.length > 0) {
         await this.fincaOtroEquipoService.createManyInTransaction(
           createDto.otrosEquipos,
+          finca,
+          queryRunner.manager,
+        );
+      }
+
+      if (createDto.accesos && createDto.accesos.length > 0) {
+        await this.accesoService.createManyInTransaction(
+          createDto.accesos,
           finca,
           queryRunner.manager,
         );
