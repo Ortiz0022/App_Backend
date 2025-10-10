@@ -6,7 +6,6 @@ import { Finca } from '../finca/entities/finca.entity';
 import { Infraestructura } from '../infraestructura/entities/infraestructura.entity';
 import { CreateFincaInfraestructuraDto } from './dto/create-fincaInfraestructura.dto';
 
-
 @Injectable()
 export class FincaInfraestructurasService {
   constructor(
@@ -44,6 +43,10 @@ export class FincaInfraestructurasService {
     return this.repo.save(entity);
   }
 
+  /**
+   * ✅ NUEVO MÉTODO: Link por ID (usado internamente)
+   * Recibe objetos con { idFinca, idInfraestructura }
+   */
   async linkManyInTransaction(
     infraestructuras: CreateFincaInfraestructuraDto[],
     finca: Finca,
@@ -52,31 +55,111 @@ export class FincaInfraestructurasService {
     if (!infraestructuras || infraestructuras.length === 0) {
       return [];
     }
-  
+
     const links: FincaInfraestructura[] = [];
-  
+
     for (const dto of infraestructuras) {
       const infraestructura = await manager.findOne(Infraestructura, {
         where: { idInfraestructura: dto.idInfraestructura },
       });
-  
+
       if (!infraestructura) {
         throw new NotFoundException(
           `Infraestructura con ID ${dto.idInfraestructura} no encontrada`,
         );
       }
-  
-      const link = manager.create(FincaInfraestructura, {
-        idFinca: finca.idFinca,
-        idInfraestructura: infraestructura.idInfraestructura,
-        finca,
-        infraestructura,
+
+      // ✅ Verificar si ya existe la relación antes de insertar
+      const existingLink = await manager.findOne(FincaInfraestructura, {
+        where: {
+          idFinca: finca.idFinca,
+          idInfraestructura: infraestructura.idInfraestructura,
+        },
       });
-  
-      links.push(link);
+
+      if (!existingLink) {
+        const link = manager.create(FincaInfraestructura, {
+          idFinca: finca.idFinca,
+          idInfraestructura: infraestructura.idInfraestructura,
+          finca,
+          infraestructura,
+        });
+
+        links.push(link);
+      } else {
+        console.log(
+          `[FincaInfraestructura] Relación ya existe: Finca ${finca.idFinca} - Infraestructura ${infraestructura.idInfraestructura}`,
+        );
+      }
     }
-  
-    return manager.save(links);
+
+    if (links.length > 0) {
+      return manager.save(links);
+    }
+
+    return [];
+  }
+
+  /**
+   * ✅ NUEVO MÉTODO: Link por nombre (usado desde el formulario de asociados)
+   * Recibe objetos con { nombre: string }
+   * Busca o crea la infraestructura por nombre y luego crea la relación
+   */
+  async linkManyByNameInTransaction(
+    infraestructurasDto: Array<{ nombre: string }>,
+    finca: Finca,
+    manager: EntityManager,
+  ): Promise<FincaInfraestructura[]> {
+    if (!infraestructurasDto || infraestructurasDto.length === 0) {
+      return [];
+    }
+
+    const links: FincaInfraestructura[] = [];
+
+    for (const infraDto of infraestructurasDto) {
+      // 1. Buscar o crear infraestructura por nombre
+      let infraestructura = await manager.findOne(Infraestructura, {
+        where: { nombre: infraDto.nombre },
+      });
+
+      if (!infraestructura) {
+        console.log(`[FincaInfraestructura] Creando nueva infraestructura: ${infraDto.nombre}`);
+        infraestructura = manager.create(Infraestructura, {
+          nombre: infraDto.nombre,
+        });
+        await manager.save(infraestructura);
+      }
+
+      // 2. ✅ Verificar si ya existe la relación
+      const existingLink = await manager.findOne(FincaInfraestructura, {
+        where: {
+          idFinca: finca.idFinca,
+          idInfraestructura: infraestructura.idInfraestructura,
+        },
+      });
+
+      // 3. Solo crear el link si no existe
+      if (!existingLink) {
+        const link = manager.create(FincaInfraestructura, {
+          idFinca: finca.idFinca,
+          idInfraestructura: infraestructura.idInfraestructura,
+          finca,
+          infraestructura,
+        });
+
+        links.push(link);
+      } else {
+        console.log(
+          `[FincaInfraestructura] Relación ya existe: Finca ${finca.idFinca} - Infraestructura "${infraestructura.nombre}" (${infraestructura.idInfraestructura})`,
+        );
+      }
+    }
+
+    if (links.length > 0) {
+      return manager.save(links);
+    }
+
+    return [];
   }
 
   // Lista las infraestructuras de una finca (incluye el objeto Infraestructura)

@@ -326,13 +326,18 @@ export class SolicitudService {
       }
 
        // 17. Crear Infraestructuras (si vienen)
-    if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
-      await this.fincaInfraestructurasService.linkManyInTransaction(
-        createDto.infraestructuras,
-        finca,
-        queryRunner.manager,
-      );
-    }
+         if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
+          console.log('[Service] Creando infraestructuras:', JSON.stringify(createDto.infraestructuras, null, 2));
+          
+          // ✅ USAR EL MÉTODO CORRECTO
+          await this.fincaInfraestructurasService.linkManyByNameInTransaction(
+            createDto.infraestructuras,  // Ya viene como { nombre: string }[]
+            finca,
+            queryRunner.manager,
+          );
+          
+          console.log('[Service] Infraestructuras creadas exitosamente');
+        }
 
       // 18. Crear Solicitud
       const solicitud = queryRunner.manager.create(Solicitud, {
