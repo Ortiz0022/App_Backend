@@ -34,6 +34,8 @@ import { TiposCercaService } from 'src/formFinca/tipo-cerca/tipo-cerca.service';
 import { FincaTipoCercaService } from 'src/formFinca/finca-tipo-cerca/finca-tipo-cerca.service';
 import { InfraestructurasService } from 'src/formFinca/infraestructura/infraestructura.service';
 import { FincaInfraestructurasService } from 'src/formFinca/finca-infraestructura/fincaInfraestructura.service';
+import { CorrienteElectrica } from 'src/formFinca/corriente-electrica/entities/corriente.entity';
+import { CorrienteElectricaService } from 'src/formFinca/corriente-electrica/corriente.service';
 
 @Injectable()
 export class SolicitudService {
@@ -65,6 +67,7 @@ export class SolicitudService {
     private fincaTipoCercaService: FincaTipoCercaService,
     private infraestructurasService: InfraestructurasService,
     private fincaInfraestructurasService: FincaInfraestructurasService,
+    private corrienteElectricaService: CorrienteElectricaService,
     private dataSource: DataSource,
 
   ) {}
@@ -167,6 +170,14 @@ export class SolicitudService {
         createDto.datosFinca.geografia,
         queryRunner.manager,
       );
+
+      let corriente: CorrienteElectrica | null = null;
+      if (createDto.corrienteElectrica) {
+        corriente = await this.corrienteElectricaService.findOrCreateInTransaction(
+          createDto.corrienteElectrica,
+          queryRunner.manager,
+        );
+      }
   
       // 6. Crear Finca
       const finca = await this.fincaService.createInTransaction(
@@ -179,6 +190,7 @@ export class SolicitudService {
           idAsociado: asociado.idAsociado,
           geografia,
           propietario: propietario || undefined,
+          corriente: corriente || undefined,
         },
         queryRunner.manager,
       );
@@ -409,7 +421,7 @@ export class SolicitudService {
         'asociado.fincas.geografia',
         'asociado.fincas.propietario',
         'asociado.fincas.propietario.persona',
-        // ✅ SOLO hasta aquí - NADA MÁS
+        'asociado.fincas.corriente',
       ],
     });
   

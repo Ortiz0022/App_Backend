@@ -19,6 +19,7 @@ import { FincaOtroEquipo } from '../otros-equipos/entities/finca-equipo.entity';
 import { FincaTipoCerca } from '../finca-tipo-cerca/entities/finca-tipo-cerca.entity';
 import { FincaInfraestructura } from '../finca-infraestructura/entities/fincaInfraestructura.entity';
 import { Inject, forwardRef } from '@nestjs/common';
+import { CorrienteElectrica } from '../corriente-electrica/entities/corriente.entity';
 
 @Injectable()
 export class FincaService {
@@ -41,6 +42,7 @@ export class FincaService {
       idAsociado: number;
       geografia?: Geografia;
       propietario?: Propietario;
+      corriente?: CorrienteElectrica; // ✅ AGREGAR
     },
     manager: EntityManager,
   ): Promise<Finca> {
@@ -51,11 +53,11 @@ export class FincaService {
       idAsociado: data.idAsociado,
       geografia: data.geografia,
       propietario: data.propietario,
+      corriente: data.corriente, // ✅ AGREGAR
     });
-
+  
     return manager.save(finca);
   }
-
   async findAll(query: QueryFincaDto): Promise<Finca[]> {
     const where: any = {};
     if (query.idAsociado) {
@@ -75,6 +77,7 @@ export class FincaService {
           'geografia',
           'propietario',
           'propietario.persona',
+          'corriente', // ✅ AGREGAR
         ],
         order: { createdAt: 'DESC' },
       });
@@ -88,6 +91,7 @@ export class FincaService {
         'geografia',
         'propietario',
         'propietario.persona',
+        'corriente', // ✅ AGREGAR
       ],
       order: { createdAt: 'DESC' },
     });
@@ -193,6 +197,7 @@ export class FincaService {
       'propietario.persona',
       'hato',
       'registrosProductivos',
+      'corriente', // ✅ AGREGAR
     ],
     order: { nombre: 'ASC' },
   });

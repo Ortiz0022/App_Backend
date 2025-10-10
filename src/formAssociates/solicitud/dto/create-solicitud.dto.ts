@@ -25,6 +25,7 @@ import { CreateInfraestructuraProduccionDto } from 'src/formFinca/equipo/dto/cre
 import { CreateFincaOtroEquipoDto } from 'src/formFinca/otros-equipos/dto/create-otros-equipos.dto';
 import { CreateTipoCercaDto } from 'src/formFinca/tipo-cerca/dto/create-tipo-cerca.dto';
 import { CreateFincaInfraestructuraDto } from 'src/formFinca/finca-infraestructura/dto/create-fincaInfraestructura.dto';
+import { CreateCorrienteDto } from 'src/formFinca/corriente-electrica/dto/create-corriente.dto';
 
 export class CreateSolicitudDto {
   @ValidateNested()
@@ -108,4 +109,9 @@ export class CreateSolicitudDto {
   @ValidateNested({ each: true })
   @Type(() => CreateFincaInfraestructuraDto)
   infraestructuras?: CreateFincaInfraestructuraDto[];
+
+  @ValidateNested()
+  @Type(() => CreateCorrienteDto)
+  @IsOptional()
+  corrienteElectrica?: CreateCorrienteDto; 
 }

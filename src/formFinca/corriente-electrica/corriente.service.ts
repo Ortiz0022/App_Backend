@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { EntityManager, Not, Repository } from 'typeorm';
 
 import { CreateCorrienteDto } from './dto/create-corriente.dto';
 import { UpdateCorrienteDto } from './dto/update-corriente.dto';
@@ -22,7 +22,6 @@ export class CorrienteElectricaService {
       throw new BadRequestException('Debe activar al menos una opción: pública o privada.');
     }
 
-    // evitar duplicados por combinación
     const dup = await this.repo.findOne({
       where: { publica: dto.publica, privada: dto.privada },
     });
@@ -30,6 +29,32 @@ export class CorrienteElectricaService {
 
     const entity = this.repo.create(dto);
     return this.repo.save(entity);
+  }
+
+  // ✅ NUEVO: Método transaccional para el formulario de finca
+  async findOrCreateInTransaction(
+    dto: CreateCorrienteDto,
+    manager: EntityManager,
+  ): Promise<CorrienteElectrica> {
+    if (!alMenosUnaTrue(dto.publica, dto.privada)) {
+      throw new BadRequestException('Debe activar al menos una opción: pública o privada.');
+    }
+
+    // Buscar combinación existente
+    let corriente = await manager.findOne(CorrienteElectrica, {
+      where: {
+        publica: dto.publica,
+        privada: dto.privada,
+      },
+    });
+
+    if (!corriente) {
+      // Crear nueva combinación
+      corriente = manager.create(CorrienteElectrica, dto);
+      await manager.save(corriente);
+    }
+
+    return corriente;
   }
 
   findAll() {
@@ -54,7 +79,7 @@ export class CorrienteElectricaService {
       where: {
         publica: next.publica,
         privada: next.privada,
-        idCorrienteElectrica: Not(id), // no comparar consigo mismo
+        idCorrienteElectrica: Not(id),
       },
     });
     if (dup) throw new BadRequestException('Esa combinación ya existe en otro registro.');

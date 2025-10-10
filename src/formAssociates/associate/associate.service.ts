@@ -162,28 +162,30 @@ export class AssociateService {
     return associate;
   }
 
-  // ✅ NUEVO: Detalle BÁSICO (solo info de fincas sin sus relaciones completas)
-async findOneBasic(id: number): Promise<Associate> {
-  const associate = await this.associateRepository.findOne({
-    where: { idAsociado: id },
-    relations: [
-      'persona',
-      'nucleoFamiliar',
-      'fincas',
-      'fincas.geografia',
-      'fincas.propietario',
-      'fincas.propietario.persona',
-      'fincas.registrosProductivos', // ✅ Solo esto porque es pequeño
-      'solicitud',
-    ],
-  });
-
-  if (!associate) {
-    throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
+ 
+  async findOneBasic(id: number): Promise<Associate> {
+    const associate = await this.associateRepository.findOne({
+      where: { idAsociado: id },
+      relations: [
+        'persona',
+        'nucleoFamiliar',
+        'fincas',
+        'fincas.geografia',
+        'fincas.propietario',
+        'fincas.propietario.persona',
+        'fincas.registrosProductivos',
+        'fincas.corriente', // ✅ ASEGURAR QUE ESTÉ AQUÍ
+        'solicitud',
+      ],
+    });
+  
+    if (!associate) {
+      throw new NotFoundException(`Asociado con ID ${id} no encontrado`);
+    }
+  
+    return associate;
   }
-
-  return associate;
-}
+  
   async update(id: number, updateDto: UpdateAssociateDto): Promise<Associate> {
     const associate = await this.associateRepository.findOne({
       where: { idAsociado: id },

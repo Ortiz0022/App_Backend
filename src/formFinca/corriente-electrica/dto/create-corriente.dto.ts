@@ -2,8 +2,8 @@ import { IsBoolean } from 'class-validator';
 
 export class CreateCorrienteDto {
   @IsBoolean()
-  publica: boolean;
+  publica?: boolean;
 
   @IsBoolean()
-  privada: boolean;
+  privada?: boolean;
 }

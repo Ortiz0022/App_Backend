@@ -97,7 +97,7 @@ export class Finca {
   @Column({ name: 'idCorriente', type: 'int', nullable: true })
   idCorriente?: number;
 
-  @ManyToOne(() => CorrienteElectrica, (c) => c.fincas, { nullable: true, eager: false })
+  @ManyToOne(() => CorrienteElectrica, (c) => c.fincas, { nullable: true})
   @JoinColumn({ name: 'idCorriente', referencedColumnName: 'idCorrienteElectrica' })
   corriente?: CorrienteElectrica;
 
