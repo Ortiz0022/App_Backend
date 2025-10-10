@@ -19,52 +19,68 @@ export class AssociateService {
     private personaRepository: Repository<Persona>,
   ) {}
 
-  // ✅ Listado ligero para tablas
-  async findAll(query?: QueryAssociateDto) {
-    const { estado, search, page = 1, limit = 20, sort } = query || {};
+// ✅ Listado ligero para tablas - SOLO asociados con solicitud APROBADA
+// ✅ Listado ligero para tablas - SOLO asociados con solicitud APROBADA
+async findAll(query?: QueryAssociateDto) {
+  const { estado, search, page = 1, limit = 20, sort } = query || {};
 
-    const queryBuilder = this.associateRepository
-      .createQueryBuilder('associate')
-      .leftJoinAndSelect('associate.persona', 'persona')
-      .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
-      .leftJoinAndSelect('associate.fincas', 'fincas')
-      .leftJoinAndSelect('fincas.geografia', 'geografia')
-      .leftJoinAndSelect('associate.solicitud', 'solicitud');
+  const queryBuilder = this.associateRepository
+    .createQueryBuilder('associate')
+    .leftJoinAndSelect('associate.persona', 'persona')
+    .leftJoinAndSelect('associate.nucleoFamiliar', 'nucleoFamiliar')
+    .leftJoinAndSelect('associate.fincas', 'fincas')
+    .leftJoinAndSelect('fincas.geografia', 'geografia')
+    .leftJoinAndSelect('associate.solicitud', 'solicitud');
 
-    queryBuilder.andWhere('associate.estado = :estado', { estado: true });
+  // ✅ REGLA DE NEGOCIO: Solo mostrar asociados con solicitud APROBADA
+  // Esto cumple con:
+  // 1. Asociados activos (estado=true) + solicitud APROBADA ✅
+  // 2. Asociados inactivos (estado=false) + solicitud APROBADA ✅
+  // 3. NO mostrar asociados con solicitud PENDIENTE o RECHAZADA ❌
+  queryBuilder.andWhere('solicitud.estado = :estadoSolicitud', { 
+    estadoSolicitud: 'APROBADO' 
+  });
 
-    if (search) {
-      queryBuilder.andWhere(
-        '(persona.nombre ILIKE :search OR persona.apellido1 ILIKE :search OR persona.apellido2 ILIKE :search OR persona.cedula ILIKE :search OR persona.email ILIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    if (sort) {
-      const [field, order] = sort.split(':');
-      const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-
-      if (field.startsWith('persona.')) {
-        queryBuilder.orderBy(field, orderDirection);
-      } else {
-        queryBuilder.orderBy(`associate.${field}`, orderDirection);
-      }
-    } else {
-      queryBuilder.orderBy('associate.createdAt', 'DESC');
-    }
-
-    queryBuilder.skip((page - 1) * limit).take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    };
+  // ✅ Filtro opcional por estado del asociado (activo/inactivo)
+  // Solo se aplica si se proporciona explícitamente desde el frontend
+  if (estado !== undefined) {
+    queryBuilder.andWhere('associate.estado = :estado', { estado });
   }
 
+  // ✅ Búsqueda por texto (LIKE para MySQL, case-insensitive por defecto)
+  if (search) {
+    queryBuilder.andWhere(
+      '(persona.nombre LIKE :search OR persona.apellido1 LIKE :search OR persona.apellido2 LIKE :search OR persona.cedula LIKE :search OR persona.email LIKE :search)',
+      { search: `%${search}%` },
+    );
+  }
+
+  // ✅ Ordenamiento
+  if (sort) {
+    const [field, order] = sort.split(':');
+    const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    if (field.startsWith('persona.')) {
+      queryBuilder.orderBy(field, orderDirection);
+    } else {
+      queryBuilder.orderBy(`associate.${field}`, orderDirection);
+    }
+  } else {
+    queryBuilder.orderBy('associate.createdAt', 'DESC');
+  }
+
+  // ✅ Paginación
+  queryBuilder.skip((page - 1) * limit).take(limit);
+
+  const [items, total] = await queryBuilder.getManyAndCount();
+
+  return {
+    items,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  };
+}
   async findActive() {
     return this.associateRepository.find({
       where: { estado: true },
