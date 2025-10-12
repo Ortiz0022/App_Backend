@@ -11,12 +11,14 @@ import { Income } from '../income/entities/income.entity';
 import { IncomeTypeModule } from '../incomeType/income-type.module';
 import { IncomeSubTypeModule } from '../incomeSubType/income-sub-type.module';
 import { ExtraordinaryService } from './extraordinary.service';
+import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Extraordinary, IncomeType, IncomeSubType, Income]),
     IncomeTypeModule,
-    IncomeSubTypeModule, // ⬅️ para resolver IncomeSubTypeService
+    IncomeSubTypeModule, 
+    FiscalYearModule,
   ],
   controllers: [ExtraordinaryController],
   providers: [ExtraordinaryService],
