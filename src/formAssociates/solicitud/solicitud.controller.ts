@@ -12,16 +12,21 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
-} from '@nestjs/common';
+  Res} from '@nestjs/common';
 import { SolicitudService } from './solicitud.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import express from 'express';
+import { PdfService } from './pdf.service';
 
 @Controller('solicitudes')
 export class SolicitudController {
-  constructor(private readonly solicitudService: SolicitudService) {}
+  constructor(
+    private readonly solicitudService: SolicitudService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -91,5 +96,23 @@ export class SolicitudController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.remove(id);
+  }
+
+  @Get(':id/pdf')
+  async downloadPDF(
+    @Param('id') id: string,
+    @Res() res: express.Response,
+  ): Promise<void> {
+    const solicitud = await this.solicitudService.findOneComplete(+id);
+    
+    const pdfBuffer = await this.pdfService.generateSolicitudPDF(solicitud);
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=solicitud-${id}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+    
+    res.end(pdfBuffer);
   }
 }
