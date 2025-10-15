@@ -351,15 +351,26 @@ export class ReportProjectionsService {
   }
 
   private async projectedIncomeAgg(filters: IncomeFilters) {
-    const qb = this.pIncomeRepo.createQueryBuilder('pi')
-      .leftJoin('pi.pIncomeSubType', 'pst')
-      .leftJoin('pst.pIncomeType', 'pt')
-      .leftJoin('pt.department', 'd');
+     const qb = this.pIncomeRepo.createQueryBuilder('pi')
+    .leftJoin('pi.pIncomeSubType', 'pst')
+    .leftJoin('pst.pIncomeType', 'pt')
+    .leftJoin('pt.department', 'd');
 
-    // IMPORTANTE: no filtrar por fechas si tu tabla pIncome no las tiene
+    // ✅ AGREGAR FILTRADO POR FECHA
+    const start = this.parseISO(filters.start);
+    const end = this.parseISO(filters.end);
+    if (start && end) {
+      qb.andWhere('pi.date BETWEEN :from AND :to', { from: start, to: end });
+    } else if (start) {
+      qb.andWhere('pi.date >= :from', { from: start });
+    } else if (end) {
+      qb.andWhere('pi.date <= :to', { to: end });
+    }
+
     if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
     if (filters.incomeTypeId) qb.andWhere('pt.id = :t', { t: filters.incomeTypeId });
     if (filters.incomeSubTypeId) qb.andWhere('pst.id = :pst', { pst: filters.incomeSubTypeId });
+
 
     try {
       return await qb
@@ -441,30 +452,37 @@ export class ReportProjectionsService {
       throw new BadRequestException('Error consultando egresos reales');
     }
   }
+private async projectedSpendAgg(filters: SpendFilters) {
+  const qb = this.pSpendRepo.createQueryBuilder('ps')
+    .leftJoin('ps.subType', 'psst')        // ✅ Usar relación en lugar de join manual
+    .leftJoin('psst.type', 'pst')          // ✅ Usar relación en lugar de join manual
+    .leftJoin('pst.department', 'd');      // ✅ Usar relación en lugar de join manual
 
-  private async projectedSpendAgg(filters: SpendFilters) {
-    // FK reales en proyección:
-    // ps.subTypeId -> psst.id
-    // psst.typeId  -> pst.id
-    const qb = this.pSpendRepo.createQueryBuilder('ps')
-      .leftJoin(PSpendSubType, 'psst', 'psst.id = ps.subTypeId')
-      .leftJoin(PSpendType, 'pst', 'pst.id = psst.typeId')
-      .leftJoin(Department, 'd', 'd.id = pst.departmentId');
-
-    if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
-    if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
-    if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
-
-    return qb
-      .select([
-        'psst.id AS subTypeId',
-        'psst.name AS subTypeName',
-        'COALESCE(SUM(ps.amount),0) AS projTotal',
-      ])
-      .groupBy('psst.id')
-      .addGroupBy('psst.name')
-      .getRawMany<{ subTypeId:number; subTypeName:string; projTotal:string }>();
+  // ✅ Agregar filtros de fecha
+  const start = this.parseISO(filters.start);
+  const end = this.parseISO(filters.end);
+  if (start && end) {
+    qb.andWhere('ps.date BETWEEN :from AND :to', { from: start, to: end });
+  } else if (start) {
+    qb.andWhere('ps.date >= :from', { from: start });
+  } else if (end) {
+    qb.andWhere('ps.date <= :to', { to: end });
   }
+
+  if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
+  if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
+  if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
+
+  return qb
+    .select([
+      'psst.id AS subTypeId',
+      'psst.name AS subTypeName',
+      'COALESCE(SUM(ps.amount),0) AS projTotal',
+    ])
+    .groupBy('psst.id')
+    .addGroupBy('psst.name')
+    .getRawMany<{ subTypeId:number; subTypeName:string; projTotal:string }>();
+}
 
   async compareSpend(filters: SpendFilters) {
     const [real, proj] = await Promise.all([
@@ -627,73 +645,72 @@ export class ReportProjectionsService {
     });
   }
 
-  async getPSpendTable(filters: SpendFilters) {
-    const qb = this.pSpendRepo.createQueryBuilder('ps')
-      .leftJoin(PSpendSubType, 'psst', 'psst.id = ps.subTypeId')
-      .leftJoin(PSpendType, 'pst', 'pst.id = psst.typeId')
-      .leftJoin(Department, 'd', 'd.id = pst.departmentId');
+async getPSpendTable(filters: SpendFilters) {
+  const qb = this.pSpendRepo.createQueryBuilder('ps')
+    .leftJoin('ps.subType', 'psst')         // ✅ Usar relación
+    .leftJoin('psst.type', 'pst')           // ✅ Usar relación
+    .leftJoin('pst.department', 'd');       // ✅ Usar relación
 
-    const start = this.parseISO(filters.start);
-    const end = this.parseISO(filters.end);
-    if (start && end) qb.andWhere('ps.date BETWEEN :from AND :to', { from: start, to: end });
-    else if (start) qb.andWhere('ps.date >= :from', { from: start });
-    else if (end) qb.andWhere('ps.date <= :to', { to: end });
+  const start = this.parseISO(filters.start);
+  const end = this.parseISO(filters.end);
+  if (start && end) qb.andWhere('ps.date BETWEEN :from AND :to', { from: start, to: end });
+  else if (start) qb.andWhere('ps.date >= :from', { from: start });
+  else if (end) qb.andWhere('ps.date <= :to', { to: end });
 
-    if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
-    if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
-    if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
+  if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
+  if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
+  if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
 
-    const raw = await qb.select([
-      'ps.id AS id','ps.date AS date','ps.amount AS amount',
-      'd.id AS departmentId','d.name AS departmentName',
-      'pst.id AS spendTypeId','pst.name AS spendTypeName',
-      'psst.id AS spendSubTypeId','psst.name AS spendSubTypeName',
-    ])
-    .orderBy('ps.date','ASC').addOrderBy('d.name','ASC').addOrderBy('pst.name','ASC').addOrderBy('psst.name','ASC')
-    .getRawMany<any>();
+  const raw = await qb.select([
+    'ps.id AS id','ps.date AS date','ps.amount AS amount',
+    'd.id AS departmentId','d.name AS departmentName',
+    'pst.id AS spendTypeId','pst.name AS spendTypeName',
+    'psst.id AS spendSubTypeId','psst.name AS spendSubTypeName',
+  ])
+  .orderBy('ps.date','ASC').addOrderBy('d.name','ASC').addOrderBy('pst.name','ASC').addOrderBy('psst.name','ASC')
+  .getRawMany<any>();
 
-    return raw.map(r => ({
-      id: r.id, date: r.date, amount: Number(r.amount||0),
-      department: { id: r.departmentId, name: r.departmentName },
-      spendType: { id: r.spendTypeId, name: r.spendTypeName },
-      spendSubType: { id: r.spendSubTypeId, name: r.spendSubTypeName },
-    }));
-  }
+  return raw.map(r => ({
+    id: r.id, date: r.date, amount: Number(r.amount||0),
+    department: { id: r.departmentId, name: r.departmentName },
+    spendType: { id: r.spendTypeId, name: r.spendTypeName },
+    spendSubType: { id: r.spendSubTypeId, name: r.spendSubTypeName },
+  }));
+}
 
-  async getPSpendSummary(filters: SpendFilters) {
-    const qb = this.pSpendRepo.createQueryBuilder('ps')
-      .leftJoin(PSpendSubType, 'psst', 'psst.id = ps.subTypeId')
-      .leftJoin(PSpendType, 'pst', 'pst.id = psst.typeId')
-      .leftJoin(Department, 'd', 'd.id = pst.departmentId');
+async getPSpendSummary(filters: SpendFilters) {
+  const qb = this.pSpendRepo.createQueryBuilder('ps')
+    .leftJoin('ps.subType', 'psst')         // ✅ Usar relación
+    .leftJoin('psst.type', 'pst')           // ✅ Usar relación
+    .leftJoin('pst.department', 'd');       // ✅ Usar relación
 
-    const start = this.parseISO(filters.start);
-    const end = this.parseISO(filters.end);
-    if (start && end) qb.andWhere('ps.date BETWEEN :from AND :to', { from: start, to: end });
-    else if (start) qb.andWhere('ps.date >= :from', { from: start });
-    else if (end) qb.andWhere('ps.date <= :to', { to: end });
+  const start = this.parseISO(filters.start);
+  const end = this.parseISO(filters.end);
+  if (start && end) qb.andWhere('ps.date BETWEEN :from AND :to', { from: start, to: end });
+  else if (start) qb.andWhere('ps.date >= :from', { from: start });
+  else if (end) qb.andWhere('ps.date <= :to', { to: end });
 
-    if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
-    if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
-    if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
+  if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
+  if (filters.spendTypeId) qb.andWhere('pst.id = :t', { t: filters.spendTypeId });
+  if (filters.spendSubTypeId) qb.andWhere('psst.id = :psst', { psst: filters.spendSubTypeId });
 
-    const bySubType = await qb.clone()
-      .select(['psst.id AS spendSubTypeId','psst.name AS spendSubTypeName','COALESCE(SUM(ps.amount),0) AS total'])
-      .groupBy('psst.id').addGroupBy('psst.name').getRawMany<any>();
+  const bySubType = await qb.clone()
+    .select(['psst.id AS spendSubTypeId','psst.name AS spendSubTypeName','COALESCE(SUM(ps.amount),0) AS total'])
+    .groupBy('psst.id').addGroupBy('psst.name').getRawMany<any>();
 
-    const byDepartment = await qb.clone()
-      .select(['d.id AS departmentId','d.name AS departmentName','COALESCE(SUM(ps.amount),0) AS total'])
-      .groupBy('d.id').addGroupBy('d.name').getRawMany<any>();
+  const byDepartment = await qb.clone()
+    .select(['d.id AS departmentId','d.name AS departmentName','COALESCE(SUM(ps.amount),0) AS total'])
+    .groupBy('d.id').addGroupBy('d.name').getRawMany<any>();
 
-    const grand = await qb.clone()
-      .select('COALESCE(SUM(ps.amount),0)','grand').getRawOne<{ grand:string }>();
+  const grand = await qb.clone()
+    .select('COALESCE(SUM(ps.amount),0)','grand').getRawOne<{ grand:string }>();
 
-    return {
-      bySpendSubType: bySubType.map(x => ({ spendSubTypeId:x.spendSubTypeId, spendSubTypeName:x.spendSubTypeName, total:Number(x.total||0) })),
-      byDepartment: byDepartment.map(x => ({ departmentId:x.departmentId, departmentName:x.departmentName, total:Number(x.total||0) })),
-      grandTotal: Number(grand?.grand||0),
-    };
-  }
-
+  return {
+    bySpendSubType: bySubType.map(x => ({ spendSubTypeId:x.spendSubTypeId, spendSubTypeName:x.spendSubTypeName, total:Number(x.total||0) })),
+    byDepartment: byDepartment.map(x => ({ departmentId:x.departmentId, departmentName:x.departmentName, total:Number(x.total||0) })),
+    grandTotal: Number(grand?.grand||0),
+  };
+}
   // =================== COMPARATIVOS -> PDF ===================
   async generateCompareIncomePDF(filters: IncomeFilters) {
     const { rows, totals } = await this.compareIncome(filters);

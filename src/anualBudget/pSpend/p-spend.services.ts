@@ -44,8 +44,35 @@ export class PSpendService {
       throw new BadRequestException('Monto inválido');
     }
 
-    // 4) Guardar
-    const row = this.repo.create({ amount, subType, fiscalYear: fy });
+    // ✅ 4) Determinar fecha (usar la del DTO o fecha actual dentro del año fiscal)
+    let date: string;
+    if (dto.date) {
+      // Validar que la fecha esté dentro del año fiscal
+      const inputDate = new Date(dto.date);
+      const fyStart = new Date(fy.start_date);
+      const fyEnd = new Date(fy.end_date);
+      
+      if (inputDate >= fyStart && inputDate <= fyEnd) {
+        date = dto.date;
+      } else {
+        console.log('[PSpend.create] Fecha fuera del año fiscal, usando fecha actual');
+        date = new Date().toISOString().split('T')[0];
+      }
+    } else {
+      // Si no viene fecha, usar fecha actual
+      date = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
+    }
+
+    console.log('[PSpend.create] Fecha a guardar:', date);
+
+    // 5) Guardar con fecha
+    const row = this.repo.create({ 
+      amount, 
+      date,        // ✅ AGREGAR ESTO
+      subType, 
+      fiscalYear: fy 
+    });
+    
     const saved = await this.repo.save(row);
     console.log('[PSpend.create] Guardado:', saved);
     return saved;
@@ -58,6 +85,7 @@ export class PSpendService {
         ...(subTypeId ? { subType: { id: subTypeId } } : {}),
         ...(fiscalYearId ? { fiscalYear: { id: fiscalYearId } } : {}),
       },
+      order: { date: 'DESC' }, // ✅ Ordenar por fecha descendente
       // relaciones ya vienen eager desde las entidades
     });
 
@@ -85,6 +113,7 @@ export class PSpendService {
       if (!subType) throw new NotFoundException('SubType no existe');
       item.subType = subType;
     }
+    
     if (dto.amount !== undefined) {
       const amount = toNumberAmount(dto.amount as any);
       if (!Number.isFinite(amount) || amount <= 0) {
@@ -92,6 +121,12 @@ export class PSpendService {
       }
       item.amount = amount;
     }
+    
+    // ✅ Permitir actualizar la fecha
+    if (dto.date !== undefined) {
+      item.date = new Date(dto.date);
+    }
+    
     return this.repo.save(item);
   }
 
