@@ -8,9 +8,9 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-
+import { VoluntarioIndividual } from '../../voluntario-individual/entities/voluntario-individual.entity';
+import { Organizacion } from '../../organizacion/entities/organizacion.entity';
 import { SolicitudStatus } from '../dto/solicitud-voluntariado-status.enum';
-import { VoluntarioIndividual } from 'src/formVolunteers/voluntario-individual/entities/voluntario-individual.entity';
 
 @Entity('solicitudesVoluntariado')
 export class SolicitudVoluntariado {
@@ -23,9 +23,18 @@ export class SolicitudVoluntariado {
   @OneToOne(() => VoluntarioIndividual, (voluntario) => voluntario.solicitud, {
     eager: false,
     cascade: true,
+    nullable: true,
   })
   @JoinColumn({ name: 'idVoluntario' })
-  voluntario: VoluntarioIndividual;
+  voluntario?: VoluntarioIndividual;
+
+  @OneToOne(() => Organizacion, (organizacion) => organizacion.solicitud, {
+    eager: false,
+    cascade: true,
+    nullable: true,
+  })
+  @JoinColumn({ name: 'idOrganizacion' })
+  organizacion?: Organizacion;
 
   @Column({
     type: 'enum',

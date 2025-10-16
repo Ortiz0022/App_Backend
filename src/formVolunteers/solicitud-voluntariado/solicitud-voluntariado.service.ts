@@ -8,8 +8,10 @@ import { Repository, DataSource } from 'typeorm';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariado } from './entities/solicitud-voluntariado.entity';
-
+import { VoluntarioIndividual } from '../voluntario-individual/entities/voluntario-individual.entity';
+import { Organizacion } from '../organizacion/entities/organizacion.entity';
 import { VoluntarioIndividualService } from '../voluntario-individual/voluntario-individual.service';
+import { OrganizacionService } from '../organizacion/organizacion.service';
 import { SolicitudStatus } from './dto/solicitud-voluntariado-status.enum';
 
 @Injectable()
@@ -18,6 +20,7 @@ export class SolicitudVoluntariadoService {
     @InjectRepository(SolicitudVoluntariado)
     private solicitudRepository: Repository<SolicitudVoluntariado>,
     private voluntarioService: VoluntarioIndividualService,
+    private organizacionService: OrganizacionService,
     private dataSource: DataSource,
   ) {}
 
@@ -25,16 +28,41 @@ export class SolicitudVoluntariadoService {
     createSolicitudDto: CreateSolicitudVoluntariadoDto,
   ): Promise<SolicitudVoluntariado> {
     return this.dataSource.transaction(async (manager) => {
-      // Crear voluntario individual dentro de la transacción
-      const voluntario = await this.voluntarioService.createInTransaction(
-        createSolicitudDto.voluntario,
-        manager,
-      );
+      let voluntario: VoluntarioIndividual | undefined;
+      let organizacion: Organizacion | undefined;
+
+      // Crear según el tipo de solicitante
+      if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
+        if (!createSolicitudDto.voluntario) {
+          throw new BadRequestException(
+            'Debe proporcionar los datos del voluntario individual',
+          );
+        }
+        voluntario = await this.voluntarioService.createInTransaction(
+          createSolicitudDto.voluntario,
+          manager,
+        );
+      } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
+        if (!createSolicitudDto.organizacion) {
+          throw new BadRequestException(
+            'Debe proporcionar los datos de la organización',
+          );
+        }
+        organizacion = await this.organizacionService.createInTransaction(
+          createSolicitudDto.organizacion,
+          manager,
+        );
+      } else {
+        throw new BadRequestException(
+          'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
+        );
+      }
 
       // Crear solicitud
       const solicitud = manager.create(SolicitudVoluntariado, {
         tipoSolicitante: createSolicitudDto.tipoSolicitante,
         voluntario,
+        organizacion,
         fechaSolicitud: new Date(),
         estado: SolicitudStatus.PENDIENTE,
       });
@@ -45,14 +73,14 @@ export class SolicitudVoluntariadoService {
 
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({
-      relations: ['voluntario', 'voluntario.persona'],
+      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
     });
   }
 
   async findOne(id: number): Promise<SolicitudVoluntariado> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitudVoluntariado: id },
-      relations: ['voluntario', 'voluntario.persona'],
+      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
     });
 
     if (!solicitud) {

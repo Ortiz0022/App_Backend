@@ -71,6 +71,9 @@ import { DropboxModule } from './dropbox/dropbox.module';
 import { FincaOtroEquipoModule } from './formFinca/otros-equipos/finca-equipo.module';
 import { InfraestructuraProduccionModule } from './formFinca/equipo/equipo.module';
 import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
+import { SolicitudVoluntariadoModule } from './formVolunteers/solicitud-voluntariado/solicitud-voluntariado.module';
+import { VoluntarioIndividualModule } from './formVolunteers/voluntario-individual/voluntario-individual.module';
+import { OrganizacionModule } from './formVolunteers/organizacion/organizacion.module';
 
 
 
@@ -166,7 +169,10 @@ import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
     DropboxModule,
     DropboxAuthModule,
     FincaOtroEquipoModule,
-    InfraestructuraProduccionModule
+    InfraestructuraProduccionModule,
+    SolicitudVoluntariadoModule,
+    VoluntarioIndividualModule,
+    OrganizacionModule,
   ],
   controllers: [AppController],
   providers: [
