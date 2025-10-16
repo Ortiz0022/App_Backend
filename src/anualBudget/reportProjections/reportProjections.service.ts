@@ -25,6 +25,7 @@ import { SpendType } from '../spendType/entities/spend-type.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
 import { PSpendSubType } from '../pSpendSubType/entities/p-spend-sub-type.entity';
 import { PSpendType } from '../pSpendType/entities/p-spend-type.entity';
+import { LogoHelper } from '../reportUtils/logo-helper';
 
 type BaseFilters = { start?: string; end?: string; departmentId?: number; };
 type IncomeFilters = BaseFilters & { incomeTypeId?: number; incomeSubTypeId?: number; };
@@ -114,7 +115,42 @@ export class ReportProjectionsService {
   }
 
   // ======= BLOQUES VISUALES =======
+private addWatermark(doc: PDFKit.PDFDocument) {
+  try {
+    const logoBuffer = LogoHelper.getLogoSync();
+    if (!logoBuffer || logoBuffer.length === 0) return;
+
+    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
+    const img: any = (doc as any).openImage?.(logoBuffer);
+    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
+
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+
+    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
+    const maxW = pageW * 0.55;
+    const maxH = pageH * 0.55;
+
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+
+    // 3) Coordenadas exactamente centradas
+    const x = (pageW - drawW) / 2;
+    const y = (pageH - drawH) / 2 + 90;
+
+    doc.save();
+    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
+    doc.image(img, x, y, { width: drawW });
+    doc.restore();
+  } catch {
+    // ignorar
+  }
+}
+
   private addHeader(doc: PDFKit.PDFDocument, title: string) {
+    this.addWatermark(doc);
+
     this.fontBold(doc);
     doc.fontSize(16).fillColor(this.UI.ink).text(`Reportes — ${title}`, 50, 40, { align: 'left' });
 
@@ -245,6 +281,7 @@ export class ReportProjectionsService {
     doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
     doc.moveDown(0.5);
 
+    this.addWatermark(doc);
     const left = 50, right = doc.page.width - 50, avail = right - left;
 
     const sumW = columns.reduce((s,c)=>s + c.w, 0);
@@ -522,6 +559,7 @@ private async projectedSpendAgg(filters: SpendFilters) {
   async generatePIncomePDF(filters: IncomeFilters) {
     const table = await this.getPIncomeTable(filters);
     const summary = await this.getPIncomeSummary(filters);
+    await LogoHelper.preloadLogo();
 
     return this.generateListPDF({
       title: 'Ingresos Proyectados',
@@ -541,6 +579,7 @@ private async projectedSpendAgg(filters: SpendFilters) {
     .leftJoin(PIncomeSubType, 'pist', 'pist.id = pi.subTypeId')
     .leftJoin(PIncomeType, 'pit', 'pit.id = pist.typeId')
     .leftJoin(Department, 'd', 'd.id = pit.departmentId');
+
 
   // Optional date filters
   const start = this.parseISO(filters.start);
@@ -631,6 +670,7 @@ private async projectedSpendAgg(filters: SpendFilters) {
   async generatePSpendPDF(filters: SpendFilters) {
     const table = await this.getPSpendTable(filters);
     const summary = await this.getPSpendSummary(filters);
+    await LogoHelper.preloadLogo();
 
     return this.generateListPDF({
       title: 'Gastos Proyectados',
@@ -650,6 +690,7 @@ async getPSpendTable(filters: SpendFilters) {
     .leftJoin('ps.subType', 'psst')         // ✅ Usar relación
     .leftJoin('psst.type', 'pst')           // ✅ Usar relación
     .leftJoin('pst.department', 'd');       // ✅ Usar relación
+
 
   const start = this.parseISO(filters.start);
   const end = this.parseISO(filters.end);
@@ -714,6 +755,8 @@ async getPSpendSummary(filters: SpendFilters) {
   // =================== COMPARATIVOS -> PDF ===================
   async generateCompareIncomePDF(filters: IncomeFilters) {
     const { rows, totals } = await this.compareIncome(filters);
+    await LogoHelper.preloadLogo();
+
     return this.generateComparePDF({
       title: 'Comparativo de Ingresos',
       filters, rows, totals, nameColTitle: 'SUBTIPO',
@@ -723,6 +766,8 @@ async getPSpendSummary(filters: SpendFilters) {
 
   async generateCompareSpendPDF(filters: SpendFilters) {
     const { rows, totals } = await this.compareSpend(filters);
+    await LogoHelper.preloadLogo();
+
     return this.generateComparePDF({
       title: 'Comparativo de Egresos',
       filters, rows, totals, nameColTitle: 'SUBTIPO',

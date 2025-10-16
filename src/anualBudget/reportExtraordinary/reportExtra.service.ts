@@ -209,6 +209,7 @@ export class ReportExtraService {
     summary: any;
     filters: ExtraFilters;
   }): Promise<Buffer> {
+    await LogoHelper.preloadLogo();
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ 
@@ -240,34 +241,68 @@ export class ReportExtraService {
     });
   }
 
+private addWatermark(doc: PDFKit.PDFDocument) {
+  try {
+    const logoBuffer = LogoHelper.getLogoSync();
+    if (!logoBuffer || logoBuffer.length === 0) return;
+
+    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
+    const img: any = (doc as any).openImage?.(logoBuffer);
+    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
+
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+
+    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
+    const maxW = pageW * 0.55;
+    const maxH = pageH * 0.55;
+
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+
+    // 3) Coordenadas exactamente centradas
+    const x = (pageW - drawW) / 2;
+    const y = (pageH - drawH) / 2 + 90;
+
+    doc.save();
+    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
+    doc.image(img, x, y, { width: drawW });
+    doc.restore();
+  } catch {
+    // ignorar
+  }
+}
+
   // ================== MÉTODOS PRIVADOS PARA PDF (solo estilo visual) ==================
-// ✅ Hacer el método async
-private async addHeader(doc: PDFKit.PDFDocument) {
+private addHeader(doc: PDFKit.PDFDocument) {
   doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
   doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
 
-  // ✅ Agregar logo
-  try {
-    const logoBuffer = await LogoHelper.getLogo();
-    if (logoBuffer.length > 0) {
-      doc.image(logoBuffer, 50, 35, { width: 40, height: 40 });
-    }
-  } catch (error) {
-    // Si falla, continuar sin logo
-  }
+   // ✅ Agregar marca de agua en cada página
+  this.addWatermark(doc);
 
-  // ✅ TODO LO DEMÁS IGUAL (no cambiar nada)
-  doc.font('NotoSans').fontSize(16).fillColor(this.UI.ink)
-    .text('Reportes — Extraordinario', 50, 40, { align: 'left' });
+  // ✅ TÍTULO (SIN logo, empieza en x=50)
+  doc.font('NotoSansBold');
+  doc.fontSize(16);
+  doc.fillColor(this.UI.ink);
+  doc.text('Reportes - Extraordinarios', 50, 40, { align: 'left' });
 
-  doc.font('NotoSans').fontSize(9).fillColor(this.UI.gray)
-    .text(
-      `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
-      50, 58, { align: 'right', width: doc.page.width - 100 }
-    );
+  // ✅ FECHA
+  doc.font('NotoSans');
+  doc.fontSize(9);
+  doc.fillColor(this.UI.gray);
+  doc.text(
+    `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
+    50, 58, { align: 'right', width: doc.page.width - 100 }
+  );
 
-  doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70)
-    .strokeColor(this.UI.line).lineWidth(1).stroke();
+  // ✅ LÍNEA
+  doc.moveTo(50, 70);
+  doc.lineTo(doc.page.width - 50, 70);
+  doc.strokeColor(this.UI.line);
+  doc.lineWidth(1);
+  doc.stroke();
 
   doc.y = 86;
 }
@@ -422,6 +457,8 @@ private async addHeader(doc: PDFKit.PDFDocument) {
        .text('Sistema de Presupuesto — Reporte de Extraordinario',
              50, y, { width: doc.page.width - 100, align: 'center' });
   }
+
+  
    // ================== EXCEL ==================
   async generateExcel(data: {
     table: ExtraRow[];
