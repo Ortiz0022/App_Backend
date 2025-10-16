@@ -6,7 +6,8 @@ export class DatosAsociadoDto {
   distanciaFinca?: string;
 
   @IsBoolean()
-  viveEnFinca: boolean;
+  @IsOptional()
+  viveEnFinca?: boolean;
 
   @IsOptional()
   @IsString()

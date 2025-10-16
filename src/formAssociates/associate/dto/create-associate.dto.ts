@@ -20,9 +20,10 @@ import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.
     @IsString()
     distanciaFinca?: string;
   
+    @IsOptional()
     @IsBoolean()
-    viveEnFinca: boolean;
-  
+    viveEnFinca?: boolean;
+
     // Ganado
     @IsOptional()
     @IsString()

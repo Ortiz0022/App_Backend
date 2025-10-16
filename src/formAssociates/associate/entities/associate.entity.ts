@@ -28,8 +28,8 @@ export class Associate {
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   distanciaFinca?: string;
 
-  @Column({ type: 'boolean', default: false })
-  viveEnFinca: boolean;
+  @Column({ type: 'boolean', default: false, nullable: true })
+  viveEnFinca?: boolean ;
 
   // Ganado
   @Column({ type: 'varchar', length: 100, nullable: true })
