@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import PDFDocument from 'pdfkit';
-
+import * as ExcelJS from 'exceljs';
 import { Income } from '../income/entities/income.entity';
 import { IncomeSubType } from '../incomeSubType/entities/income-sub-type.entity';
 import { IncomeType } from '../incomeType/entities/income-type.entity';
@@ -546,4 +546,98 @@ export class ReportService {
     doc.fontSize(8).fillColor(this.UI.gray)
        .text('Sistema de Presupuesto — Reporte', 50, y, { width: doc.page.width - 100, align: 'center' });
   }
+    // =================== EXCEL ===================
+  
+  async generateIncomeExcel(filters: IncomeFilters): Promise<Buffer> {
+    const rows = await this.getIncomeTable(filters);
+    const normalized = rows.map((r: any) => ({
+      date: r.date?.toString().slice(0, 10) ?? '',
+      department: r.department?.name ?? '',
+      type: r.incomeType?.name ?? '',
+      subType: r.incomeSubType?.name ?? '',
+      amount: Number(r.amount ?? 0),
+    }));
+
+    return this.generateExcelWithColumns({
+      sheetName: 'Ingresos',
+      columns: [
+        { header: 'FECHA',       key: 'date',       width: 14 },
+        { header: 'DEPARTAMENTO',key: 'department', width: 26 },
+        { header: 'TIPO',        key: 'type',       width: 24 },
+        { header: 'SUBTIPO',     key: 'subType',    width: 28 },
+        { header: 'MONTO',       key: 'amount',     width: 18, money: true },
+      ],
+      rows: normalized,
+    });
+  }
+
+  async generateSpendExcel(filters: SpendFilters): Promise<Buffer> {
+    const rows = await this.getSpendTable(filters);
+    const normalized = rows.map((r: any) => ({
+      date: r.date?.toString().slice(0, 10) ?? '',
+      department: r.department?.name ?? '',
+      type: r.spendType?.name ?? '',
+      subType: r.spendSubType?.name ?? '',
+      amount: Number(r.amount ?? 0),
+    }));
+
+    return this.generateExcelWithColumns({
+      sheetName: 'Egresos',
+      columns: [
+        { header: 'FECHA',       key: 'date',       width: 14 },
+        { header: 'DEPARTAMENTO',key: 'department', width: 26 },
+        { header: 'TIPO',        key: 'type',       width: 24 },
+        { header: 'SUBTIPO',     key: 'subType',    width: 28 },
+        { header: 'MONTO',       key: 'amount',     width: 18, money: true },
+      ],
+      rows: normalized,
+    });
+  }
+
+  private async generateExcelWithColumns(opts: {
+    sheetName: string;
+    columns: Array<{ header: string; key: string; width?: number; money?: boolean }>;
+    rows: any[];
+  }): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(opts.sheetName || 'Reporte');
+
+    const moneyFmt = '"₡"#,##0.00;[Red]-"₡"#,##0.00';
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern:'solid', fgColor:{ argb: 'FFF8F9F3' } };
+    const headerFont: Partial<ExcelJS.Font> = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF5B732E' } };
+    const borderAll: ExcelJS.Border = { style: 'thin', color: { argb: 'FFEAEFE0' } };
+
+    // Columnas con formato opcional de moneda
+    sheet.columns = opts.columns.map(c => ({
+      header: c.header,
+      key: c.key,
+      width: c.width ?? 18,
+      style: c.money ? { numFmt: moneyFmt } : {},
+    }));
+
+    // Header
+    sheet.getRow(1).eachCell((cell) => {
+      cell.fill = headerFill;
+      cell.font = headerFont;
+      cell.border = { top: borderAll, left: borderAll, bottom: borderAll, right: borderAll };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Filas
+    sheet.addRows(opts.rows);
+
+    // Bordes + alineación
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell, colNumber) => {
+        cell.border = { top: borderAll, left: borderAll, bottom: borderAll, right: borderAll };
+        cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' };
+        if (!cell.font?.bold) cell.font = { name: 'Arial', size: 10 };
+      });
+    });
+
+    const out = await workbook.xlsx.writeBuffer();
+    return Buffer.isBuffer(out) ? out as Buffer : Buffer.from(out as ArrayBuffer);
+  }
+
 }

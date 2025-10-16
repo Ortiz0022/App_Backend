@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { ExtraRow } from './entities/report-extra-row.entity';
 import { ExtraFilters } from './entities/report-extra-filter.entity';
 import PDFDocument from 'pdfkit';
+import * as ExcelJS from 'exceljs';
+import { LogoHelper } from '../reportUtils/logo-helper';
 
 @Injectable()
 export class ReportExtraService {
@@ -239,25 +241,36 @@ export class ReportExtraService {
   }
 
   // ================== MÉTODOS PRIVADOS PARA PDF (solo estilo visual) ==================
-  private addHeader(doc: PDFKit.PDFDocument) {
-    doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
-doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
+// ✅ Hacer el método async
+private async addHeader(doc: PDFKit.PDFDocument) {
+  doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
+  doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
 
-
-    doc.font('NotoSans').fontSize(16).fillColor(this.UI.ink)
-      .text('Reportes — Extraordinario', 50, 40, { align: 'left' });
-
-    doc.font('NotoSans').fontSize(9).fillColor(this.UI.gray)
-      .text(
-        `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
-        50, 58, { align: 'right', width: doc.page.width - 100 }
-      );
-
-    doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70)
-      .strokeColor(this.UI.line).lineWidth(1).stroke();
-
-    doc.y = 86;
+  // ✅ Agregar logo
+  try {
+    const logoBuffer = await LogoHelper.getLogo();
+    if (logoBuffer.length > 0) {
+      doc.image(logoBuffer, 50, 35, { width: 40, height: 40 });
+    }
+  } catch (error) {
+    // Si falla, continuar sin logo
   }
+
+  // ✅ TODO LO DEMÁS IGUAL (no cambiar nada)
+  doc.font('NotoSans').fontSize(16).fillColor(this.UI.ink)
+    .text('Reportes — Extraordinario', 50, 40, { align: 'left' });
+
+  doc.font('NotoSans').fontSize(9).fillColor(this.UI.gray)
+    .text(
+      `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
+      50, 58, { align: 'right', width: doc.page.width - 100 }
+    );
+
+  doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70)
+    .strokeColor(this.UI.line).lineWidth(1).stroke();
+
+  doc.y = 86;
+}
 
   private addFilters(doc: PDFKit.PDFDocument, filters: ExtraFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
@@ -408,5 +421,84 @@ doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/Noto
     doc.font('NotoSans').fontSize(8).fillColor(this.UI.gray)
        .text('Sistema de Presupuesto — Reporte de Extraordinario',
              50, y, { width: doc.page.width - 100, align: 'center' });
+  }
+   // ================== EXCEL ==================
+  async generateExcel(data: {
+    table: ExtraRow[];
+    summary: any;
+    filters: ExtraFilters;
+  }): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Extraordinarios');
+
+    const moneyFmt = '"₡"#,##0.00;[Red]-"₡"#,##0.00';
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern:'solid', fgColor:{ argb: 'FFF8F9F3' } };
+    const headerFont: Partial<ExcelJS.Font> = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF5B732E' } };
+    const borderAll: ExcelJS.Border = { style: 'thin', color: { argb: 'FFEAEFE0' } };
+
+    // Columnas
+    sheet.columns = [
+      { header: 'CONCEPTO',  key: 'name',      width: 35 },
+      { header: 'FECHA',     key: 'date',      width: 14 },
+      { header: 'MONTO',     key: 'amount',    width: 16, style: { numFmt: moneyFmt } },
+      { header: 'USADO',     key: 'used',      width: 16, style: { numFmt: moneyFmt } },
+      { header: 'RESTANTE',  key: 'remaining', width: 16, style: { numFmt: moneyFmt } },
+    ];
+
+    // Estilo del header
+    sheet.getRow(1).eachCell((cell) => {
+      cell.fill = headerFill;
+      cell.font = headerFont;
+      cell.border = { top: borderAll, left: borderAll, bottom: borderAll, right: borderAll };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Datos
+    data.table.forEach(row => {
+      sheet.addRow({
+        name: row.name ?? '—',
+        date: row.date ?? '',
+        amount: row.amount,
+        used: row.used,
+        remaining: row.remaining,
+      });
+    });
+
+    // Fila de totales
+    const totalRow = sheet.addRow({
+      name: 'TOTALES',
+      date: '',
+      amount: data.summary.totalAmount ?? 0,
+      used: data.summary.totalUsed ?? 0,
+      remaining: data.summary.totalRemaining ?? 0,
+    });
+
+    // Estilo para totales
+    totalRow.eachCell((cell, colNumber) => {
+      cell.font = { name: 'Arial', bold: true };
+      cell.border = { 
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, 
+        left: borderAll, 
+        right: borderAll, 
+        bottom: borderAll 
+      };
+      if (colNumber > 2) cell.numFmt = moneyFmt;
+    });
+
+    // Bordes y alineación para todas las celdas
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header
+      row.eachCell((cell, colNumber) => {
+        cell.border = { top: borderAll, left: borderAll, bottom: borderAll, right: borderAll };
+        if (!cell.font?.bold) cell.font = { name: 'Arial', size: 10 };
+        cell.alignment = { 
+          vertical: 'middle', 
+          horizontal: colNumber === 1 ? 'left' : (colNumber === 2 ? 'center' : 'right')
+        };
+      });
+    });
+
+    const out = await workbook.xlsx.writeBuffer();
+    return Buffer.isBuffer(out) ? out as Buffer : Buffer.from(out as ArrayBuffer);
   }
 }

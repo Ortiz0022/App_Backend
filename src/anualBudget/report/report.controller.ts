@@ -1,5 +1,5 @@
 // report.controller.ts
-import { Controller, Get, Query, Header, Res } from '@nestjs/common';
+import { Controller, Get, Query, Header, Res, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportService } from './report.service';
 
@@ -91,6 +91,38 @@ export class ReportController {
     res?.end(pdfBuffer);
   }
 
+  // ✅ NUEVO: Excel de Ingresos
+  @Get('income/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async incomeExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('incomeTypeId') incomeTypeId?: string,
+    @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start,
+        end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
+        incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generateIncomeExcel(filters);
+      const filename = `reporte-ingresos-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de ingresos');
+    }
+  }
+
   // ================= SPEND =================
   @Get('spend/table')
   getSpendTable(
@@ -173,5 +205,37 @@ export class ReportController {
       'Content-Length': pdfBuffer.length,
     });
     res?.end(pdfBuffer);
+  }
+
+  // ✅ NUEVO: Excel de Egresos
+  @Get('spend/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async spendExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('spendTypeId') spendTypeId?: string,
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters = {
+        start,
+        end,
+        departmentId: departmentId ? Number(departmentId) : undefined,
+        spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
+        spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      };
+      const excel = await this.svc.generateSpendExcel(filters);
+      const filename = `reporte-egresos-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excel.length,
+        'Cache-Control': 'no-store',
+      });
+      return res?.send(excel);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de egresos');
+    }
   }
 }
