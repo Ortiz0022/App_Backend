@@ -11,6 +11,7 @@ import { Type } from 'class-transformer';
 import { CreateVoluntarioIndividualDto } from '../../voluntario-individual/dto/create-voluntario-individual.dto';
 import { CreateOrganizacionDto } from '../../organizacion/dto/create-organizacion.dto';
 import { CreateRepresentanteDto } from '../../representante/dto/create-representante.dto';
+import { CreateRazonSocialDto } from '../../razon-social/dto/create-razon-social.dto';
 
 export class CreateSolicitudVoluntariadoDto {
   @IsString()
@@ -34,4 +35,11 @@ export class CreateSolicitudVoluntariadoDto {
   @ValidateNested({ each: true })
   @Type(() => CreateRepresentanteDto)
   representantes?: CreateRepresentanteDto[];
+
+  @ValidateIf((o) => o.tipoSolicitante === 'ORGANIZACION')
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRazonSocialDto)
+  razonesSociales?: CreateRazonSocialDto[];
 }

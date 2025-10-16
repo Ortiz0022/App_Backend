@@ -14,6 +14,7 @@ import { VoluntarioIndividualService } from '../voluntario-individual/voluntario
 import { OrganizacionService } from '../organizacion/organizacion.service';
 import { SolicitudStatus } from './dto/solicitud-voluntariado-status.enum';
 import { RepresentanteService } from '../representante/representante.service';
+import { RazonSocialService } from '../razon-social/razon-social.service';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
@@ -23,6 +24,7 @@ export class SolicitudVoluntariadoService {
     private voluntarioService: VoluntarioIndividualService,
     private organizacionService: OrganizacionService,
     private representanteService: RepresentanteService,
+    private razonSocialService: RazonSocialService,
     private dataSource: DataSource,
 ) {}
 

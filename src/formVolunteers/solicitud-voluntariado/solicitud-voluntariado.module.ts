@@ -6,6 +6,7 @@ import { SolicitudVoluntariado } from './entities/solicitud-voluntariado.entity'
 import { VoluntarioIndividualModule } from '../voluntario-individual/voluntario-individual.module';
 import { OrganizacionModule } from '../organizacion/organizacion.module';
 import { RepresentanteModule } from '../representante/representante.module';
+import { RazonSocialModule } from '../razon-social/razon-social.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { RepresentanteModule } from '../representante/representante.module';
     VoluntarioIndividualModule,
     OrganizacionModule,
     RepresentanteModule,
+    RazonSocialModule,
   ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService],

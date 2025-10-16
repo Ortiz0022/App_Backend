@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { SolicitudVoluntariado } from '../../solicitud-voluntariado/entities/solicitud-voluntariado.entity';
 import { Representante } from '../../representante/entities/representante.entity';
+import { RazonSocial } from '../../razon-social/entities/razon-social.entity';
 
 @Entity('organizaciones')
 export class Organizacion {
@@ -43,6 +44,11 @@ export class Organizacion {
     cascade: true,
   })
   representantes?: Representante[];
+
+  @OneToMany(() => RazonSocial, (razonSocial) => razonSocial.organizacion, {
+    cascade: true,
+  })
+  razonesSociales?: RazonSocial[];
 
   @CreateDateColumn()
   createdAt: Date;
