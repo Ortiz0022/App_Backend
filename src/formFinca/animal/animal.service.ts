@@ -18,7 +18,7 @@ export class AnimalService {
   ) {}
 
   async create(createDto: CreateAnimalDto): Promise<Animal> {
-    const { idHato, nombre, edad, cantidad } = createDto;
+    const { idHato, nombre, cantidad } = createDto;
   
     const hato = await this.hatoRepository.findOne({
       where: { idHato },
@@ -30,7 +30,6 @@ export class AnimalService {
   
     const animal = this.animalRepository.create({
       nombre,
-      edad,
       cantidad,
       hato,
     });
@@ -50,7 +49,6 @@ export class AnimalService {
     const animalEntities = animales.map((dto) =>
       manager.create(Animal, {
         nombre: dto.nombre,
-        edad: dto.edad,
         cantidad: dto.cantidad, 
         hato,
       }),

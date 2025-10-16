@@ -10,10 +10,6 @@ export class CreateAnimalDto {
   @MaxLength(100)
   nombre: string;
 
-  @IsInt()
-  @Min(0)
-  edad: number;
-
   @IsInt()  
   @Min(1, { message: 'La cantidad debe ser al menos 1' })
   cantidad: number;

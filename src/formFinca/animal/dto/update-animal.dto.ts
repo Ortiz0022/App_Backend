@@ -6,8 +6,4 @@ export class UpdateAnimalDto {
   @MaxLength(100, { message: 'El nombre no puede exceder 100 caracteres' })
   nombre?: string;
 
-  @IsOptional()
-  @IsInt({ message: 'La edad debe ser un entero' })
-  @Min(0, { message: 'La edad no puede ser negativa' })
-  edad?: number;
 }

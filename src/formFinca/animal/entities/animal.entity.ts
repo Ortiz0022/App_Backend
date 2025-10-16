@@ -17,8 +17,6 @@ export class Animal {
   @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
-  @Column({ type: 'int' })
-  edad: number;
 
   @Column({ type: 'int' }) 
   cantidad: number;
