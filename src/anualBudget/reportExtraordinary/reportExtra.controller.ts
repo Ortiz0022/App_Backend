@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, Header } from '@nestjs/common';
+import { Controller, Get, Query, Res, Header, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 import { ExtraordinaryService } from '../extraordinary/extraordinary.service';
 import { ReportExtraService } from './reportExtra.service';
@@ -114,5 +114,37 @@ export class ReportExtraController {
     });
 
     res?.end(pdfBuffer);
+  }
+   @Get('download/excel')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async downloadExcel(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+    @Query('name') name?: string,
+    @Res() res?: Response,
+  ) {
+    try {
+      const filters: ExtraFilters = { start, end, name };
+      
+      const table = await this.reportService.getExtraTable(filters);
+      const summary = await this.reportService.getExtraSummary(filters);
+      
+      const excelBuffer = await this.reportService.generateExcel({
+        table,
+        summary,
+        filters,
+      });
+
+      const filename = `reporte-extraordinarios-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res?.set({
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': excelBuffer.length,
+        'Cache-Control': 'no-store',
+      });
+
+      return res?.send(excelBuffer);
+    } catch {
+      throw new BadRequestException('No se pudo generar el Excel de extraordinarios');
+    }
   }
 }
