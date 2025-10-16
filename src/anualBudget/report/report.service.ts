@@ -12,6 +12,7 @@ import { SpendType } from '../spendType/entities/spend-type.entity';
 import { Department } from '../department/entities/department.entity';
 import { IncomeFilters } from './dto/report-income-filters.dto';
 import { SpendFilters } from './dto/report-spend-filters.dto';
+import { LogoHelper } from '../reportUtils/logo-helper';
 
 @Injectable()
 export class ReportService {
@@ -302,11 +303,12 @@ export class ReportService {
     filters: IncomeFilters | SpendFilters,
     filterKind: 'income' | 'spend',
   }): Promise<Buffer> {
-    return new Promise<Buffer>((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'portrait' });
-        this.registerFonts(doc);
+  await LogoHelper.preloadLogo();
 
+  return new Promise<Buffer>((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'portrait' });
+      this.registerFonts(doc);
         const chunks: Buffer[] = [];
         doc.on('data', c => chunks.push(c as Buffer));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -341,22 +343,195 @@ export class ReportService {
   }
 
   // ================== BLOQUES VISUALES ==================
-  private addHeader(doc: PDFKit.PDFDocument, title: string) {
-    this.fontBold(doc);
-    doc.fontSize(16).fillColor(this.UI.ink).text(title, 50, 40, { align: 'left' });
+
+// ✅ Agregar método para marca de agua centrada
+// ✅ Agregar método para marca de agua centrada
+// ✅ Marca de agua centrada usando tamaño real del logo 
+// private addWatermark(doc: PDFKit.PDFDocument) {
+//   try {
+//     const logoBuffer = LogoHelper.getLogoSync();
+//     if (!logoBuffer || logoBuffer.length === 0) return;
+
+//     // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
+//     const img: any = (doc as any).openImage?.(logoBuffer);
+//     if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
+
+//     const pageW = doc.page.width;
+//     const pageH = doc.page.height;
+
+//     // 2) Escala máxima (ajusta si quieres más grande/pequeño)
+//     const maxW = pageW * 0.55;
+//     const maxH = pageH * 0.55;
+
+//     const scale = Math.min(maxW / img.width, maxH / img.height);
+//     const drawW = img.width * scale;
+//     const drawH = img.height * scale;
+
+//     // 3) Coordenadas exactamente centradas
+//     const x = (pageW - drawW) / 2;
+//     const y = (pageH - drawH) / 2;
+
+//     doc.save();
+//     doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
+//     doc.image(img, x, y, { width: drawW });
+//     doc.restore();
+//   } catch {
+//     // ignorar
+//   }
+// }
+
+//logo mas abajo pero centrado la pagina 
+private addWatermark(doc: PDFKit.PDFDocument) {
+  try {
+    const logoBuffer = LogoHelper.getLogoSync();
+    if (!logoBuffer || logoBuffer.length === 0) return;
+
+    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
+    const img: any = (doc as any).openImage?.(logoBuffer);
+    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
+
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+
+    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
+    const maxW = pageW * 0.55;
+    const maxH = pageH * 0.55;
+
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+
+    // 3) Coordenadas exactamente centradas
+    const x = (pageW - drawW) / 2;
+    const y = (pageH - drawH) / 2 + 90;
+
+    doc.save();
+    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
+    doc.image(img, x, y, { width: drawW });
+    doc.restore();
+  } catch {
+    // ignorar
+  }
+}
+
+private addHeader(doc: PDFKit.PDFDocument, title: string) {
+  // ✅ Agregar marca de agua en cada página
+  this.addWatermark(doc);
+
+  // ✅ TÍTULO (SIN logo, empieza en x=50)
+  this.fontBold(doc);
+  doc.fontSize(16);
+  doc.fillColor(this.UI.ink);
+  doc.text(title, 50, 40, { align: 'left' });
+
+  // ✅ FECHA
+  this.fontRegular(doc);
+  doc.fontSize(9);
+  doc.fillColor(this.UI.gray);
+  doc.text(
+    `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
+    50, 58, { align: 'right', width: doc.page.width - 100 }
+  );
+
+  // ✅ LÍNEA
+  doc.moveTo(50, 70);
+  doc.lineTo(doc.page.width - 50, 70);
+  doc.strokeColor(this.UI.line);
+  doc.lineWidth(1);
+  doc.stroke();
+
+  doc.y = 86;
+}
+
+// ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
+private addTable(
+  doc: PDFKit.PDFDocument,
+  columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
+  rows: any[]
+) {
+  this.fontBold(doc);
+  doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+  doc.moveDown(0.5);
+
+  const left = 50, right = doc.page.width - 50, avail = right - left;
+
+  const sumW = columns.reduce((s,c)=>s + c.w, 0);
+  const cols = sumW === avail
+    ? columns
+    : columns.map((c, i, arr) => {
+        const scaled = Math.floor((c.w * avail) / sumW);
+        if (i === arr.length - 1) {
+          const acc = arr.slice(0, i).reduce((s, cc) => s + Math.floor((cc.w * avail) / sumW), 0);
+          return { ...c, w: avail - acc };
+        }
+        return { ...c, w: scaled };
+      });
+
+  const xs:number[] = []; let acc = left;
+  for (const c of cols) { xs.push(acc); acc += c.w; }
+
+  let y = doc.y + 6;
+
+  // Header
+  doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
+    .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+  this.fontBold(doc);
+  doc.fontSize(9).fillColor(this.UI.gray);
+  cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
+  y += 34;
+
+  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const ensure = (rowH=22) => {
+    if (y + rowH > bottom()) {
+     this.addWatermark(doc);  // ✅ Sellar la página ACTUAL por encima de todo
+      doc.addPage();
+      y = doc.page.margins.top;
+      doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
+        .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+      this.fontBold(doc);
+      doc.fontSize(9).fillColor(this.UI.gray);
+      cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
+      y += 34;
+    }
+  };
+
+  if (!rows.length) {
+    ensure(40);
+    this.fontRegular(doc);
+    doc.fontSize(10).fillColor('#EF4444').text('Sin resultados con los filtros aplicados.', left, y + 6);
+    doc.y = y + 40; return;
+  }
+
+  rows.forEach((row, idx) => {
+    ensure(24);
+    doc.rect(left, y, avail, 22).fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA').fill();
 
     this.fontRegular(doc);
-    doc.fontSize(9).fillColor(this.UI.gray)
-      .text(
-        `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
-        50, 58, { align: 'right', width: doc.page.width - 100 }
-      );
+    doc.fontSize(9).fillColor(this.UI.ink);
+    cols.forEach((c,i) => {
+      let raw = c.map ? c.map(row) : (row as any)[c.key];
+      
+      // ✅ CORREGIR: Detectar y formatear fechas correctamente
+      if (String(c.key).toLowerCase().includes('date') || String(c.title).toLowerCase().includes('fecha')) {
+        raw = this.safeDate(raw);  // Usa el método helper que ya tienes
+      }
 
-    doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70)
-      .strokeColor(this.UI.line).lineWidth(1).stroke();
+      const isMoney = (c.align === 'right') || /monto|total|amount|used|remaining/i.test(c.title) || /amount|total/i.test(c.key);
+      const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
+      
+      doc.text(txt, xs[i] + 10, y + 6, {
+        width: c.w - 20,
+        align: (c.align ?? (isMoney ? 'right' : 'left')) as any,
+        lineBreak: false,
+      });
+    });
 
-    doc.y = 86;
-  }
+    y += 22;
+    doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
+  });
+
+  doc.y = y + 8;
+}
 
   private addFiltersIncome(doc: PDFKit.PDFDocument, f: IncomeFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
@@ -451,91 +626,91 @@ export class ReportService {
     doc.y = top + H + 16;
   }
 
-  private addTable(
-    doc: PDFKit.PDFDocument,
-    columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
-    rows: any[]
-  ) {
-    this.fontBold(doc);
-    doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
-    doc.moveDown(0.5);
+  // private addTable(
+  //   doc: PDFKit.PDFDocument,
+  //   columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
+  //   rows: any[]
+  // ) {
+  //   this.fontBold(doc);
+  //   doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+  //   doc.moveDown(0.5);
 
-    const left = 50, right = doc.page.width - 50;
-    const xs: number[] = []; let acc = left;
-    for (const c of columns) { xs.push(acc); acc += c.w; }
+  //   const left = 50, right = doc.page.width - 50;
+  //   const xs: number[] = []; let acc = left;
+  //   for (const c of columns) { xs.push(acc); acc += c.w; }
 
-    let y = doc.y + 6;
+  //   let y = doc.y + 6;
 
-    // Header
-    doc.roundedRect(left, y, right-left, 28, 12)
-       .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+  //   // Header
+  //   doc.roundedRect(left, y, right-left, 28, 12)
+  //      .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
 
-    this.fontBold(doc);
-    doc.fontSize(9).fillColor(this.UI.gray);
-    columns.forEach((c, i) => {
-      const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
-      doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
-    });
-    y += 34;
+  //   this.fontBold(doc);
+  //   doc.fontSize(9).fillColor(this.UI.gray);
+  //   columns.forEach((c, i) => {
+  //     const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
+  //     doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
+  //   });
+  //   y += 34;
 
-    const bottom = () => doc.page.height - doc.page.margins.bottom;
-    const ensure = (rowH=22) => {
-      if (y + rowH > bottom()) {
-        doc.addPage(); y = doc.page.margins.top;
-        doc.roundedRect(left, y, right-left, 28, 12)
-           .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-        this.fontBold(doc);
-        doc.fontSize(9).fillColor(this.UI.gray);
-        columns.forEach((c, i) => {
-          const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
-          doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
-        });
-        y += 34;
-      }
-    };
+  //   const bottom = () => doc.page.height - doc.page.margins.bottom;
+  //   const ensure = (rowH=22) => {
+  //     if (y + rowH > bottom()) {
+  //       doc.addPage(); y = doc.page.margins.top;
+  //       doc.roundedRect(left, y, right-left, 28, 12)
+  //          .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+  //       this.fontBold(doc);
+  //       doc.fontSize(9).fillColor(this.UI.gray);
+  //       columns.forEach((c, i) => {
+  //         const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
+  //         doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
+  //       });
+  //       y += 34;
+  //     }
+  //   };
 
-    if (!rows.length) {
-      ensure(40);
-      this.fontRegular(doc);
-      doc.fontSize(10).fillColor('#EF4444')
-         .text('Sin resultados con los filtros aplicados.', left, y + 6);
-      doc.y = y + 40;
-      return;
-    }
+  //   if (!rows.length) {
+  //     ensure(40);
+  //     this.fontRegular(doc);
+  //     doc.fontSize(10).fillColor('#EF4444')
+  //        .text('Sin resultados con los filtros aplicados.', left, y + 6);
+  //     doc.y = y + 40;
+  //     return;
+  //   }
 
-    // Filas
-    rows.forEach((row, idx) => {
-      ensure(24);
+  //   // Filas
+  //   rows.forEach((row, idx) => {
+  //     ensure(24);
 
-      // zebra
-      doc.rect(left, y, right-left, 22)
-         .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
-         .fill();
+  //     // zebra
+  //     doc.rect(left, y, right-left, 22)
+  //        .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+  //        .fill();
 
-      this.fontRegular(doc);
-      doc.fontSize(9).fillColor(this.UI.ink);
+  //     this.fontRegular(doc);
+  //     doc.fontSize(9).fillColor(this.UI.ink);
 
-      columns.forEach((c, i) => {
-        let raw = c.map ? c.map(row) : (row as any)[c.key];
-        if (String(c.key).toLowerCase().includes('date')) raw = this.safeDate(raw);
+  //     columns.forEach((c, i) => {
+  //       let raw = c.map ? c.map(row) : (row as any)[c.key];
+  //       if (String(c.key).toLowerCase().includes('date')) raw = this.safeDate(raw);
 
-        const isMoney = (c.align === 'right') || /monto|total|amount|used|remaining/i.test(c.title) || /amount|total/i.test(c.key);
-        const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
-        const align: 'left'|'right' = (c.align ?? (isMoney ? 'right' : 'left')) as any;
+  //       const isMoney = (c.align === 'right') || /monto|total|amount|used|remaining/i.test(c.title) || /amount|total/i.test(c.key);
+  //       const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
+  //       const align: 'left'|'right' = (c.align ?? (isMoney ? 'right' : 'left')) as any;
 
-        doc.text(txt, xs[i] + 10, y + 6, {
-          width: c.w - 20,
-          align,
-          lineBreak: false,
-        });
-      });
+  //       doc.text(txt, xs[i] + 10, y + 6, {
+  //         width: c.w - 20,
+  //         align,
+  //         lineBreak: false,
+  //       });
+  //     });
 
-      y += 22;
-      doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
-    });
+  //     y += 22;
+  //     doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
+  //   });
 
-    doc.y = y + 8;
-  }
+  //   doc.y = y + 8;
+  // }
 
   private addFooter(doc: PDFKit.PDFDocument) {
     const y = doc.page.height - 32;
@@ -543,6 +718,7 @@ export class ReportService {
        .strokeColor(this.UI.line).lineWidth(1).stroke();
 
     this.fontRegular(doc);
+    this.addWatermark(doc);
     doc.fontSize(8).fillColor(this.UI.gray)
        .text('Sistema de Presupuesto — Reporte', 50, y, { width: doc.page.width - 100, align: 'center' });
   }
