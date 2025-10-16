@@ -5,12 +5,14 @@ import { SolicitudVoluntariadoController } from './solicitud-voluntariado.contro
 import { SolicitudVoluntariado } from './entities/solicitud-voluntariado.entity';
 import { VoluntarioIndividualModule } from '../voluntario-individual/voluntario-individual.module';
 import { OrganizacionModule } from '../organizacion/organizacion.module';
+import { RepresentanteModule } from '../representante/representante.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([SolicitudVoluntariado]),
     VoluntarioIndividualModule,
     OrganizacionModule,
+    RepresentanteModule,
   ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService],

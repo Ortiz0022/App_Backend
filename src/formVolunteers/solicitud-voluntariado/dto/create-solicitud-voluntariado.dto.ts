@@ -4,10 +4,13 @@ import {
   MaxLength,
   ValidateNested,
   ValidateIf,
+  IsArray,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateVoluntarioIndividualDto } from '../../voluntario-individual/dto/create-voluntario-individual.dto';
 import { CreateOrganizacionDto } from '../../organizacion/dto/create-organizacion.dto';
+import { CreateRepresentanteDto } from '../../representante/dto/create-representante.dto';
 
 export class CreateSolicitudVoluntariadoDto {
   @IsString()
@@ -24,4 +27,11 @@ export class CreateSolicitudVoluntariadoDto {
   @ValidateNested()
   @Type(() => CreateOrganizacionDto)
   organizacion?: CreateOrganizacionDto;
+
+  @ValidateIf((o) => o.tipoSolicitante === 'ORGANIZACION')
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRepresentanteDto)
+  representantes?: CreateRepresentanteDto[];
 }

@@ -5,8 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
 } from 'typeorm';
 import { SolicitudVoluntariado } from '../../solicitud-voluntariado/entities/solicitud-voluntariado.entity';
+import { Representante } from '../../representante/entities/representante.entity';
 
 @Entity('organizaciones')
 export class Organizacion {
@@ -36,6 +38,11 @@ export class Organizacion {
 
   @OneToOne(() => SolicitudVoluntariado, (solicitud) => solicitud.organizacion)
   solicitud?: SolicitudVoluntariado;
+
+  @OneToMany(() => Representante, (representante) => representante.organizacion, {
+    cascade: true,
+  })
+  representantes?: Representante[];
 
   @CreateDateColumn()
   createdAt: Date;
