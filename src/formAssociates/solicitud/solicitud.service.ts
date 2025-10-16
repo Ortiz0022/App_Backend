@@ -327,7 +327,6 @@ export class SolicitudService {
 
        // 17. Crear Infraestructuras (si vienen)
          if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
-          console.log('[Service] Creando infraestructuras:', JSON.stringify(createDto.infraestructuras, null, 2));
           
           // ✅ USAR EL MÉTODO CORRECTO
           await this.fincaInfraestructurasService.linkManyByNameInTransaction(
@@ -336,7 +335,6 @@ export class SolicitudService {
             queryRunner.manager,
           );
           
-          console.log('[Service] Infraestructuras creadas exitosamente');
         }
 
       // 18. Crear Solicitud
@@ -603,16 +601,18 @@ export class SolicitudService {
   };
 
   try {
+    // Construir nombre de carpeta con formato: nombre-apellido-cedula
+    const nombreCarpeta = `${solicitud.persona.nombre}-${solicitud.persona.apellido1}-${solicitud.persona.cedula}`.toLowerCase().replace(/\s+/g, '-');
     // Asegurar que existan las carpetas base
-    await this.dropboxService.ensureFolder('/solicitudes');
-    await this.dropboxService.ensureFolder(`/solicitudes/solicitud-${idSolicitud}`);
+    await this.dropboxService.ensureFolder('/Solicitudes Asociados');
+    await this.dropboxService.ensureFolder(`/Solicitudes Asociados/${nombreCarpeta}`);
 
     // Subir cédulas
     if (files.cedula && files.cedula.length > 0) {
       for (const file of files.cedula) {
         const url = await this.dropboxService.uploadFile(
           file,
-          `/solicitudes/solicitud-${idSolicitud}/cedula`,
+          `/Solicitudes Asociados/${nombreCarpeta}/cedula`,
         );
         formData.cedula.push(url);
       }
@@ -623,7 +623,7 @@ export class SolicitudService {
       for (const file of files.planoFinca) {
         const url = await this.dropboxService.uploadFile(
           file,
-          `/solicitudes/solicitud-${idSolicitud}/plano`,
+          `/Solicitudes Asociados/${nombreCarpeta}/plano`,
         );
         formData.planoFinca.push(url);
       }
