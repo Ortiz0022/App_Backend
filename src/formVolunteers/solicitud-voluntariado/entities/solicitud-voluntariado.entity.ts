@@ -52,6 +52,24 @@ export class SolicitudVoluntariado {
   @Column({ type: 'varchar', length: 255, nullable: true })
   motivo?: string;
 
+  // ✅ NUEVO: Campo JSON para almacenar URLs de documentos
+  @Column({ type: 'json', nullable: true })
+  formData?: {
+    cv: string[];
+    cedula: string[];
+    carta: string[];
+  };
+
+  // ✅ NUEVO: URLs temporales que se copiarán al aprobar
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cvUrlTemp?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cedulaUrlTemp?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cartaUrlTemp?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

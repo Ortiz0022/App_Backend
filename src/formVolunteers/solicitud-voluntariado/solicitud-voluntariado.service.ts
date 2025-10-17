@@ -17,18 +17,24 @@ import { RazonSocialService } from '../razon-social/razon-social.service';
 import { DisponibilidadService } from '../disponibilidad/disponibilidad.service';
 import { AreasInteresService } from '../areas-interes/areas-interes.service';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
+import { DropboxService } from 'src/dropbox/dropbox.service';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
   constructor(
     @InjectRepository(SolicitudVoluntariado)
     private solicitudRepository: Repository<SolicitudVoluntariado>,
+    @InjectRepository(VoluntarioIndividual)
+    private voluntarioRepository: Repository<VoluntarioIndividual>,
+    @InjectRepository(Organizacion)
+    private organizacionRepository: Repository<Organizacion>,
     private voluntarioService: VoluntarioIndividualService,
     private organizacionService: OrganizacionService,
     private representanteService: RepresentanteService,
     private razonSocialService: RazonSocialService,
     private disponibilidadService: DisponibilidadService,
     private areasInteresService: AreasInteresService,
+    private dropboxService: DropboxService,
     private dataSource: DataSource,
   ) {}
 
@@ -200,6 +206,104 @@ async findAllPaginated(params: {
   };
 }
 
+  // ✅ NUEVO: Método para subir documentos a Dropbox
+  async uploadDocuments(
+    idSolicitud: number,
+    files: {
+      cv?: Express.Multer.File[];
+      cedula?: Express.Multer.File[];
+      carta?: Express.Multer.File[];
+    },
+  ): Promise<any> {
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitudVoluntariado: idSolicitud },
+      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+    }
+
+    const formData = {
+      cv: [] as string[],
+      cedula: [] as string[],
+      carta: [] as string[],
+    };
+
+    try {
+      // Determinar nombre de carpeta según tipo de solicitante
+      let nombreCarpeta: string;
+
+      if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario?.persona) {
+        const persona = solicitud.voluntario.persona;
+        nombreCarpeta = `${persona.nombre}-${persona.apellido1}-${persona.cedula}`
+          .toLowerCase()
+          .replace(/\s+/g, '-');
+      } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
+        nombreCarpeta = `${solicitud.organizacion.nombre}`
+          .toLowerCase()
+          .replace(/\s+/g, '-');
+      } else {
+        throw new BadRequestException('No se puede determinar el nombre de la carpeta');
+      }
+
+      // Asegurar que existan las carpetas base
+      await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
+      await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
+
+      // Subir CV
+      if (files.cv && files.cv.length > 0) {
+        for (const file of files.cv) {
+          const url = await this.dropboxService.uploadFile(
+            file,
+            `/Solicitudes Voluntarios/${nombreCarpeta}/cv`,
+          );
+          formData.cv.push(url);
+        }
+      }
+
+      // Subir Cédula
+      if (files.cedula && files.cedula.length > 0) {
+        for (const file of files.cedula) {
+          const url = await this.dropboxService.uploadFile(
+            file,
+            `/Solicitudes Voluntarios/${nombreCarpeta}/cedula`,
+          );
+          formData.cedula.push(url);
+        }
+      }
+
+      // Subir Carta
+      if (files.carta && files.carta.length > 0) {
+        for (const file of files.carta) {
+          const url = await this.dropboxService.uploadFile(
+            file,
+            `/Solicitudes Voluntarios/${nombreCarpeta}/carta`,
+          );
+          formData.carta.push(url);
+        }
+      }
+
+      // Guardar URLs en formData y también en campos temp
+      solicitud.formData = formData;
+      solicitud.cvUrlTemp = formData.cv[0] ?? undefined;
+      solicitud.cedulaUrlTemp = formData.cedula[0] ?? undefined;
+      solicitud.cartaUrlTemp = formData.carta[0] ?? undefined;
+
+      await this.solicitudRepository.save(solicitud);
+
+      return {
+        message: 'Documentos subidos exitosamente',
+        urls: formData,
+      };
+    } catch (error: any) {
+      console.error('[Service] Error al subir documentos:', error.message);
+      throw new BadRequestException(
+        `Error al subir documentos: ${error.message}`,
+      );
+    }
+  }
+
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({
       relations: [
@@ -265,7 +369,16 @@ async findAllPaginated(params: {
       solicitud.motivo = changeStatusDto.motivo;
     }
 
-    return this.solicitudRepository.save(solicitud);
+    await this.solicitudRepository.save(solicitud);
+
+    // ✅ NUEVO: Si se aprueba, copiar documentos a entidades (asíncrono)
+    if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
+      this.copyDocumentsToEntities(solicitud).catch((err) => {
+        console.error('Error copiando documentos:', err);
+      });
+    }
+
+    return solicitud;
   }
 
   async remove(id: number): Promise<void> {
@@ -293,5 +406,32 @@ async findAllPaginated(params: {
       aprobadas,
       rechazadas,
     };
+  }
+
+  // ✅ NUEVO: Método privado para copiar documentos al aprobar
+  private async copyDocumentsToEntities(solicitud: SolicitudVoluntariado): Promise<void> {
+    // Copiar documentos a VoluntarioIndividual (si existe)
+    if (solicitud.voluntario) {
+      if (solicitud.cvUrlTemp) {
+        solicitud.voluntario.cvUrl = solicitud.cvUrlTemp;
+      }
+      if (solicitud.cedulaUrlTemp && solicitud.voluntario.persona) {
+        solicitud.voluntario.persona.cedulaUrl = solicitud.cedulaUrlTemp;
+      }
+      if (solicitud.cartaUrlTemp) {
+        solicitud.voluntario.cartaUrl = solicitud.cartaUrlTemp;
+      }
+
+      await this.voluntarioRepository.save(solicitud.voluntario);
+    }
+
+    // Copiar documentos a Organizacion (si existe)
+    if (solicitud.organizacion) {
+      if (solicitud.cedulaUrlTemp) {
+        solicitud.organizacion.documentoLegalUrl = solicitud.cedulaUrlTemp;
+      }
+
+      await this.organizacionRepository.save(solicitud.organizacion);
+    }
   }
 }

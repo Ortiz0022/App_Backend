@@ -52,4 +52,9 @@ export class VoluntarioIndividual {
 
   @UpdateDateColumn()
   updatedAt: Date;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cvUrl?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cartaUrl?: string;
 }
