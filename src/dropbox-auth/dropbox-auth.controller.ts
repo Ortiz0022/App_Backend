@@ -5,7 +5,19 @@ import fetch from 'node-fetch';
 import * as crypto from 'crypto';
 
 // Cache temporal en memoria (solo para desarrollo)
-const verifierCache = new Map<string, string>();
+const verifierCache = new Map<string, { verifier: string; timestamp: number }>();
+
+// Limpiar cache cada 15 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of verifierCache.entries()) {
+    // Eliminar entradas mayores a 15 minutos
+    if (now - value.timestamp > 15 * 60 * 1000) {
+      verifierCache.delete(key);
+      console.log(`🧹 Cache limpiado: ${key}`);
+    }
+  }
+}, 5 * 60 * 1000); // Ejecutar cada 5 minutos
 
 @Controller('auth/dropbox')
 export class DropboxAuthController {
@@ -19,17 +31,18 @@ export class DropboxAuthController {
     // Generar code_verifier y code_challenge
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = this.generateCodeChallenge(codeVerifier);
-    const state = this.generateRandomString(16);
+    const state = this.generateRandomString(32); // Más largo para más seguridad
 
-    // Guardar en cache temporal
-    verifierCache.set(state, codeVerifier);
-    
-    // Limpiar después de 10 minutos
-    setTimeout(() => verifierCache.delete(state), 10 * 60 * 1000);
+    // Guardar en cache temporal con timestamp
+    verifierCache.set(state, {
+      verifier: codeVerifier,
+      timestamp: Date.now(),
+    });
 
     console.log('🚀 Iniciando autorización PKCE');
-    console.log('State:', state);
-    console.log('Code Verifier generado');
+    console.log('State generado:', state);
+    console.log('Code Verifier guardado en cache');
+    console.log('Cache size:', verifierCache.size);
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -42,6 +55,9 @@ export class DropboxAuthController {
     });
 
     const authUrl = `https://www.dropbox.com/oauth2/authorize?${params.toString()}`;
+    
+    console.log('🔗 Redirigiendo a:', authUrl);
+    
     res.redirect(authUrl);
   }
 
@@ -49,25 +65,128 @@ export class DropboxAuthController {
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') error: string,
+    @Query('error_description') errorDescription: string,
     @Res() res: Response,
   ) {
     try {
       console.log('📥 Callback recibido');
-      console.log('State:', state);
+      console.log('Code:', code ? '✅ Presente' : '❌ Ausente');
+      console.log('State:', state ? `✅ ${state}` : '❌ Ausente');
+      console.log('Cache size:', verifierCache.size);
 
-      if (!code || !state) {
-        throw new Error('Código o state faltante');
+      // Verificar si hay error de Dropbox
+      if (error) {
+        console.error('❌ Error de Dropbox:', error);
+        console.error('Descripción:', errorDescription);
+        throw new Error(`Error de Dropbox: ${error} - ${errorDescription}`);
+      }
+
+      if (!code) {
+        throw new Error('Código de autorización faltante');
+      }
+
+      if (!state) {
+        // Mostrar información de debug
+        console.error('❌ State faltante');
+        console.error('Cache actual:', Array.from(verifierCache.keys()));
+        
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>❌ Error de Autorización</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+              }
+              .container {
+                background: white;
+                max-width: 700px;
+                width: 100%;
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              }
+              h1 { color: #e74c3c; margin-bottom: 20px; }
+              .error-box {
+                background: #ffebee;
+                border-left: 4px solid #e74c3c;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 4px;
+              }
+              .btn {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 24px;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 600;
+              }
+              .btn:hover { background: #5568d3; }
+              code {
+                background: #f5f5f5;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: 'Courier New', monospace;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>❌ Error de Autorización</h1>
+              <div class="error-box">
+                <p><strong>El parámetro "state" no fue recibido.</strong></p>
+                <p style="margin-top: 10px;">Esto puede ocurrir si:</p>
+                <ul style="margin: 10px 0 0 20px;">
+                  <li>La URL de redirección no está correctamente configurada en Dropbox</li>
+                  <li>El navegador bloqueó cookies o parámetros de URL</li>
+                  <li>Hubo un problema temporal con Dropbox</li>
+                </ul>
+              </div>
+              
+              <h3 style="margin-top: 30px;">🔧 Solución:</h3>
+              <ol style="margin: 15px 0 0 20px; line-height: 1.8;">
+                <li>Verifica que en tu App de Dropbox tengas configurado:
+                  <br><code>http://localhost:3000/auth/dropbox/callback</code>
+                </li>
+                <li>Intenta en modo incógnito del navegador</li>
+                <li>Asegúrate de que el servidor esté corriendo</li>
+              </ol>
+              
+              <a href="/auth/dropbox" class="btn">🔄 Intentar de nuevo</a>
+            </div>
+          </body>
+          </html>
+        `);
       }
 
       // Recuperar code_verifier del cache
-      const codeVerifier = verifierCache.get(state);
+      const cached = verifierCache.get(state);
       
-      if (!codeVerifier) {
-        throw new Error('Code verifier no encontrado. Por favor, inicia el proceso de nuevo.');
+      if (!cached) {
+        console.error('❌ Code verifier no encontrado en cache');
+        console.error('States disponibles:', Array.from(verifierCache.keys()));
+        throw new Error('Sesión expirada. Por favor, inicia el proceso de nuevo.');
       }
+
+      const codeVerifier = cached.verifier;
 
       // Limpiar del cache
       verifierCache.delete(state);
+      console.log('✅ Code verifier recuperado del cache');
+      console.log('Cache restante:', verifierCache.size);
 
       const clientId = this.configService.get<string>('DROPBOX_APP_KEY')!;
       const clientSecret = this.configService.get<string>('DROPBOX_APP_SECRET')!;
@@ -86,7 +205,7 @@ export class DropboxAuthController {
           client_id: clientId,
           client_secret: clientSecret,
           redirect_uri: redirectUri,
-          code_verifier: codeVerifier, // 🔑 PKCE
+          code_verifier: codeVerifier,
         }).toString(),
       });
 
