@@ -3,6 +3,7 @@ import {
   MaxLength,
   IsNotEmpty,
   ValidateNested,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.dto';
@@ -13,23 +14,23 @@ export class CreateVoluntarioIndividualDto {
   @Type(() => CreatePersonaDto)
   persona: CreatePersonaDto;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(500)
-  motivacion: string;
+  motivacion?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(500)
-  habilidades: string;
+  habilidades?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(500)
-  experiencia: string;
+  experiencia?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  nacionalidad: string;
+  nacionalidad?: string;
 }
