@@ -173,15 +173,8 @@ import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes
     DropboxModule,
     DropboxAuthModule,
     FincaOtroEquipoModule,
-    InfraestructuraProduccionModule,
+    InfraestructuraProduccionModule,    
     SolicitudVoluntariadoModule,
-    VoluntarioIndividualModule,
-    OrganizacionModule,
-    DisponibilidadModule,
-    RazonSocialModule,
-    RepresentanteModule,
-    AreasInteresModule,
-    
   ],
   controllers: [AppController],
   providers: [

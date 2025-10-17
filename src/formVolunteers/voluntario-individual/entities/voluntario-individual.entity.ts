@@ -13,7 +13,7 @@ import { SolicitudVoluntariado } from '../../solicitud-voluntariado/entities/sol
 import { Disponibilidad } from '../../disponibilidad/entities/disponibilidad.entity';
 import { AreaInteres } from '../../areas-interes/entities/areas-interes.entity';
 
-@Entity('voluntariosIndividuales')
+@Entity('voluntarios-individuales')
 export class VoluntarioIndividual {
   @PrimaryGeneratedColumn()
   idVoluntario: number;

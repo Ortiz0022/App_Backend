@@ -12,6 +12,6 @@ import { PersonaModule } from '../../formAssociates/persona/persona.module';
   ],
   controllers: [VoluntarioIndividualController],
   providers: [VoluntarioIndividualService],
-  exports: [VoluntarioIndividualService, TypeOrmModule],
+  exports: [VoluntarioIndividualService],
 })
 export class VoluntarioIndividualModule {}

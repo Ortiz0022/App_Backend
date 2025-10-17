@@ -10,7 +10,7 @@ import {
 import { Organizacion } from '../../organizacion/entities/organizacion.entity';
 import { VoluntarioIndividual } from '../../voluntario-individual/entities/voluntario-individual.entity';
 
-@Entity('areasInteres')
+@Entity('areas-interes')
 export class AreaInteres {
   @PrimaryGeneratedColumn()
   idAreaInteres: number;

@@ -15,7 +15,7 @@ import { UpdateAreaInteresDto } from './dto/update-area-interes.dto';
 @Controller('areas-interes')
 export class AreasInteresController {
   constructor(private readonly areasInteresService: AreasInteresService) {}
-
+//
   @Get()
   findAll() {
     return this.areasInteresService.findAll();
@@ -25,7 +25,7 @@ export class AreasInteresController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.areasInteresService.findOne(id);
   }
-
+//
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,

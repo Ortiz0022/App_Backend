@@ -16,7 +16,7 @@ import { RepresentanteService } from '../representante/representante.service';
 import { RazonSocialService } from '../razon-social/razon-social.service';
 import { DisponibilidadService } from '../disponibilidad/disponibilidad.service';
 import { AreasInteresService } from '../areas-interes/areas-interes.service';
-import { SolicitudStatus } from './dto/solicitud-voluntariado-status.enum';
+import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
@@ -138,12 +138,67 @@ export class SolicitudVoluntariadoService {
         voluntario,
         organizacion,
         fechaSolicitud: new Date(),
-        estado: SolicitudStatus.PENDIENTE,
+        estado: SolicitudVoluntariadoStatus.PENDIENTE,
       });
 
       return manager.save(solicitud);
     });
   }
+
+async findAllPaginated(params: {
+  page?: number;
+  limit?: number;
+  estado?: SolicitudVoluntariadoStatus;
+  search?: string;
+  sort?: string;
+}): Promise<{ 
+  items: SolicitudVoluntariado[]; 
+  total: number; 
+  page: number; 
+  limit: number;
+  pages: number;
+}> {
+  const page = params.page ?? 1;
+  const limit = params.limit ?? 20;
+  const { estado } = params;
+
+  const queryBuilder = this.solicitudRepository
+    .createQueryBuilder('solicitud')
+    // Voluntario individual
+    .leftJoinAndSelect('solicitud.voluntario', 'voluntario')
+    .leftJoinAndSelect('voluntario.persona', 'personaVoluntario')
+    .leftJoinAndSelect('voluntario.disponibilidades', 'dispVoluntario')
+    .leftJoinAndSelect('voluntario.areasInteres', 'areasVoluntario')
+    // Organización
+    .leftJoinAndSelect('solicitud.organizacion', 'organizacion')
+    .leftJoinAndSelect('organizacion.representantes', 'representantes')
+    .leftJoinAndSelect('representantes.persona', 'personaRepresentante') 
+    .leftJoinAndSelect('organizacion.razonesSociales', 'razones')
+    .leftJoinAndSelect('organizacion.disponibilidades', 'dispOrg')
+    .leftJoinAndSelect('organizacion.areasInteres', 'areasOrg');
+
+  // Filtro por estado
+  if (estado) {
+    queryBuilder.andWhere('solicitud.estado = :estado', { estado });
+  }
+
+  // Ordenamiento
+  queryBuilder.orderBy('solicitud.createdAt', 'DESC');
+
+  // Paginación
+  const skip = (page - 1) * limit;
+  queryBuilder.skip(skip).take(limit);
+
+  const [items, total] = await queryBuilder.getManyAndCount();
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit),
+  };
+}
 
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({
@@ -161,7 +216,7 @@ export class SolicitudVoluntariadoService {
       ],
     });
   }
-
+//
   async findOne(id: number): Promise<SolicitudVoluntariado> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitudVoluntariado: id },
@@ -194,7 +249,7 @@ export class SolicitudVoluntariadoService {
 
     // Validar que el motivo esté presente solo si se rechaza
     if (
-      changeStatusDto.estado === SolicitudStatus.RECHAZADO &&
+      changeStatusDto.estado === SolicitudVoluntariadoStatus.RECHAZADO &&
       !changeStatusDto.motivo
     ) {
       throw new BadRequestException(
@@ -216,5 +271,27 @@ export class SolicitudVoluntariadoService {
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);
     await this.solicitudRepository.remove(solicitud);
+  }
+
+  async getStats() {
+    const [total, pendientes, aprobadas, rechazadas] = await Promise.all([
+      this.solicitudRepository.count(),
+      this.solicitudRepository.count({
+        where: { estado: SolicitudVoluntariadoStatus.PENDIENTE },
+      }),
+      this.solicitudRepository.count({
+        where: { estado: SolicitudVoluntariadoStatus.APROBADO },
+      }),
+      this.solicitudRepository.count({
+        where: { estado: SolicitudVoluntariadoStatus.RECHAZADO },
+      }),
+    ]);
+
+    return {
+      total,
+      pendientes,
+      aprobadas,
+      rechazadas,
+    };
   }
 }

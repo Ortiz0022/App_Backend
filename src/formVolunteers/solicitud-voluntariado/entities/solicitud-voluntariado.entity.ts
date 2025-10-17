@@ -10,13 +10,13 @@ import {
 
 import { VoluntarioIndividual } from '../../voluntario-individual/entities/voluntario-individual.entity';
 import { Organizacion } from '../../organizacion/entities/organizacion.entity';
-import { SolicitudStatus } from '../dto/solicitud-voluntariado-status.enum';
+import { SolicitudVoluntariadoStatus } from '../dto/solicitud-voluntariado-status.enum';
 
-@Entity('solicitudesVoluntariado')
+@Entity('solicitudes-voluntariado')
 export class SolicitudVoluntariado {
   @PrimaryGeneratedColumn()
   idSolicitudVoluntariado: number;
-
+//
   @Column({ type: 'varchar', length: 50 })
   tipoSolicitante: string;
 
@@ -38,10 +38,10 @@ export class SolicitudVoluntariado {
 
   @Column({
     type: 'enum',
-    enum: SolicitudStatus,
-    default: SolicitudStatus.PENDIENTE,
+    enum: SolicitudVoluntariadoStatus,
+    default: SolicitudVoluntariadoStatus.PENDIENTE,
   })
-  estado: SolicitudStatus;
+  estado: SolicitudVoluntariadoStatus;
 
   @Column({ type: 'date' })
   fechaSolicitud: Date;

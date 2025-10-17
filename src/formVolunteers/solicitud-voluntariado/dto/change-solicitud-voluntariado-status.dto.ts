@@ -1,11 +1,11 @@
 import { IsEnum, IsString, MaxLength, ValidateIf } from 'class-validator';
-import { SolicitudStatus } from './solicitud-voluntariado-status.enum';
+import { SolicitudVoluntariadoStatus } from './solicitud-voluntariado-status.enum';
 
 export class ChangeSolicitudVoluntariadoStatusDto {
-  @IsEnum(SolicitudStatus)
-  estado: SolicitudStatus;
+  @IsEnum(SolicitudVoluntariadoStatus)
+  estado: SolicitudVoluntariadoStatus;
 
-  @ValidateIf((o) => o.estado === SolicitudStatus.RECHAZADO)
+  @ValidateIf((o) => o.estado === SolicitudVoluntariadoStatus.RECHAZADO)
   @IsString()
   @MaxLength(255)
   motivo?: string;

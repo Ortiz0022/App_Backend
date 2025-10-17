@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
 import { SolicitudVoluntariadoService } from './solicitud-voluntariado.service';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
+import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 
 @Controller('solicitudes-voluntariado')
 export class SolicitudVoluntariadoController {
@@ -27,9 +29,21 @@ export class SolicitudVoluntariadoController {
   }
 
   @Get()
-  findAll() {
-    return this.solicitudService.findAll();
-  }
+    findAll(
+      @Query('estado') estado?: SolicitudVoluntariadoStatus,
+      @Query('search') search?: string,
+      @Query('page') page?: string,
+      @Query('limit') limit?: string,
+      @Query('sort') sort?: string,
+    ) {
+      return this.solicitudService.findAllPaginated({
+        estado,
+        search,
+        page: page ? parseInt(page) : 1,
+        limit: limit ? parseInt(limit) : 20,
+        sort,
+      });
+    }
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
