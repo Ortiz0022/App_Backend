@@ -12,90 +12,171 @@ import { VoluntarioIndividual } from '../voluntario-individual/entities/voluntar
 import { Organizacion } from '../organizacion/entities/organizacion.entity';
 import { VoluntarioIndividualService } from '../voluntario-individual/voluntario-individual.service';
 import { OrganizacionService } from '../organizacion/organizacion.service';
-import { SolicitudStatus } from './dto/solicitud-voluntariado-status.enum';
 import { RepresentanteService } from '../representante/representante.service';
 import { RazonSocialService } from '../razon-social/razon-social.service';
+import { DisponibilidadService } from '../disponibilidad/disponibilidad.service';
+import { AreasInteresService } from '../areas-interes/areas-interes.service';
+import { SolicitudStatus } from './dto/solicitud-voluntariado-status.enum';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
   constructor(
-  @InjectRepository(SolicitudVoluntariado)
+    @InjectRepository(SolicitudVoluntariado)
     private solicitudRepository: Repository<SolicitudVoluntariado>,
     private voluntarioService: VoluntarioIndividualService,
     private organizacionService: OrganizacionService,
     private representanteService: RepresentanteService,
     private razonSocialService: RazonSocialService,
+    private disponibilidadService: DisponibilidadService,
+    private areasInteresService: AreasInteresService,
     private dataSource: DataSource,
-) {}
+  ) {}
 
-async create(
-  createSolicitudDto: CreateSolicitudVoluntariadoDto,
-): Promise<SolicitudVoluntariado> {
-  return this.dataSource.transaction(async (manager) => {
-    let voluntario: VoluntarioIndividual | undefined;
-    let organizacion: Organizacion | undefined;
+  async create(
+    createSolicitudDto: CreateSolicitudVoluntariadoDto,
+  ): Promise<SolicitudVoluntariado> {
+    return this.dataSource.transaction(async (manager) => {
+      let voluntario: VoluntarioIndividual | undefined;
+      let organizacion: Organizacion | undefined;
 
-    // Crear según el tipo de solicitante
-    if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
-      if (!createSolicitudDto.voluntario) {
-        throw new BadRequestException(
-          'Debe proporcionar los datos del voluntario individual',
-        );
-      }
-      voluntario = await this.voluntarioService.createInTransaction(
-        createSolicitudDto.voluntario,
-        manager,
-      );
-    } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
-      if (!createSolicitudDto.organizacion) {
-        throw new BadRequestException(
-          'Debe proporcionar los datos de la organización',
-        );
-      }
-      organizacion = await this.organizacionService.createInTransaction(
-        createSolicitudDto.organizacion,
-        manager,
-      );
-
-      // Crear representantes si existen
-      if (createSolicitudDto.representantes && createSolicitudDto.representantes.length > 0) {
-        for (const representanteDto of createSolicitudDto.representantes) {
-          await this.representanteService.createInTransaction(
-            representanteDto,
-            organizacion,
-            manager,
+      // Crear según el tipo de solicitante
+      if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
+        if (!createSolicitudDto.voluntario) {
+          throw new BadRequestException(
+            'Debe proporcionar los datos del voluntario individual',
           );
         }
+        voluntario = await this.voluntarioService.createInTransaction(
+          createSolicitudDto.voluntario,
+          manager,
+        );
+
+        // Crear disponibilidades para el voluntario
+        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
+          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
+            await this.disponibilidadService.createForVoluntarioInTransaction(
+              disponibilidadDto,
+              voluntario,
+              manager,
+            );
+          }
+        }
+
+        // Crear áreas de interés para el voluntario
+        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
+          for (const areaInteresDto of createSolicitudDto.areasInteres) {
+            await this.areasInteresService.createForVoluntarioInTransaction(
+              areaInteresDto,
+              voluntario,
+              manager,
+            );
+          }
+        }
+      } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
+        if (!createSolicitudDto.organizacion) {
+          throw new BadRequestException(
+            'Debe proporcionar los datos de la organización',
+          );
+        }
+        organizacion = await this.organizacionService.createInTransaction(
+          createSolicitudDto.organizacion,
+          manager,
+        );
+
+        // Crear representantes si existen
+        if (createSolicitudDto.representantes && createSolicitudDto.representantes.length > 0) {
+          for (const representanteDto of createSolicitudDto.representantes) {
+            await this.representanteService.createInTransaction(
+              representanteDto,
+              organizacion,
+              manager,
+            );
+          }
+        }
+
+        // Crear razones sociales si existen
+        if (createSolicitudDto.razonesSociales && createSolicitudDto.razonesSociales.length > 0) {
+          for (const razonSocialDto of createSolicitudDto.razonesSociales) {
+            await this.razonSocialService.createInTransaction(
+              razonSocialDto,
+              organizacion,
+              manager,
+            );
+          }
+        }
+
+        // Crear disponibilidades para la organización
+        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
+          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
+            await this.disponibilidadService.createForOrganizacionInTransaction(
+              disponibilidadDto,
+              organizacion,
+              manager,
+            );
+          }
+        }
+
+        // Crear áreas de interés para la organización
+        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
+          for (const areaInteresDto of createSolicitudDto.areasInteres) {
+            await this.areasInteresService.createForOrganizacionInTransaction(
+              areaInteresDto,
+              organizacion,
+              manager,
+            );
+          }
+        }
+      } else {
+        throw new BadRequestException(
+          'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
+        );
       }
-    } else {
-      throw new BadRequestException(
-        'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
-      );
-    }
 
-    // Crear solicitud
-    const solicitud = manager.create(SolicitudVoluntariado, {
-      tipoSolicitante: createSolicitudDto.tipoSolicitante,
-      voluntario,
-      organizacion,
-      fechaSolicitud: new Date(),
-      estado: SolicitudStatus.PENDIENTE,
+      // Crear solicitud
+      const solicitud = manager.create(SolicitudVoluntariado, {
+        tipoSolicitante: createSolicitudDto.tipoSolicitante,
+        voluntario,
+        organizacion,
+        fechaSolicitud: new Date(),
+        estado: SolicitudStatus.PENDIENTE,
+      });
+
+      return manager.save(solicitud);
     });
-
-    return manager.save(solicitud);
-  });
-}
+  }
 
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({
-      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
+      relations: [
+        'voluntario',
+        'voluntario.persona',
+        'voluntario.disponibilidades',
+        'voluntario.areasInteres',
+        'organizacion',
+        'organizacion.representantes',
+        'organizacion.representantes.persona',
+        'organizacion.razonesSociales',
+        'organizacion.disponibilidades',
+        'organizacion.areasInteres',
+      ],
     });
   }
 
   async findOne(id: number): Promise<SolicitudVoluntariado> {
     const solicitud = await this.solicitudRepository.findOne({
       where: { idSolicitudVoluntariado: id },
-      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
+      relations: [
+        'voluntario',
+        'voluntario.persona',
+        'voluntario.disponibilidades',
+        'voluntario.areasInteres',
+        'organizacion',
+        'organizacion.representantes',
+        'organizacion.representantes.persona',
+        'organizacion.razonesSociales',
+        'organizacion.disponibilidades',
+        'organizacion.areasInteres',
+      ],
     });
 
     if (!solicitud) {

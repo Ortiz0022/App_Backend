@@ -10,6 +10,8 @@ import {
 import { SolicitudVoluntariado } from '../../solicitud-voluntariado/entities/solicitud-voluntariado.entity';
 import { Representante } from '../../representante/entities/representante.entity';
 import { RazonSocial } from '../../razon-social/entities/razon-social.entity';
+import { Disponibilidad } from '../../disponibilidad/entities/disponibilidad.entity';
+import { AreaInteres } from '../../areas-interes/entities/areas-interes.entity';
 
 @Entity('organizaciones')
 export class Organizacion {
@@ -49,6 +51,16 @@ export class Organizacion {
     cascade: true,
   })
   razonesSociales?: RazonSocial[];
+
+  @OneToMany(() => Disponibilidad, (disponibilidad) => disponibilidad.organizacion, {
+    cascade: true,
+  })
+  disponibilidades?: Disponibilidad[];
+
+  @OneToMany(() => AreaInteres, (areaInteres) => areaInteres.organizacion, {
+    cascade: true,
+  })
+  areasInteres?: AreaInteres[];
 
   @CreateDateColumn()
   createdAt: Date;

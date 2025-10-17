@@ -7,6 +7,8 @@ import { VoluntarioIndividualModule } from '../voluntario-individual/voluntario-
 import { OrganizacionModule } from '../organizacion/organizacion.module';
 import { RepresentanteModule } from '../representante/representante.module';
 import { RazonSocialModule } from '../razon-social/razon-social.module';
+import { DisponibilidadModule } from '../disponibilidad/disponibilidad.module';
+import { AreasInteresModule } from '../areas-interes/areas-interes.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { RazonSocialModule } from '../razon-social/razon-social.module';
     OrganizacionModule,
     RepresentanteModule,
     RazonSocialModule,
+    DisponibilidadModule,
+    AreasInteresModule,
   ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService],

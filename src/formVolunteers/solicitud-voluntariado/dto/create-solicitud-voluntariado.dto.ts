@@ -12,6 +12,8 @@ import { CreateVoluntarioIndividualDto } from '../../voluntario-individual/dto/c
 import { CreateOrganizacionDto } from '../../organizacion/dto/create-organizacion.dto';
 import { CreateRepresentanteDto } from '../../representante/dto/create-representante.dto';
 import { CreateRazonSocialDto } from '../../razon-social/dto/create-razon-social.dto';
+import { CreateDisponibilidadDto } from '../../disponibilidad/dto/create-disponibilidad.dto';
+import { CreateAreaInteresDto } from '../../areas-interes/dto/create-area-interes.dto';
 
 export class CreateSolicitudVoluntariadoDto {
   @IsString()
@@ -42,4 +44,16 @@ export class CreateSolicitudVoluntariadoDto {
   @ValidateNested({ each: true })
   @Type(() => CreateRazonSocialDto)
   razonesSociales?: CreateRazonSocialDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateDisponibilidadDto)
+  disponibilidades?: CreateDisponibilidadDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateAreaInteresDto)
+  areasInteres?: CreateAreaInteresDto[];
 }

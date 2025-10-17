@@ -5,10 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Persona } from '../../../formAssociates/persona/entities/persona.entity';
 import { SolicitudVoluntariado } from '../../solicitud-voluntariado/entities/solicitud-voluntariado.entity';
+import { Disponibilidad } from '../../disponibilidad/entities/disponibilidad.entity';
+import { AreaInteres } from '../../areas-interes/entities/areas-interes.entity';
 
 @Entity('voluntariosIndividuales')
 export class VoluntarioIndividual {
@@ -33,6 +36,16 @@ export class VoluntarioIndividual {
 
   @OneToOne(() => SolicitudVoluntariado, (solicitud) => solicitud.voluntario)
   solicitud?: SolicitudVoluntariado;
+
+  @OneToMany(() => Disponibilidad, (disponibilidad) => disponibilidad.voluntario, {
+    cascade: true,
+  })
+  disponibilidades?: Disponibilidad[];
+
+  @OneToMany(() => AreaInteres, (areaInteres) => areaInteres.voluntario, {
+    cascade: true,
+  })
+  areasInteres?: AreaInteres[];
 
   @CreateDateColumn()
   createdAt: Date;
