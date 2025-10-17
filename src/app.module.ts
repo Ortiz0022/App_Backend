@@ -74,6 +74,10 @@ import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
 import { SolicitudVoluntariadoModule } from './formVolunteers/solicitud-voluntariado/solicitud-voluntariado.module';
 import { VoluntarioIndividualModule } from './formVolunteers/voluntario-individual/voluntario-individual.module';
 import { OrganizacionModule } from './formVolunteers/organizacion/organizacion.module';
+import { DisponibilidadModule } from './formVolunteers/disponibilidad/disponibilidad.module';
+import { RazonSocialModule } from './formVolunteers/razon-social/razon-social.module';
+import { RepresentanteModule } from './formVolunteers/representante/representante.module';
+import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes.module';
 
 
 
@@ -173,6 +177,11 @@ import { OrganizacionModule } from './formVolunteers/organizacion/organizacion.m
     SolicitudVoluntariadoModule,
     VoluntarioIndividualModule,
     OrganizacionModule,
+    DisponibilidadModule,
+    RazonSocialModule,
+    RepresentanteModule,
+    AreasInteresModule,
+    
   ],
   controllers: [AppController],
   providers: [
