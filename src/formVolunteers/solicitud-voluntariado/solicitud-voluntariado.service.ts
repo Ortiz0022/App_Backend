@@ -164,9 +164,9 @@ async findAllPaginated(params: {
   limit: number;
   pages: number;
 }> {
-  const page = params.page ?? 1;
-  const limit = params.limit ?? 20;
-  const { estado } = params;
+  const page = params.page || 1;
+  const limit = params.limit || 20;
+  const skip = (page - 1) * limit;
 
   const queryBuilder = this.solicitudRepository
     .createQueryBuilder('solicitud')
@@ -184,18 +184,27 @@ async findAllPaginated(params: {
     .leftJoinAndSelect('organizacion.areasInteres', 'areasOrg');
 
   // Filtro por estado
-  if (estado) {
-    queryBuilder.andWhere('solicitud.estado = :estado', { estado });
+  if (params.estado) {
+    queryBuilder.andWhere('solicitud.estado = :estado', { estado: params.estado });
+  }
+
+  // Filtro de búsqueda
+  if (params.search) {
+    queryBuilder.andWhere(
+      '(personaVoluntario.cedula LIKE :search OR personaVoluntario.nombre LIKE :search OR personaVoluntario.apellido1 LIKE :search OR personaVoluntario.apellido2 LIKE :search OR personaVoluntario.email LIKE :search OR organizacion.cedulaJuridica LIKE :search OR organizacion.nombre LIKE :search OR organizacion.email LIKE :search)',
+      { search: `%${params.search}%` }
+    );
   }
 
   // Ordenamiento
-  queryBuilder.orderBy('solicitud.createdAt', 'DESC');
+  if (params.sort) {
+    const [field, order] = params.sort.split(':');
+    queryBuilder.orderBy(`solicitud.${field}`, order.toUpperCase() as 'ASC' | 'DESC');
+  } else {
+    queryBuilder.orderBy('solicitud.createdAt', 'DESC');
+  }
 
-  // Paginación
-  const skip = (page - 1) * limit;
-  queryBuilder.skip(skip).take(limit);
-
-  const [items, total] = await queryBuilder.getManyAndCount();
+  const [items, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
   return {
     items,
