@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
@@ -13,14 +14,20 @@ import {
 import { OrganizacionService } from './organizacion.service';
 import { CreateOrganizacionDto } from './dto/create-organizacion.dto';
 import { UpdateOrganizacionDto } from './dto/update-organizacion.dto';
+import { QueryOrganizacionDto } from './dto/query-organizacion.dto';
 
 @Controller('organizaciones')
 export class OrganizacionController {
   constructor(private readonly organizacionService: OrganizacionService) {}
 
   @Get()
-  findAll() {
-    return this.organizacionService.findAll();
+  findAll(@Query() query: QueryOrganizacionDto) {
+    return this.organizacionService.findAll(query);
+  }
+
+  @Get('stats')
+  getStats() {
+    return this.organizacionService.getStats();
   }
 
   @Get(':id')
@@ -39,6 +46,11 @@ export class OrganizacionController {
     @Body() updateOrganizacionDto: UpdateOrganizacionDto,
   ) {
     return this.organizacionService.update(id, updateOrganizacionDto);
+  }
+
+  @Patch(':id/toggle-status')
+  toggleStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.organizacionService.toggleStatus(id);
   }
 
   @Delete(':id')

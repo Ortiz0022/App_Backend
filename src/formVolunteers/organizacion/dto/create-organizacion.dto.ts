@@ -6,6 +6,8 @@ import {
   MaxLength,
   MinLength,
   Min,
+  IsBoolean,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateOrganizacionDto {
@@ -43,4 +45,8 @@ export class CreateOrganizacionDto {
   @IsNotEmpty()
   @MaxLength(100)
   tipoOrganizacion: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
 }

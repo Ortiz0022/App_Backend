@@ -3,6 +3,7 @@ import {
   IsInt,
   IsEmail,
   IsOptional,
+  IsBoolean,
   MaxLength,
   MinLength,
   Min,
@@ -44,4 +45,8 @@ export class UpdateOrganizacionDto {
   @IsString()
   @MaxLength(100)
   tipoOrganizacion?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

@@ -39,6 +39,9 @@ export class Organizacion {
   @Column({ type: 'varchar', length: 100 })
   tipoOrganizacion: string;
 
+  @Column({ type: 'boolean', default: false })
+  isActive: boolean;
+
   @OneToOne(() => SolicitudVoluntariado, (solicitud) => solicitud.organizacion)
   solicitud?: SolicitudVoluntariado;
 
