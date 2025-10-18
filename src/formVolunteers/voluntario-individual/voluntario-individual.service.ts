@@ -45,60 +45,68 @@ export class VoluntarioIndividualService {
 
   // Listado paginado - SOLO voluntarios con solicitud APROBADA
   async findAll(query?: QueryVoluntarioIndividualDto) {
-    const { isActive, search, page = 1, limit = 20, sort } = query || {};
+  const { isActive, search, page = 1, limit = 20, sort } = query || {};
 
-    const queryBuilder = this.voluntarioRepository
-      .createQueryBuilder('voluntario')
-      .leftJoinAndSelect('voluntario.persona', 'persona')
-      .leftJoinAndSelect('voluntario.areasInteres', 'areasInteres')
-      .leftJoinAndSelect('voluntario.disponibilidades', 'disponibilidades')
-      .leftJoin('voluntario.solicitud', 'solicitud');
-
-    // REGLA DE NEGOCIO: Solo mostrar voluntarios con solicitud APROBADA
-    queryBuilder.andWhere('solicitud.estado = :estadoSolicitud', {
-      estadoSolicitud: 'APROBADO',
-    });
-
-    // Filtro opcional por estado del voluntario (activo/inactivo)
-    if (isActive !== undefined) {
-      queryBuilder.andWhere('voluntario.isActive = :isActive', { isActive });
-    }
-
-    // Búsqueda por texto
-    if (search) {
-      queryBuilder.andWhere(
-        '(persona.nombre LIKE :search OR persona.apellido1 LIKE :search OR persona.apellido2 LIKE :search OR persona.cedula LIKE :search OR persona.email LIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    // Ordenamiento
-    if (sort) {
-      const [field, order] = sort.split(':');
-      const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-
-      if (field.startsWith('persona.')) {
-        queryBuilder.orderBy(field, orderDirection);
-      } else {
-        queryBuilder.orderBy(`voluntario.${field}`, orderDirection);
-      }
+  // ✅ SOLUCIÓN: Convertir manualmente string a boolean
+  let isActiveBoolean: boolean | undefined;
+  if (isActive !== undefined) {
+    if (typeof isActive === 'string') {
+      isActiveBoolean = isActive === 'true';
     } else {
-      queryBuilder.orderBy('voluntario.createdAt', 'DESC');
+      isActiveBoolean = isActive;
     }
-
-    // ✅ Paginación
-    queryBuilder.skip((page - 1) * limit).take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    };
   }
+
+  const queryBuilder = this.voluntarioRepository
+    .createQueryBuilder('voluntario')
+    .leftJoinAndSelect('voluntario.persona', 'persona')
+    .leftJoinAndSelect('voluntario.areasInteres', 'areasInteres')
+    .leftJoinAndSelect('voluntario.disponibilidades', 'disponibilidades')
+    .leftJoin('voluntario.solicitud', 'solicitud');
+
+  queryBuilder.andWhere('solicitud.estado = :estadoSolicitud', {
+    estadoSolicitud: 'APROBADO',
+  });
+
+  // ✅ Usar la versión convertida
+  if (isActiveBoolean !== undefined) {
+    queryBuilder.andWhere('voluntario.isActive = :isActive', { 
+      isActive: isActiveBoolean 
+    });
+  }
+
+  if (search) {
+    queryBuilder.andWhere(
+      '(persona.nombre LIKE :search OR persona.apellido1 LIKE :search OR persona.apellido2 LIKE :search OR persona.cedula LIKE :search OR persona.email LIKE :search)',
+      { search: `%${search}%` },
+    );
+  }
+
+  if (sort) {
+    const [field, order] = sort.split(':');
+    const orderDirection = order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    if (field.startsWith('persona.')) {
+      queryBuilder.orderBy(field, orderDirection);
+    } else {
+      queryBuilder.orderBy(`voluntario.${field}`, orderDirection);
+    }
+  } else {
+    queryBuilder.orderBy('voluntario.createdAt', 'DESC');
+  }
+
+  queryBuilder.skip((page - 1) * limit).take(limit);
+
+  const [items, total] = await queryBuilder.getManyAndCount();
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit),
+  };
+}
 
   async findOne(id: number): Promise<VoluntarioIndividual> {
     const voluntario = await this.voluntarioRepository.findOne({

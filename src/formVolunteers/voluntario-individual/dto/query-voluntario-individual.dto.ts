@@ -1,9 +1,9 @@
-import { IsOptional, IsBoolean, IsString, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsBoolean, IsString, IsInt, Min, Max } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class QueryVoluntarioIndividualDto {
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isActive?: boolean;
 
@@ -15,13 +15,14 @@ export class QueryVoluntarioIndividualDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page?: number;
+  page?: number = 1;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number;
+  @Max(100)
+  limit?: number = 20;
 
   @IsOptional()
   @IsString()
