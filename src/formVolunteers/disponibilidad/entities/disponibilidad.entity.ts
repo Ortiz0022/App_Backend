@@ -1,3 +1,4 @@
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -24,11 +25,13 @@ export class Disponibilidad {
   @Column({ type: 'date' })
   fechaFin: Date;
 
-  @Column({ type: 'varchar', length: 255 })
-  dias: string;
+  // ✅ CAMBIO: De varchar a JSON para guardar arrays
+  @Column({ type: 'json' })
+  dias: string[];
 
-  @Column({ type: 'varchar', length: 100 })
-  horario: string;
+  // ✅ CAMBIO: De varchar a JSON para guardar arrays (y renombrar a plural)
+  @Column({ type: 'json' })
+  horarios: string[];
 
   @ManyToOne(() => Organizacion, (organizacion) => organizacion.disponibilidades, {
     eager: false,

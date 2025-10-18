@@ -1,15 +1,18 @@
+
 import {
   IsString,
   IsNotEmpty,
   MaxLength,
   IsDateString,
+  IsArray,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateDisponibilidadDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  tipoEntidad: string;
+  tipoEntidad?: string; // Hacerlo opcional porque se asigna automáticamente
 
   @IsDateString()
   @IsNotEmpty()
@@ -19,13 +22,13 @@ export class CreateDisponibilidadDto {
   @IsNotEmpty()
   fechaFin: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
-  dias: string;
+  // ✅ CAMBIO: Aceptar array de strings en lugar de string único
+  @IsArray()
+  @IsString({ each: true })
+  dias: string[];
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  horario: string;
+  // ✅ CAMBIO: Aceptar array de strings en lugar de string único
+  @IsArray()
+  @IsString({ each: true })
+  horarios: string[];
 }

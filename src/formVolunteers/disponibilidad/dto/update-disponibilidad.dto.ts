@@ -3,6 +3,7 @@ import {
   IsOptional,
   MaxLength,
   IsDateString,
+  IsArray,
 } from 'class-validator';
 
 export class UpdateDisponibilidadDto {
@@ -19,13 +20,15 @@ export class UpdateDisponibilidadDto {
   @IsDateString()
   fechaFin?: string;
 
+  // ✅ CAMBIO: De string a array de strings
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  dias?: string;
+  @IsArray()
+  @IsString({ each: true })
+  dias?: string[];
 
+  // ✅ CAMBIO: De string a array de strings (y cambiar de "horario" a "horarios")
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  horario?: string;
+  @IsArray()
+  @IsString({ each: true })
+  horarios?: string[];
 }
