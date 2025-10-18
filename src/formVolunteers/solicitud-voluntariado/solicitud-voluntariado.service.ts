@@ -354,7 +354,7 @@ async findAllPaginated(params: {
     return solicitud;
   }
 
-  async changeStatus(
+async changeStatus(
   id: number,
   changeStatusDto: ChangeSolicitudVoluntariadoStatusDto,
 ): Promise<SolicitudVoluntariado> {
@@ -378,14 +378,20 @@ async findAllPaginated(params: {
     solicitud.motivo = changeStatusDto.motivo;
   }
 
-  // Si se aprueba, activar el voluntario/organización
+  // ✅ Si se aprueba, activar el voluntario/organización
   if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
     if (solicitud.voluntario) {
-      // Actualizar directamente en la base de datos
+      // Actualizar en la base de datos
       await this.voluntarioRepository.update(
         solicitud.voluntario.idVoluntario,
         { isActive: true }
       );
+      
+      // ✅ Recargar el voluntario con el valor actualizado
+      solicitud.voluntario = (await this.voluntarioRepository.findOne({
+        where: { idVoluntario: solicitud.voluntario.idVoluntario },
+        relations: ['persona', 'areasInteres', 'disponibilidades'],
+      })) ?? undefined;
     }
    
     // TODO: Más adelante para organizaciones
@@ -394,21 +400,25 @@ async findAllPaginated(params: {
     //     solicitud.organizacion.idOrganizacion,
     //     { isActive: true }
     //   );
+    //   solicitud.organizacion = await this.organizacionRepository.findOne({
+    //     where: { idOrganizacion: solicitud.organizacion.idOrganizacion },
+    //   });
     // }
   }
 
-  await this.solicitudRepository.save(solicitud);
+  // ✅ Guardar la solicitud con el voluntario actualizado
+  const updatedSolicitud = await this.solicitudRepository.save(solicitud);
 
   // Si se aprueba, copiar documentos a entidades (asíncrono)
   if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
-    this.copyDocumentsToEntities(solicitud).catch((err) => {
+    this.copyDocumentsToEntities(updatedSolicitud).catch((err) => {
       console.error('Error copiando documentos:', err);
     });
   }
 
-  return solicitud;
+  // ✅ Devolver la solicitud actualizada con todas las relaciones
+  return this.findOne(updatedSolicitud.idSolicitudVoluntariado);
 }
-
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);
     await this.solicitudRepository.remove(solicitud);
