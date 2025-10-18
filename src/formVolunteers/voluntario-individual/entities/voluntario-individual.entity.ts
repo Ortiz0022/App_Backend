@@ -50,6 +50,9 @@ export class VoluntarioIndividual {
   @CreateDateColumn()
   createdAt: Date;
 
+  @Column({ name: 'is_active', type: 'boolean', default: false })
+  isActive: boolean;
+
   @UpdateDateColumn()
   updatedAt: Date;
   @Column({ type: 'varchar', length: 500, nullable: true })

@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   ValidateNested,
   IsOptional,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePersonaDto } from 'src/formAssociates/persona/dto/create-persona.dto';
@@ -33,4 +34,8 @@ export class CreateVoluntarioIndividualDto {
   @IsString()
   @MaxLength(100)
   nacionalidad?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
@@ -24,4 +25,9 @@ export class UpdateVoluntarioIndividualDto {
   @IsString()
   @MaxLength(100)
   nacionalidad?: string;
+
+  @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
+
 }

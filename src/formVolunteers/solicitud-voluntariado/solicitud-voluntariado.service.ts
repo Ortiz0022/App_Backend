@@ -355,40 +355,59 @@ async findAllPaginated(params: {
   }
 
   async changeStatus(
-    id: number,
-    changeStatusDto: ChangeSolicitudVoluntariadoStatusDto,
-  ): Promise<SolicitudVoluntariado> {
-    const solicitud = await this.findOne(id);
+  id: number,
+  changeStatusDto: ChangeSolicitudVoluntariadoStatusDto,
+): Promise<SolicitudVoluntariado> {
+  const solicitud = await this.findOne(id);
 
-    // Validar que el motivo esté presente solo si se rechaza
-    if (
-      changeStatusDto.estado === SolicitudVoluntariadoStatus.RECHAZADO &&
-      !changeStatusDto.motivo
-    ) {
-      throw new BadRequestException(
-        'El motivo es obligatorio al rechazar una solicitud',
+  // Validar que el motivo esté presente solo si se rechaza
+  if (
+    changeStatusDto.estado === SolicitudVoluntariadoStatus.RECHAZADO &&
+    !changeStatusDto.motivo
+  ) {
+    throw new BadRequestException(
+      'El motivo es obligatorio al rechazar una solicitud',
+    );
+  }
+
+  // Actualizar estado y fecha de resolución
+  solicitud.estado = changeStatusDto.estado;
+  solicitud.fechaResolucion = new Date();
+
+  if (changeStatusDto.motivo) {
+    solicitud.motivo = changeStatusDto.motivo;
+  }
+
+  // Si se aprueba, activar el voluntario/organización
+  if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
+    if (solicitud.voluntario) {
+      // Actualizar directamente en la base de datos
+      await this.voluntarioRepository.update(
+        solicitud.voluntario.idVoluntario,
+        { isActive: true }
       );
     }
-
-    // Actualizar estado y fecha de resolución
-    solicitud.estado = changeStatusDto.estado;
-    solicitud.fechaResolucion = new Date();
-
-    if (changeStatusDto.motivo) {
-      solicitud.motivo = changeStatusDto.motivo;
-    }
-
-    await this.solicitudRepository.save(solicitud);
-
-    // ✅ NUEVO: Si se aprueba, copiar documentos a entidades (asíncrono)
-    if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
-      this.copyDocumentsToEntities(solicitud).catch((err) => {
-        console.error('Error copiando documentos:', err);
-      });
-    }
-
-    return solicitud;
+   
+    // TODO: Más adelante para organizaciones
+    // if (solicitud.organizacion) {
+    //   await this.organizacionRepository.update(
+    //     solicitud.organizacion.idOrganizacion,
+    //     { isActive: true }
+    //   );
+    // }
   }
+
+  await this.solicitudRepository.save(solicitud);
+
+  // Si se aprueba, copiar documentos a entidades (asíncrono)
+  if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
+    this.copyDocumentsToEntities(solicitud).catch((err) => {
+      console.error('Error copiando documentos:', err);
+    });
+  }
+
+  return solicitud;
+}
 
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);
