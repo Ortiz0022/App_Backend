@@ -5,19 +5,23 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository, EntityManager, DataSource } from 'typeorm';
 import { CreateVoluntarioIndividualDto } from './dto/create-voluntario-individual.dto';
 import { UpdateVoluntarioIndividualDto } from './dto/update-voluntario-individual.dto';
 import { VoluntarioIndividual } from './entities/voluntario-individual.entity';
 import { PersonaService } from '../../formAssociates/persona/persona.service';
 import { QueryVoluntarioIndividualDto } from './dto/query-voluntario-individual.dto';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Injectable()
 export class VoluntarioIndividualService {
   constructor(
     @InjectRepository(VoluntarioIndividual)
     private voluntarioRepository: Repository<VoluntarioIndividual>,
+    @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>,
     private personaService: PersonaService,
+     private dataSource: DataSource,
   ) {}
 
   // Método transaccional (sin validaciones, usa EntityManager externo)
@@ -126,45 +130,69 @@ export class VoluntarioIndividualService {
     return voluntario;
   }
 
-  async update(
-    id: number,
-    updateVoluntarioDto: UpdateVoluntarioIndividualDto,
-  ): Promise<VoluntarioIndividual> {
-    const voluntario = await this.findOne(id);
+async update(
+  id: number,
+  updateVoluntarioDto: UpdateVoluntarioIndividualDto,
+): Promise<VoluntarioIndividual> {
+  const voluntario = await this.findOne(id);
 
-    // Actualizar campos del voluntario
-    if (updateVoluntarioDto.motivacion !== undefined) {
-      voluntario.motivacion = updateVoluntarioDto.motivacion;
-    }
+  // Extraer campos que pertenecen a Persona
+  const { telefono, email, direccion, ...voluntarioFields } = updateVoluntarioDto;
 
-    if (updateVoluntarioDto.habilidades !== undefined) {
-      voluntario.habilidades = updateVoluntarioDto.habilidades;
-    }
+  // Actualizar campos de Persona si existen
+  if (telefono !== undefined || email !== undefined || direccion !== undefined) {
+    const personaUpdate: any = {};
+    if (telefono !== undefined) personaUpdate.telefono = telefono;
+    if (email !== undefined) personaUpdate.email = email;
+    if (direccion !== undefined) personaUpdate.direccion = direccion;
 
-    if (updateVoluntarioDto.experiencia !== undefined) {
-      voluntario.experiencia = updateVoluntarioDto.experiencia;
-    }
+    await this.personaRepository.update(
+      voluntario.persona.idPersona,
+      personaUpdate
+    );
 
-    if (updateVoluntarioDto.nacionalidad !== undefined) {
-      voluntario.nacionalidad = updateVoluntarioDto.nacionalidad;
-    }
-
-    // Validar que no se active si la solicitud no está aprobada
-    if (updateVoluntarioDto.isActive !== undefined && updateVoluntarioDto.isActive === true) {
-      if (voluntario.solicitud?.estado !== 'APROBADO') {
-        throw new BadRequestException(
-          'No se puede activar un voluntario cuya solicitud no está aprobada',
-        );
-      }
-    }
-
-    if (updateVoluntarioDto.isActive !== undefined) {
-      voluntario.isActive = updateVoluntarioDto.isActive;
-    }
-
-    return this.voluntarioRepository.save(voluntario);
+    // RECARGAR la persona después de actualizarla
+    voluntario.persona = await this.personaRepository.findOne({
+      where: { idPersona: voluntario.persona.idPersona },
+    }) || voluntario.persona;
   }
 
+  // Actualizar campos del voluntario
+  if (voluntarioFields.motivacion !== undefined) {
+    voluntario.motivacion = voluntarioFields.motivacion;
+  }
+
+  if (voluntarioFields.habilidades !== undefined) {
+    voluntario.habilidades = voluntarioFields.habilidades;
+  }
+
+  if (voluntarioFields.experiencia !== undefined) {
+    voluntario.experiencia = voluntarioFields.experiencia;
+  }
+
+  if (voluntarioFields.nacionalidad !== undefined) {
+    voluntario.nacionalidad = voluntarioFields.nacionalidad;
+  }
+
+  // Validar que no se active si la solicitud no está aprobada
+  if (voluntarioFields.isActive !== undefined && voluntarioFields.isActive === true) {
+    if (voluntario.solicitud?.estado !== 'APROBADO') {
+      throw new BadRequestException(
+        'No se puede activar un voluntario cuya solicitud no está aprobada',
+      );
+    }
+  }
+
+  if (voluntarioFields.isActive !== undefined) {
+    voluntario.isActive = voluntarioFields.isActive;
+  }
+
+  // Guardar voluntario
+  const savedVoluntario = await this.voluntarioRepository.save(voluntario);
+
+  //Retornar con todas las relaciones recargadas
+  return this.findOne(savedVoluntario.idVoluntario);
+}
   // Toggle de estado (activar/desactivar)
   async toggleStatus(id: number): Promise<VoluntarioIndividual> {
     const voluntario = await this.voluntarioRepository.findOne({

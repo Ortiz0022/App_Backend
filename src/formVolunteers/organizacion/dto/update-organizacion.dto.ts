@@ -11,16 +11,6 @@ import {
 
 export class UpdateOrganizacionDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  cedulaJuridica?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  nombre?: string;
-
-  @IsOptional()
   @IsInt()
   @Min(1)
   numeroVoluntarios?: number;
@@ -40,11 +30,6 @@ export class UpdateOrganizacionDto {
   @IsEmail()
   @MaxLength(100)
   email?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  tipoOrganizacion?: string;
 
   @IsOptional()
   @IsBoolean()

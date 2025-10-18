@@ -10,6 +10,7 @@ import { UpdateRepresentanteDto } from './dto/update-representante.dto';
 import { Representante } from './entities/representante.entity';
 import { PersonaService } from '../../formAssociates/persona/persona.service';
 import { Organizacion } from '../organizacion/entities/organizacion.entity';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Injectable()
 export class RepresentanteService {
@@ -17,6 +18,8 @@ export class RepresentanteService {
     @InjectRepository(Representante)
     private representanteRepository: Repository<Representante>,
     private personaService: PersonaService,
+      @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>
   ) {}
 
   // Método transaccional (sin validaciones, usa EntityManager externo)
@@ -64,19 +67,6 @@ export class RepresentanteService {
     });
   }
 
-  async findOne(id: number): Promise<Representante> {
-    const representante = await this.representanteRepository.findOne({
-      where: { idRepresentante: id },
-      relations: ['persona', 'organizacion'],
-    });
-
-    if (!representante) {
-      throw new NotFoundException(`Representante con ID ${id} no encontrado`);
-    }
-
-    return representante;
-  }
-
   async findByOrganizacion(idOrganizacion: number): Promise<Representante[]> {
     return this.representanteRepository.find({
       where: { organizacion: { idOrganizacion } },
@@ -90,12 +80,54 @@ export class RepresentanteService {
   ): Promise<Representante> {
     const representante = await this.findOne(id);
 
-    // Actualizar solo el cargo
-    if (updateRepresentanteDto.cargo !== undefined) {
-      representante.cargo = updateRepresentanteDto.cargo;
+    // Extraer campos que pertenecen a Persona
+    const { nombre, apellido1, apellido2, telefono, email, direccion, ...representanteFields } = updateRepresentanteDto;
+
+    // Actualizar campos de Persona si existen
+    if (nombre !== undefined || apellido1 !== undefined || apellido2 !== undefined ||
+        telefono !== undefined || email !== undefined || direccion !== undefined) {
+      const personaUpdate: any = {};
+      if (nombre !== undefined) personaUpdate.nombre = nombre;
+      if (apellido1 !== undefined) personaUpdate.apellido1 = apellido1;
+      if (apellido2 !== undefined) personaUpdate.apellido2 = apellido2;
+      if (telefono !== undefined) personaUpdate.telefono = telefono;
+      if (email !== undefined) personaUpdate.email = email;
+      if (direccion !== undefined) personaUpdate.direccion = direccion;
+
+      await this.personaRepository.update(
+        representante.persona.idPersona,
+        personaUpdate
+      );
+
+      // RECARGAR la persona después de actualizarla
+      representante.persona = await this.personaRepository.findOne({
+        where: { idPersona: representante.persona.idPersona },
+      }) || representante.persona;
     }
 
-    return this.representanteRepository.save(representante);
+    // Actualizar campos del representante (solo cargo)
+    if (representanteFields.cargo !== undefined) {
+      representante.cargo = representanteFields.cargo;
+    }
+
+    // Guardar representante
+    const savedRepresentante = await this.representanteRepository.save(representante);
+
+    // Retornar con todas las relaciones recargadas
+    return this.findOne(savedRepresentante.idRepresentante);
+  }
+
+  async findOne(id: number): Promise<Representante> {
+    const representante = await this.representanteRepository.findOne({
+      where: { idRepresentante: id },
+      relations: ['persona', 'organizacion'],
+    });
+
+    if (!representante) {
+      throw new NotFoundException(`Representante con ID ${id} no encontrado`);
+    }
+
+    return representante;
   }
 
   async remove(id: number): Promise<void> {
