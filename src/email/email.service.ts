@@ -238,8 +238,7 @@ export class EmailService {
                     </div>
                     
                     <p style="margin:0 0 20px 0;font-size:15px">
-                      Valoramos enormemente su interés. Le animamos a que continúe apoyando 
-                      iniciativas de voluntariado y esperamos poder contar con usted en futuras oportunidades.
+                      Valoramos enormemente su interés, muchas gracias por su tiempo.
                     </p>
                     
                     <p style="margin:0;font-size:14px;color:#737373">
