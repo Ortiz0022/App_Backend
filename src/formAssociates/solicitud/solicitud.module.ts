@@ -30,6 +30,7 @@ import { AccesoModule } from 'src/formFinca/acceso/acceso.module';
 import { CanalesComercializacionModule } from 'src/formFinca/canal-comercializacion/canal.module';
 import { NecesidadesModule } from 'src/formFinca/necesidades/necesidades.module';
 import { PdfService } from './pdf.service';
+import { EmailModule } from 'src/email/email.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -61,6 +62,7 @@ import { PdfService } from './pdf.service';
     AccesoModule,
     CanalesComercializacionModule,
     NecesidadesModule,
+    EmailModule,
   ],
   controllers: [SolicitudController],
   providers: [SolicitudService, PdfService],

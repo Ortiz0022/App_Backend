@@ -18,9 +18,11 @@ import { DisponibilidadService } from '../disponibilidad/disponibilidad.service'
 import { AreasInteresService } from '../areas-interes/areas-interes.service';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { DropboxService } from 'src/dropbox/dropbox.service';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
+  [x: string]: any;
   constructor(
     @InjectRepository(SolicitudVoluntariado)
     private solicitudRepository: Repository<SolicitudVoluntariado>,
@@ -36,6 +38,7 @@ export class SolicitudVoluntariadoService {
     private areasInteresService: AreasInteresService,
     private dropboxService: DropboxService,
     private dataSource: DataSource,
+     private emailService: EmailService,
   ) {}
 
   async create(
@@ -418,6 +421,8 @@ async changeStatus(
   // Guardar la solicitud actualizada
   const updatedSolicitud = await this.solicitudRepository.save(solicitud);
 
+  await this.sendStatusChangeEmail(updatedSolicitud, changeStatusDto);
+
   // Si se aprueba, copiar documentos a entidades (asíncrono)
   if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
     this.copyDocumentsToEntities(updatedSolicitud).catch((err) => {
@@ -428,6 +433,49 @@ async changeStatus(
   // Devolver la solicitud actualizada con todas las relaciones
   return this.findOne(updatedSolicitud.idSolicitudVoluntariado);
 }
+
+private async sendStatusChangeEmail(
+    solicitud: SolicitudVoluntariado,
+    changeStatusDto: ChangeSolicitudVoluntariadoStatusDto,
+  ): Promise<void> {
+    try {
+     let email: string | undefined;
+      let nombre: string = ''; // ← INICIALIZAR
+
+      // Obtener email y nombre según el tipo de solicitante
+      if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario) {
+        email = solicitud.voluntario.persona?.email;
+        nombre = `${solicitud.voluntario.persona?.nombre} ${solicitud.voluntario.persona?.apellido1}`;
+      } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
+        email = solicitud.organizacion.email;
+        nombre = solicitud.organizacion.nombre;
+      }
+
+      if (!email) {
+        console.warn(`No se encontró email para la solicitud ${solicitud.idSolicitudVoluntariado}`);
+        return;
+      }
+
+      // Enviar correo según el estado
+      if (changeStatusDto.estado === SolicitudVoluntariadoStatus.APROBADO) {
+        await this.emailService.sendApplicationApprovalEmailVolunteers(
+          email,
+          nombre,
+          solicitud.tipoSolicitante,
+        );
+      } else if (changeStatusDto.estado === SolicitudVoluntariadoStatus.RECHAZADO) {
+        await this.emailService.sendApplicationRejectionEmailVolunteers(
+          email,
+          nombre,
+          changeStatusDto.motivo || 'No se especificó un motivo',
+          solicitud.tipoSolicitante,
+        );
+      }
+    } catch (error) {
+      console.error('Error al enviar correo de notificación:', error);
+      // No lanzamos el error para no interrumpir el flujo principal
+    }
+  }
 
   async remove(id: number): Promise<void> {
     const solicitud = await this.findOne(id);

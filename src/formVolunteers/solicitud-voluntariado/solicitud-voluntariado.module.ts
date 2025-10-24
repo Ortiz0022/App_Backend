@@ -12,6 +12,7 @@ import { RazonSocialModule } from '../razon-social/razon-social.module';
 import { DisponibilidadModule } from '../disponibilidad/disponibilidad.module';
 import { AreasInteresModule } from '../areas-interes/areas-interes.module';
 import { DropboxModule } from 'src/dropbox/dropbox.module'; // ✅ NUEVO
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DropboxModule } from 'src/dropbox/dropbox.module'; // ✅ NUEVO
     DisponibilidadModule,
     AreasInteresModule,
     DropboxModule,
+    EmailModule,
   ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService],

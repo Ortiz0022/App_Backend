@@ -38,6 +38,7 @@ import { CorrienteElectricaService } from 'src/formFinca/corriente-electrica/cor
 import { AccesoService } from 'src/formFinca/acceso/acceso.service';
 import { CanalesComercializacionService } from 'src/formFinca/canal-comercializacion/canal.service';
 import { NecesidadesService } from 'src/formFinca/necesidades/necesidades.service';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class SolicitudService {
@@ -73,7 +74,7 @@ export class SolicitudService {
     private canalesComercializacionService: CanalesComercializacionService,
     private necesidadesService: NecesidadesService,
     private dataSource: DataSource,
-
+    private emailService: EmailService,
   ) {}
 
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
@@ -506,6 +507,8 @@ export class SolicitudService {
         : undefined;
   
     await this.solicitudRepository.save(solicitud);
+    // ✅ Enviar email de notificación
+    await this.sendStatusChangeEmail(solicitud, changeStatusDto);
   
     if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
       solicitud.asociado.estado = true;
@@ -542,6 +545,38 @@ export class SolicitudService {
 
     await this.solicitudRepository.remove(solicitud);
   }
+
+private async sendStatusChangeEmail(
+  solicitud: Solicitud,
+  changeStatusDto: ChangeSolicitudStatusDto,
+): Promise<void> {
+  try {
+    const email = solicitud.persona?.email;
+    const nombre = `${solicitud.persona?.nombre || ''} ${solicitud.persona?.apellido1 || ''}`.trim();
+
+    if (!email) {
+      console.warn(`No se encontró email para la solicitud ${solicitud.idSolicitud}`);
+      return;
+    }
+
+    // Enviar correo según el estado
+    if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
+      await this.emailService.sendApplicationApprovedEmailAssociates(
+        email,
+        nombre,
+      );
+    } else if (changeStatusDto.estado === SolicitudStatus.RECHAZADO) {
+      await this.emailService.sendApplicationRejectionEmailAssociates(
+        email,
+        nombre,
+        changeStatusDto.motivo || 'No se especificó un motivo',
+      );
+    }
+  } catch (error) {
+    console.error('Error al enviar correo de notificación:', error);
+    // No lanzamos el error para no interrumpir el flujo principal
+  }
+}
 
   async findByStatus(status: SolicitudStatus) {
     return this.solicitudRepository.find({
