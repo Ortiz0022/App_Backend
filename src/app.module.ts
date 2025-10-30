@@ -14,7 +14,7 @@ import { AboutUsModule } from './aboutUs/aboutUs.module';
 import { EventModule } from './event/event.module';
 import { UsersModule } from './users/users.module';
 import { RoleModule } from './role/role.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RealtimeModule } from './realtime/realtime.module';
 import { DepartmentModule } from './anualBudget/department/department.module';
 import { FiscalYearModule } from './anualBudget/fiscalYear/fiscal-year.module';
@@ -95,18 +95,21 @@ import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes
 
     ConfigModule.forRoot({ isGlobal: true }),
 
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '123',
-      database: 'cgh_database',
-      autoLoadEntities: true,
-      synchronize: true,
+     TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: configService.get<'mysql'>('DB_TYPE', 'mysql'),
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        autoLoadEntities: true,
+        synchronize: configService.get<boolean>('DB_SYNCHRONIZE', false),
+      }),
+      inject: [ConfigService],
     }),
 
-    // 👇 cada módulo es un elemento independiente del array
     RealtimeModule,
     PrincipalModule,
     VolunteersModule,
