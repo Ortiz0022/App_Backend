@@ -617,8 +617,8 @@ private async sendStatusChangeEmail(
   async uploadDocuments(
   idSolicitud: number,
   files: {
-    cedula?: Express.Multer.File[];
-    planoFinca?: Express.Multer.File[];
+    cedula?: any[];
+    planoFinca?: any[];
   },
 ): Promise<any> {
   const solicitud = await this.solicitudRepository.findOne({
