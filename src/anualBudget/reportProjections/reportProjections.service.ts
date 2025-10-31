@@ -30,7 +30,7 @@ import { LogoHelper } from '../reportUtils/logo-helper';
 type BaseFilters = { start?: string; end?: string; departmentId?: number; };
 type IncomeFilters = BaseFilters & { incomeTypeId?: number; incomeSubTypeId?: number; };
 type SpendFilters  = BaseFilters & { spendTypeId?: number; spendSubTypeId?: number; };
-
+type PDFDoc = InstanceType<typeof PDFDocument>; 
 @Injectable()
 export class ReportProjectionsService {
   private readonly logger = new Logger(ReportProjectionsService.name);
@@ -68,7 +68,7 @@ export class ReportProjectionsService {
   private moneyPrefix: '₡' | 'CRC' = 'CRC';
 
   // Registrar fuentes con las rutas indicadas (y fallback silencioso)
-  private registerFonts(doc: PDFKit.PDFDocument) {
+  private registerFonts(doc: PDFDoc) {
     try {
       doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
       this.hasNotoSans = true;
@@ -83,10 +83,10 @@ export class ReportProjectionsService {
   }
 
   // helpers de fuente con fallback seguro
-  private fontRegular(doc: PDFKit.PDFDocument) {
+  private fontRegular(doc: PDFDoc) {
     try { doc.font('NotoSans'); } catch { try { doc.font('Helvetica'); } catch {} }
   }
-  private fontBold(doc: PDFKit.PDFDocument) {
+  private fontBold(doc: PDFDoc) {
     try { doc.font('NotoSansBold'); } catch { try { doc.font('Helvetica-Bold'); } catch { try { doc.font('Helvetica'); } catch {} } }
   }
 
@@ -115,7 +115,7 @@ export class ReportProjectionsService {
   }
 
   // ======= BLOQUES VISUALES =======
-private addWatermark(doc: PDFKit.PDFDocument) {
+private addWatermark(doc: PDFDoc) {
   try {
     const logoBuffer = LogoHelper.getLogoSync();
     if (!logoBuffer || logoBuffer.length === 0) return;
@@ -148,7 +148,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
   }
 }
 
-  private addHeader(doc: PDFKit.PDFDocument, title: string) {
+  private addHeader(doc: PDFDoc, title: string) {
     this.addWatermark(doc);
 
     this.fontBold(doc);
@@ -164,7 +164,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
     doc.y = 86;
   }
 
-  private addFiltersBlock(doc: PDFKit.PDFDocument, filters?: any) {
+  private addFiltersBlock(doc: PDFDoc, filters?: any) {
     if (!this.hasAnyFilter(filters)) return;
 
     const y = doc.y, W = doc.page.width - 100, H = 84;
@@ -191,7 +191,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
     doc.y = y + H + 16;
   }
 
-  private addSummaryCardsList(doc: PDFKit.PDFDocument, summary: {
+  private addSummaryCardsList(doc: PDFDoc, summary: {
     byDepartment?: Array<{ departmentId:number; departmentName:string; total:number }>;
     byIncomeSubType?: Array<{ incomeSubTypeId:number; incomeSubTypeName:string; total:number }>;
     bySpendSubType?: Array<{ spendSubTypeId:number; spendSubTypeName:string; total:number }>;
@@ -240,7 +240,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
     doc.y = top + H + 16;
   }
 
-  private addSummaryCardsCompare(doc: PDFKit.PDFDocument, totals: { real:number; projected:number; difference:number }, diffLabel?:string) {
+  private addSummaryCardsCompare(doc: PDFDoc, totals: { real:number; projected:number; difference:number }, diffLabel?:string) {
     const GAP = 10;
     const W = (doc.page.width - 100 - GAP*2) / 3;
     const H = 80;
@@ -273,7 +273,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
   }
 
   private addTableGeneric(
-    doc: PDFKit.PDFDocument,
+    doc: PDFDoc,
     columns: Array<{ key: string; title: string; w: number; map?: (row:any)=>any; align?: 'left'|'right' }>,
     rows: any[]
   ) {
@@ -349,7 +349,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
     doc.y = y + 8;
   }
 
-  private addFooter(doc: PDFKit.PDFDocument, caption = 'Sistema de Presupuesto — Reporte') {
+  private addFooter(doc: PDFDoc, caption = 'Sistema de Presupuesto — Reporte') {
     const y = doc.page.height - 32;
     doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8).strokeColor(this.UI.line).lineWidth(1).stroke();
     this.fontRegular(doc);

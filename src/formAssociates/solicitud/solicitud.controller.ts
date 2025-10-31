@@ -12,13 +12,14 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
-  Res} from '@nestjs/common';
+  Res,
+} from '@nestjs/common';
+import express from 'express';  // ← CAMBIA: Elimina "import express from 'express'" y usa esto
 import { SolicitudService } from './solicitud.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import express from 'express';
 import { PdfService } from './pdf.service';
 
 @Controller('solicitudes')
@@ -36,17 +37,17 @@ export class SolicitudController {
 
   @Post(':id/upload-documents')
   @UseInterceptors(
-  FileFieldsInterceptor([
-    { name: 'cedula', maxCount: 1 },
-    { name: 'planoFinca', maxCount: 1 },
-  ]),
-)
+    FileFieldsInterceptor([
+      { name: 'cedula', maxCount: 1 },
+      { name: 'planoFinca', maxCount: 1 },
+    ]),
+  )
   async uploadDocuments(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles()
     files: {
-      cedula?: Express.Multer.File[]; 
-      planoFinca?: Express.Multer.File[]; 
+      cedula?: any[];
+      planoFinca?: any[];
     },
   ) {
     return this.solicitudService.uploadDocuments(id, files);
@@ -101,7 +102,7 @@ export class SolicitudController {
   @Get(':id/pdf')
   async downloadPDF(
     @Param('id') id: string,
-    @Res() res: express.Response,
+    @Res() res: express.Response, 
   ): Promise<void> {
     const solicitud = await this.solicitudService.findOneComplete(+id);
     

@@ -222,9 +222,9 @@ async findAllPaginated(params: {
   async uploadDocuments(
     idSolicitud: number,
     files: {
-      cv?: Express.Multer.File[];
-      cedula?: Express.Multer.File[];
-      carta?: Express.Multer.File[];
+      cv?: any[];
+      cedula?: any[];
+      carta?: any[];
     },
   ): Promise<any> {
     const solicitud = await this.solicitudRepository.findOne({

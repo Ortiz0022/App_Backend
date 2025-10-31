@@ -1,6 +1,5 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { Dropbox } from 'dropbox';
-
 @Injectable()
 export class DropboxService {
   constructor(@Inject('DROPBOX') private dbx: Dropbox) {
@@ -30,9 +29,14 @@ export class DropboxService {
    * @returns URL pública del archivo
    */
   async uploadFile(
-    file: Express.Multer.File,
-    dropboxPath: string,
-  ): Promise<string> {
+  file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  },
+  dropboxPath: string,
+): Promise<string> {
     this.ensureInitialized();
     
     try {

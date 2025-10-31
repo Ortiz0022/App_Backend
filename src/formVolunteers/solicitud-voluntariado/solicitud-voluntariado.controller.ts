@@ -44,9 +44,9 @@ export class SolicitudVoluntariadoController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles()
     files: {
-      cv?: Express.Multer.File[];
-      cedula?: Express.Multer.File[];
-      carta?: Express.Multer.File[];
+      cv?: any[];
+      cedula?: any[];
+      carta?: any[];
     },
   ) {
     return this.solicitudService.uploadDocuments(id, files);

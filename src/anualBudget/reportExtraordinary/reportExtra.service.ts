@@ -8,6 +8,7 @@ import PDFDocument from 'pdfkit';
 import * as ExcelJS from 'exceljs';
 import { LogoHelper } from '../reportUtils/logo-helper';
 
+type PDFDoc = InstanceType<typeof PDFDocument>; 
 @Injectable()
 export class ReportExtraService {
   constructor(
@@ -241,7 +242,7 @@ export class ReportExtraService {
     });
   }
 
-private addWatermark(doc: PDFKit.PDFDocument) {
+private addWatermark(doc: PDFDoc) {
   try {
     const logoBuffer = LogoHelper.getLogoSync();
     if (!logoBuffer || logoBuffer.length === 0) return;
@@ -275,7 +276,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
 }
 
   // ================== MÉTODOS PRIVADOS PARA PDF (solo estilo visual) ==================
-private addHeader(doc: PDFKit.PDFDocument) {
+private addHeader(doc: PDFDoc) {
   doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
   doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
 
@@ -307,7 +308,7 @@ private addHeader(doc: PDFKit.PDFDocument) {
   doc.y = 86;
 }
 
-  private addFilters(doc: PDFKit.PDFDocument, filters: ExtraFilters) {
+  private addFilters(doc: PDFDoc, filters: ExtraFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
     doc.roundedRect(50, y, W, H, 12)
        .lineWidth(1).strokeColor(this.UI.line).stroke();
@@ -327,7 +328,7 @@ private addHeader(doc: PDFKit.PDFDocument) {
     doc.y = y + H + 16;
   }
 
-  private addSummary(doc: PDFKit.PDFDocument, summary: any) {
+  private addSummary(doc: PDFDoc, summary: any) {
     const GAP = 10;
     const W = (doc.page.width - 100 - GAP*2) / 3;
     const H = 72;
@@ -376,7 +377,7 @@ private addHeader(doc: PDFKit.PDFDocument) {
   }
 
   
-  private addTable(doc: PDFKit.PDFDocument, table: ExtraRow[]) {
+  private addTable(doc: PDFDoc, table: ExtraRow[]) {
     doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
     doc.moveDown(0.5);
 
@@ -448,7 +449,7 @@ private addHeader(doc: PDFKit.PDFDocument) {
     doc.y = y + 8;
   }
 
-  private addFooter(doc: PDFKit.PDFDocument) {
+  private addFooter(doc: PDFDoc) {
     const y = doc.page.height - 32;
     doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8)
        .strokeColor(this.UI.line).lineWidth(1).stroke();

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import PDFDocument from 'pdfkit';
@@ -14,6 +14,7 @@ import { IncomeFilters } from './dto/report-income-filters.dto';
 import { SpendFilters } from './dto/report-spend-filters.dto';
 import { LogoHelper } from '../reportUtils/logo-helper';
 
+type PDFDoc = InstanceType<typeof PDFDocument>; 
 @Injectable()
 export class ReportService {
   constructor(
@@ -43,7 +44,7 @@ export class ReportService {
   private hasNotoSans = false;
   private moneyPrefix: '₡'|'CRC' = 'CRC';
 
-  private registerFonts(doc: PDFKit.PDFDocument) {
+  private registerFonts(doc: PDFDoc) {
     try {
       doc.registerFont('NotoSans',     __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
       this.hasNotoSans = true;
@@ -57,10 +58,10 @@ export class ReportService {
     this.fontRegular(doc);
   }
 
-  private fontRegular(doc: PDFKit.PDFDocument) {
+  private fontRegular(doc: PDFDoc) {
     try { doc.font('NotoSans'); } catch { try { doc.font('Helvetica'); } catch {} }
   }
-  private fontBold(doc: PDFKit.PDFDocument) {
+  private fontBold(doc: PDFDoc) {
     try { doc.font('NotoSansBold'); } catch { try { doc.font('Helvetica-Bold'); } catch { try { doc.font('Helvetica'); } catch {} } }
   }
 
@@ -342,46 +343,7 @@ export class ReportService {
     });
   }
 
-  // ================== BLOQUES VISUALES ==================
-
-// ✅ Agregar método para marca de agua centrada
-// ✅ Agregar método para marca de agua centrada
-// ✅ Marca de agua centrada usando tamaño real del logo 
-// private addWatermark(doc: PDFKit.PDFDocument) {
-//   try {
-//     const logoBuffer = LogoHelper.getLogoSync();
-//     if (!logoBuffer || logoBuffer.length === 0) return;
-
-//     // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
-//     const img: any = (doc as any).openImage?.(logoBuffer);
-//     if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
-
-//     const pageW = doc.page.width;
-//     const pageH = doc.page.height;
-
-//     // 2) Escala máxima (ajusta si quieres más grande/pequeño)
-//     const maxW = pageW * 0.55;
-//     const maxH = pageH * 0.55;
-
-//     const scale = Math.min(maxW / img.width, maxH / img.height);
-//     const drawW = img.width * scale;
-//     const drawH = img.height * scale;
-
-//     // 3) Coordenadas exactamente centradas
-//     const x = (pageW - drawW) / 2;
-//     const y = (pageH - drawH) / 2;
-
-//     doc.save();
-//     doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
-//     doc.image(img, x, y, { width: drawW });
-//     doc.restore();
-//   } catch {
-//     // ignorar
-//   }
-// }
-
-//logo mas abajo pero centrado la pagina 
-private addWatermark(doc: PDFKit.PDFDocument) {
+private addWatermark(doc: PDFDoc) {
   try {
     const logoBuffer = LogoHelper.getLogoSync();
     if (!logoBuffer || logoBuffer.length === 0) return;
@@ -414,7 +376,7 @@ private addWatermark(doc: PDFKit.PDFDocument) {
   }
 }
 
-private addHeader(doc: PDFKit.PDFDocument, title: string) {
+private addHeader(doc: PDFDoc, title: string) {
   // ✅ Agregar marca de agua en cada página
   this.addWatermark(doc);
 
@@ -445,7 +407,7 @@ private addHeader(doc: PDFKit.PDFDocument, title: string) {
 
 // ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
 private addTable(
-  doc: PDFKit.PDFDocument,
+  doc: PDFDoc,
   columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
   rows: any[]
 ) {
@@ -533,7 +495,7 @@ private addTable(
   doc.y = y + 8;
 }
 
-  private addFiltersIncome(doc: PDFKit.PDFDocument, f: IncomeFilters) {
+  private addFiltersIncome(doc: PDFDoc, f: IncomeFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
     doc.roundedRect(50, y, W, H, 12).lineWidth(1).strokeColor(this.UI.line).stroke();
 
@@ -559,7 +521,7 @@ private addTable(
     doc.y = y + H + 16;
   }
 
-  private addFiltersSpend(doc: PDFKit.PDFDocument, f: SpendFilters) {
+  private addFiltersSpend(doc: PDFDoc, f: SpendFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
     doc.roundedRect(50, y, W, H, 12).lineWidth(1).strokeColor(this.UI.line).stroke();
 
@@ -585,7 +547,7 @@ private addTable(
     doc.y = y + H + 16;
   }
 
-  private addSummaryCards(doc: PDFKit.PDFDocument, _title: string, summary: any) {
+  private addSummaryCards(doc: PDFDoc, _title: string, summary: any) {
     const GAP = 10;
     const W = (doc.page.width - 100 - GAP*2) / 3;
     const H = 88;
@@ -626,93 +588,7 @@ private addTable(
     doc.y = top + H + 16;
   }
 
-  // private addTable(
-  //   doc: PDFKit.PDFDocument,
-  //   columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
-  //   rows: any[]
-  // ) {
-  //   this.fontBold(doc);
-  //   doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
-  //   doc.moveDown(0.5);
-
-  //   const left = 50, right = doc.page.width - 50;
-  //   const xs: number[] = []; let acc = left;
-  //   for (const c of columns) { xs.push(acc); acc += c.w; }
-
-  //   let y = doc.y + 6;
-
-  //   // Header
-  //   doc.roundedRect(left, y, right-left, 28, 12)
-  //      .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-
-  //   this.fontBold(doc);
-  //   doc.fontSize(9).fillColor(this.UI.gray);
-  //   columns.forEach((c, i) => {
-  //     const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
-  //     doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
-  //   });
-  //   y += 34;
-
-  //   const bottom = () => doc.page.height - doc.page.margins.bottom;
-  //   const ensure = (rowH=22) => {
-  //     if (y + rowH > bottom()) {
-  //       doc.addPage(); y = doc.page.margins.top;
-  //       doc.roundedRect(left, y, right-left, 28, 12)
-  //          .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-  //       this.fontBold(doc);
-  //       doc.fontSize(9).fillColor(this.UI.gray);
-  //       columns.forEach((c, i) => {
-  //         const align = (c.align ?? (/monto|total/i.test(c.title) ? 'right' : 'left')) as 'left'|'right';
-  //         doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align });
-  //       });
-  //       y += 34;
-  //     }
-  //   };
-
-  //   if (!rows.length) {
-  //     ensure(40);
-  //     this.fontRegular(doc);
-  //     doc.fontSize(10).fillColor('#EF4444')
-  //        .text('Sin resultados con los filtros aplicados.', left, y + 6);
-  //     doc.y = y + 40;
-  //     return;
-  //   }
-
-  //   // Filas
-  //   rows.forEach((row, idx) => {
-  //     ensure(24);
-
-  //     // zebra
-  //     doc.rect(left, y, right-left, 22)
-  //        .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
-  //        .fill();
-
-  //     this.fontRegular(doc);
-  //     doc.fontSize(9).fillColor(this.UI.ink);
-
-  //     columns.forEach((c, i) => {
-  //       let raw = c.map ? c.map(row) : (row as any)[c.key];
-  //       if (String(c.key).toLowerCase().includes('date')) raw = this.safeDate(raw);
-
-  //       const isMoney = (c.align === 'right') || /monto|total|amount|used|remaining/i.test(c.title) || /amount|total/i.test(c.key);
-  //       const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
-  //       const align: 'left'|'right' = (c.align ?? (isMoney ? 'right' : 'left')) as any;
-
-  //       doc.text(txt, xs[i] + 10, y + 6, {
-  //         width: c.w - 20,
-  //         align,
-  //         lineBreak: false,
-  //       });
-  //     });
-
-  //     y += 22;
-  //     doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
-  //   });
-
-  //   doc.y = y + 8;
-  // }
-
-  private addFooter(doc: PDFKit.PDFDocument) {
+  private addFooter(doc: PDFDoc) {
     const y = doc.page.height - 32;
     doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8)
        .strokeColor(this.UI.line).lineWidth(1).stroke();
