@@ -4,10 +4,21 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Lee las URLs permitidas desde variable de entorno
+  const corsOrigins = process.env.CORS_ORIGINS 
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:5174', 'http://localhost:5173'];
+  
   app.enableCors({
-    origin: ['http://localhost:5174', 'http://localhost:5173'],
+    origin: corsOrigins,
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000);
+  
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  
+  console.log(` Application running on port ${port}`);
+  console.log(` CORS enabled for: ${corsOrigins.join(', ')}`);
 }
 bootstrap();
