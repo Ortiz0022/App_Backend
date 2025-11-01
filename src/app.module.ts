@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
-
+import { EmailModule } from './email/email.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrincipalModule } from './principal/principal.module';
@@ -114,6 +114,7 @@ import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes
     PrincipalModule,
     VolunteersModule,
     PersonalModule,
+    EmailModule,
     FaqModule,
     AuthModule,
     ServicesInformativeModule,
