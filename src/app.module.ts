@@ -93,7 +93,7 @@ import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes
       },
     ]),
 
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env', }),
 
      TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

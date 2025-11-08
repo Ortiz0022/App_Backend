@@ -1,23 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common'
-import * as nodemailer from 'nodemailer'
+import { ConfigService } from '@nestjs/config'
+import * as Brevo from '@getbrevo/brevo';
 
 @Injectable()
 export class EmailService {
-  private readonly logger = new Logger(EmailService.name)
-  private transporter: nodemailer.Transporter
+  private readonly logger = new Logger(EmailService.name);
+  private readonly apiInstance: Brevo.TransactionalEmailsApi;
+  private readonly sender: Brevo.SendSmtpEmailSender;
 
-  constructor() {
-    // Crear transporter con envs
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT) === 465, // SSL en 465
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    })
+  constructor(private readonly config: ConfigService) {
+    const apiKey = this.config.get<string>('BREVO_API_KEY');
+    if (!apiKey) throw new Error('Falta BREVO_API_KEY en .env');
+    this.apiInstance = new Brevo.TransactionalEmailsApi();
+    this.apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey);
+    this.sender = { name: 'Cámara de Ganaderos', email: 'camara.ganaderos.hojancha1985@gmail.com' };
   }
+
 
   async sendResetPasswordEmail(to: string, resetLink: string) {
     const from = process.env.SMTP_FROM || 'no-reply@example.com'
@@ -38,20 +36,19 @@ export class EmailService {
       </div>
     `
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from,
-      to,
+    const email: Brevo.SendSmtpEmail = {
+      sender: this.sender,
+      to: [{ email: to }],
       subject: 'Restablece tu contraseña',
-      html,
-    }
+      htmlContent: html,
+    };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      this.logger.log(`Email enviado a ${to}: ${info.messageId}`)
-      return info
-    } catch (err) {
-      this.logger.error('Error enviando email de reset password', err as any)
-      throw err
+      await this.apiInstance.sendTransacEmail(email);
+      this.logger.log(`✅ Correo enviado a ${to}`);
+    } catch (e) {
+      this.logger.error('❌ Error enviando email', e.response?.body || e);
+      throw e;
     }
   }
 
@@ -158,19 +155,19 @@ export class EmailService {
       </html>
     `
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from,
-      to,
-      subject: "¡Felicidades! Tu solicitud de voluntariado ha sido aprobada",
-      html,
-    }
+    const email: Brevo.SendSmtpEmail = {
+      sender: this.sender,
+      to: [{ email: to }],
+      subject: 'Restablece tu contraseña',
+      htmlContent: html,
+    };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      this.logger.log(`Email de aprobación enviado a ${to}: ${info.messageId}`)
-    } catch (err) {
-      this.logger.error(`Error enviando email de aprobación a ${to}`, err as any)
-      throw err
+      await this.apiInstance.sendTransacEmail(email);
+      this.logger.log(`✅ Correo enviado a ${to}`);
+    } catch (e) {
+      this.logger.error('❌ Error enviando email', e.response?.body || e);
+      throw e;
     }
   }
 
@@ -269,21 +266,22 @@ export class EmailService {
       </html>
     `
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from,
-      to,
-      subject: "Actualización sobre tu solicitud de voluntariado",
-      html,
-    }
+    const email: Brevo.SendSmtpEmail = {
+      sender: this.sender,
+      to: [{ email: to }],
+      subject: 'Restablece tu contraseña',
+      htmlContent: html,
+    };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      this.logger.log(`Email de rechazo enviado a ${to}: ${info.messageId}`)
-    } catch (err) {
-      this.logger.error(`Error enviando email de rechazo a ${to}`, err as any)
-      throw err
+      await this.apiInstance.sendTransacEmail(email);
+      this.logger.log(`✅ Correo enviado a ${to}`);
+    } catch (e) {
+      this.logger.error('❌ Error enviando email', e.response?.body || e);
+      throw e;
     }
   }
+
   async sendApplicationApprovedEmailAssociates(to: string, name?: string) {
     const from = process.env.SMTP_FROM || "no-reply@example.com"
 
@@ -371,21 +369,20 @@ export class EmailService {
     </html>
   `
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from,
-      to,
-      subject: "Solicitud de asociación aprobada",
-      html,
-    }
+    const email: Brevo.SendSmtpEmail = {
+      sender: this.sender,
+      to: [{ email: to }],
+      subject: 'Restablece tu contraseña',
+      htmlContent: html,
+    };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      this.logger.log(`Email APROBADA enviado a ${to}: ${info.messageId}`)
-      return info
-    } catch (err) {
-      this.logger.error("Error enviando email de solicitud aprobada", err as any)
-      throw err
-    }
+      await this.apiInstance.sendTransacEmail(email);
+      this.logger.log(`✅ Correo enviado a ${to}`);
+    } catch (e) {
+      this.logger.error('❌ Error enviando email', e.response?.body || e);
+      throw e;
+    } 
   }
 
   async sendApplicationRejectionEmailAssociates(to: string, name?: string, reason?: string) {
@@ -468,20 +465,19 @@ export class EmailService {
     </html>
   `
 
-    const mailOptions: nodemailer.SendMailOptions = {
-      from,
-      to,
-      subject: "Solicitud de asociación rechazada",
-      html,
-    }
+   const email: Brevo.SendSmtpEmail = {
+      sender: this.sender,
+      to: [{ email: to }],
+      subject: 'Restablece tu contraseña',
+      htmlContent: html,
+    };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions)
-      this.logger.log(`Email RECHAZADA enviado a ${to}: ${info.messageId}`)
-      return info
-    } catch (err) {
-      this.logger.error("Error enviando email de solicitud rechazada", err as any)
-      throw err
+      await this.apiInstance.sendTransacEmail(email);
+      this.logger.log(`✅ Correo enviado a ${to}`);
+    } catch (e) {
+      this.logger.error('❌ Error enviando email', e.response?.body || e);
+      throw e;
     }
   }
 }
