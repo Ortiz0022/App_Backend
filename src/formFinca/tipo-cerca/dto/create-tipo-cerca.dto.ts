@@ -1,12 +1,19 @@
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateTipoCercaDto {
+  @IsOptional()
   @IsBoolean()
-  viva: boolean;
+  alambrePuas?: boolean;
 
+  @IsOptional()
   @IsBoolean()
-  electrica: boolean;
+  viva?: boolean;
 
+  @IsOptional()
   @IsBoolean()
-  pMuerto: boolean; // "palo muerto"
+  electrica?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pMuerto?: boolean; // "palo muerto"
 }

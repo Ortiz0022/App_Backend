@@ -5,8 +5,8 @@ import { TipoCerca } from './entities/tipo-cerca.entity';
 import { CreateTipoCercaDto } from './dto/create-tipo-cerca.dto';
 import { UpdateTipoCercaDto } from './dto/update-tipo-cerca.dto';
 
-function atLeastOneTrue(viva?: boolean, electrica?: boolean, pMuerto?: boolean) {
-  return !!(viva || electrica || pMuerto);
+function atLeastOneTrue(alambrePuas?: boolean, viva?: boolean, electrica?: boolean, pMuerto?: boolean) {
+  return !!(alambrePuas || viva || electrica || pMuerto);
 }
 
 @Injectable()
@@ -17,12 +17,12 @@ export class TiposCercaService {
   ) {}
 
   async create(dto: CreateTipoCercaDto) {
-    if (!atLeastOneTrue(dto.viva, dto.electrica, dto.pMuerto)) {
-      throw new BadRequestException('Debe activar al menos una opción (viva, eléctrica o p. muerto).');
+    if (!atLeastOneTrue(dto.alambrePuas, dto.viva, dto.electrica, dto.pMuerto)) {
+      throw new BadRequestException('Debe activar al menos una opción (alambre de puas, viva, eléctrica o p. muerto).');
     }
 
     const dup = await this.repo.findOne({
-      where: { viva: dto.viva, electrica: dto.electrica, pMuerto: dto.pMuerto },
+      where: { alambrePuas: dto.alambrePuas, viva: dto.viva, electrica: dto.electrica, pMuerto: dto.pMuerto },
     });
     if (dup) throw new BadRequestException('Ya existe un TipoCerca con esa combinación.');
 
@@ -34,13 +34,14 @@ export class TiposCercaService {
     dto: CreateTipoCercaDto,
     manager: EntityManager,
   ): Promise<TipoCerca> {
-    if (!atLeastOneTrue(dto.viva, dto.electrica, dto.pMuerto)) {
-      throw new BadRequestException('Debe activar al menos una opción (viva, eléctrica o p. muerto).');
+    if (!atLeastOneTrue(dto.alambrePuas, dto.viva, dto.electrica, dto.pMuerto)) {
+      throw new BadRequestException('Debe activar al menos una opción (alambre de puas, viva, eléctrica o p. muerto).');
     }
   
     // Buscar combinación existente
     let tipoCerca = await manager.findOne(TipoCerca, {
       where: {
+        alambrePuas: dto.alambrePuas,
         viva: dto.viva,
         electrica: dto.electrica,
         pMuerto: dto.pMuerto,
@@ -70,12 +71,13 @@ export class TiposCercaService {
     const entity = await this.findOne(id);
     const next = { ...entity, ...dto };
 
-    if (!atLeastOneTrue(next.viva, next.electrica, next.pMuerto)) {
+    if (!atLeastOneTrue(next.alambrePuas, next.viva, next.electrica, next.pMuerto)) {
       throw new BadRequestException('Debe quedar al menos una opción en true.');
     }
 
     const dup = await this.repo.findOne({
       where: {
+        alambrePuas: next.alambrePuas,
         viva: next.viva,
         electrica: next.electrica,
         pMuerto: next.pMuerto,

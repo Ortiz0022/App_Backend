@@ -2,10 +2,13 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeo
 import { FincaTipoCerca } from '../../finca-tipo-cerca/entities/finca-tipo-cerca.entity';
 
 @Entity('tiposcerca')
-@Unique(['viva', 'electrica', 'pMuerto']) // evita duplicar la misma combinación
+@Unique(['alambrePuas', 'viva', 'electrica', 'pMuerto']) // evita duplicar la misma combinación
 export class TipoCerca {
   @PrimaryGeneratedColumn({ name: 'idTipoCerca', type: 'int' })
   idTipoCerca: number;
+
+  @Column({ type: 'bool', default: false })
+  alambrePuas: boolean;
 
   @Column({ type: 'bool', default: false })
   viva: boolean;
