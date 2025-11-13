@@ -158,7 +158,7 @@ export class EmailService {
     const email: Brevo.SendSmtpEmail = {
       sender: this.sender,
       to: [{ email: to }],
-      subject: 'Restablece tu contraseña',
+      subject: 'Solicitud de voluntariado aprobada',
       htmlContent: html,
     };
 
@@ -269,7 +269,7 @@ export class EmailService {
     const email: Brevo.SendSmtpEmail = {
       sender: this.sender,
       to: [{ email: to }],
-      subject: 'Restablece tu contraseña',
+      subject: 'Solicitud de voluntariado rechazada',
       htmlContent: html,
     };
 
@@ -372,7 +372,7 @@ export class EmailService {
     const email: Brevo.SendSmtpEmail = {
       sender: this.sender,
       to: [{ email: to }],
-      subject: 'Restablece tu contraseña',
+      subject: 'Solicitud de asociado aprobada',
       htmlContent: html,
     };
 
@@ -468,7 +468,7 @@ export class EmailService {
    const email: Brevo.SendSmtpEmail = {
       sender: this.sender,
       to: [{ email: to }],
-      subject: 'Restablece tu contraseña',
+      subject: 'Solicitud de asociado rechazada',
       htmlContent: html,
     };
 

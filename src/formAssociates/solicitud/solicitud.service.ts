@@ -302,29 +302,48 @@ export class SolicitudService {
       
        // 16. ✅ Crear Tipo de Cerca (si viene)
       if (createDto.tipoCerca) {
-        const tipoCerca = await this.tiposCercaService.findOrCreateInTransaction(
-          createDto.tipoCerca,
-          queryRunner.manager,
-        );
+  const tiposCercaConfig = [
+    { key: 'alambrePuas', active: createDto.tipoCerca.alambrePuas },
+    { key: 'viva', active: createDto.tipoCerca.viva },
+    { key: 'electrica', active: createDto.tipoCerca.electrica },
+    { key: 'pMuerto', active: createDto.tipoCerca.pMuerto },
+  ];
 
-        await this.fincaTipoCercaService.linkInTransaction(
-          {
-            idFinca: finca.idFinca,
-            idTipoCerca: tipoCerca.idTipoCerca,
-          },
-          finca,
-          tipoCerca,
-          queryRunner.manager,
-        );
-      }
+  // Procesar cada tipo de cerca que esté activo
+  for (const config of tiposCercaConfig) {
+    if (!config.active) continue;
 
-      if (createDto.canales && createDto.canales.length > 0) {
-        await this.canalesComercializacionService.createManyInTransaction(
-          createDto.canales,
-          finca,
-          queryRunner.manager,
-        );
-      }
+    // Crear objeto con solo este tipo activo
+    const tipoCercaData: any = {
+      alambrePuas: config.key === 'alambrePuas',
+      viva: config.key === 'viva',
+      electrica: config.key === 'electrica',
+      pMuerto: config.key === 'pMuerto',
+    };
+
+    try {
+      const tipoCerca = await this.tiposCercaService.findOrCreateInTransaction(
+        tipoCercaData,
+        queryRunner.manager,
+      );
+
+      await this.fincaTipoCercaService.linkInTransaction(
+        {
+          idFinca: finca.idFinca,
+          idTipoCerca: tipoCerca.idTipoCerca,
+        },
+        finca,
+        tipoCerca,
+        queryRunner.manager,
+      );
+      
+      console.log(`✅ Tipo de cerca "${config.key}" vinculado correctamente`);
+    } catch (error) {
+      console.error(`❌ Error al vincular tipo de cerca "${config.key}":`, error);
+      // No lanzar error aquí para que continúe con los demás tipos
+    }
+  }
+}
 
        // 17. Crear Infraestructuras (si vienen)
          if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
