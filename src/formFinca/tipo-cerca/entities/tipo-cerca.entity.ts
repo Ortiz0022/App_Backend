@@ -1,8 +1,7 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { FincaTipoCerca } from '../../finca-tipo-cerca/entities/finca-tipo-cerca.entity';
 
 @Entity('tiposcerca')
-@Unique(['alambrePuas', 'viva', 'electrica', 'pMuerto']) // evita duplicar la misma combinación
 export class TipoCerca {
   @PrimaryGeneratedColumn({ name: 'idTipoCerca', type: 'int' })
   idTipoCerca: number;

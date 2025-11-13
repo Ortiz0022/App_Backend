@@ -1,10 +1,8 @@
 import { Finca } from 'src/formFinca/finca/entities/finca.entity';
 import { TipoCerca } from 'src/formFinca/tipo-cerca/entities/tipo-cerca.entity';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
-
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('fincatipocerca')
-@Unique(['idFinca', 'idTipoCerca'])
 export class FincaTipoCerca {
   @PrimaryGeneratedColumn({ name: 'idFincaTipoCerca', type: 'int' })
   id: number;
