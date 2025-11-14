@@ -191,163 +191,337 @@ private addWatermark(doc: PDFDoc) {
     doc.y = y + H + 16;
   }
 
-  private addSummaryCardsList(doc: PDFDoc, summary: {
-    byDepartment?: Array<{ departmentId:number; departmentName:string; total:number }>;
-    byIncomeSubType?: Array<{ incomeSubTypeId:number; incomeSubTypeName:string; total:number }>;
-    bySpendSubType?: Array<{ spendSubTypeId:number; spendSubTypeName:string; total:number }>;
+addSummaryCardsList(
+  doc: PDFDoc,
+  summary: {
+    byDepartment?: Array<{ departmentId: number; departmentName: string; total: number }>;
+    byIncomeSubType?: Array<{ incomeSubTypeId: number; incomeSubTypeName: string; total: number }>;
+    bySpendSubType?: Array<{ spendSubTypeId: number; spendSubTypeName: string; total: number }>;
     grandTotal: number;
-  }) {
-    const GAP = 10;
-    const W = (doc.page.width - 100 - GAP*2) / 3;
-    const H = 80;
-    const top = doc.y;
+  },
+) {
+  const GAP = 10;
+  const W = (doc.page.width - 100 - GAP * 2) / 3;
+  const H = 80;
+  const top = doc.y;
 
-    const total = Number(summary?.grandTotal ?? 0);
-    const depts = (summary?.byDepartment ?? []) as Array<{ departmentName:string; total:number }>;
-    const topDept = [...depts].sort((a,b)=> (b.total||0)-(a.total||0))[0] ?? { departmentName:'—', total:0 };
-    const bySub  = ((summary?.byIncomeSubType ?? summary?.bySpendSubType) ?? []) as Array<{ total:number; [k:string]:any }>;
-    const topSub = [...bySub].sort((a,b)=> (b.total||0)-(a.total||0))[0] ?? { total:0 };
-    const topSubName = (topSub as any).incomeSubTypeName ?? (topSub as any).spendSubTypeName ?? '—';
-
-    const draw = (x:number, label:string, value:string, palette:any, pct?:number, subtitle?:string) => {
-      const prevY = doc.y;
-      doc.roundedRect(x, top, W, H, 16).lineWidth(1).strokeColor(palette.ring).fillAndStroke(palette.bg);
-
-      this.fontBold(doc);
-      doc.fontSize(9).fillColor(palette.text).text(label.toUpperCase(), x + 14, top + 10);
-
-      if (subtitle) {
-        this.fontRegular(doc);
-        doc.fontSize(10).fillColor(palette.text).text(subtitle, x + 14, top + 24, { width: W - 28, lineBreak:false });
-      }
-
-      this.fontBold(doc);
-      doc.fontSize(18).fillColor(palette.text)
-        .text(value, x + 14, subtitle ? (top + 40) : (top + 28), { width: W - 28, align:'right', lineBreak:false });
-
-      const barW = W - 28, barY = top + H - 16;
-      doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
-      const p = Math.max(0, Math.min(100, pct ?? 100));
-      doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
-
-      doc.y = prevY;
+  const total = Number(summary?.grandTotal ?? 0);
+  const depts = (summary?.byDepartment ?? []) as Array<{
+    departmentName: string;
+    total: number;
+  }>;
+  const topDept =
+    [...depts].sort((a, b) => (b.total || 0) - (a.total || 0))[0] ?? {
+      departmentName: '—',
+      total: 0,
     };
 
-    draw(50,               'Total',       this.formatCRC(total),                    this.UI.card.total,  100);
-    draw(50 + W + GAP,     'Top Depto',   this.formatCRC(Number(topDept.total||0)), this.UI.card.used,   total>0?Math.round((Number(topDept.total||0)/total)*100):0, topDept.departmentName);
-    draw(50 + 2*(W + GAP), 'Top Subtipo', this.formatCRC(Number(topSub.total||0)),  this.UI.card.remain, total>0?Math.round((Number(topSub.total||0)/total)*100):0, topSubName);
-
-    doc.y = top + H + 16;
-  }
-
-  private addSummaryCardsCompare(doc: PDFDoc, totals: { real:number; projected:number; difference:number }, diffLabel?:string) {
-    const GAP = 10;
-    const W = (doc.page.width - 100 - GAP*2) / 3;
-    const H = 80;
-    const top = doc.y;
-
-    const draw = (x:number, label:string, value:number, palette:any, pct?:number) => {
-      const prevY = doc.y;
-      doc.roundedRect(x, top, W, H, 16).lineWidth(1).strokeColor(palette.ring).fillAndStroke(palette.bg);
-
-      this.fontBold(doc);
-      doc.fontSize(9).fillColor(palette.text).text(label.toUpperCase(), x + 14, top + 10);
-
-      this.fontBold(doc);
-      doc.fontSize(18).fillColor(palette.text)
-        .text(this.formatCRC(value), x + 14, top + 28, { width: W - 28, align:'right', lineBreak:false });
-
-      const barW = W - 28, barY = top + H - 16;
-      doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
-      const p = Math.max(0, Math.min(100, pct ?? 100));
-      doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
-
-      doc.y = prevY;
+  const bySub =
+    (summary?.byIncomeSubType ?? summary?.bySpendSubType) ??
+    [];
+  const topSub =
+    [...bySub].sort((a, b) => (b.total || 0) - (a.total || 0))[0] ?? {
+      total: 0,
     };
+  const topSubName =
+    (topSub as any).incomeSubTypeName ??
+    (topSub as any).spendSubTypeName ??
+    '—';
 
-    const total = Math.max(1, (totals.real ?? 0) + (totals.projected ?? 0));
-    draw(50,               'Total Real',        totals.real ?? 0,        this.UI.card.total,  Math.round(((totals.real ?? 0)/total)*100));
-    draw(50 + W + GAP,     'Total Proyectado',  totals.projected ?? 0,   this.UI.card.used,   Math.round(((totals.projected ?? 0)/total)*100));
-    draw(50 + 2*(W + GAP), diffLabel ?? 'Diferencia', totals.difference ?? 0, this.UI.card.remain, 100);
-    doc.y = top + H + 16;
-  }
+  const draw = (
+    x: number,
+    label: string,
+    value: string,
+    palette: any,
+    pct?: number,
+    subtitle?: string,
+  ) => {
+    const prevY = doc.y;
+    doc
+      .roundedRect(x, top, W, H, 16)
+      .lineWidth(1)
+      .strokeColor(palette.ring)
+      .fillAndStroke(palette.bg);
 
-  private addTableGeneric(
-    doc: PDFDoc,
-    columns: Array<{ key: string; title: string; w: number; map?: (row:any)=>any; align?: 'left'|'right' }>,
-    rows: any[]
-  ) {
     this.fontBold(doc);
-    doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
-    doc.moveDown(0.5);
+    doc
+      .fontSize(9)
+      .fillColor(palette.text)
+      .text(label.toUpperCase(), x + 14, top + 10);
 
-    this.addWatermark(doc);
-    const left = 50, right = doc.page.width - 50, avail = right - left;
-
-    const sumW = columns.reduce((s,c)=>s + c.w, 0);
-    const cols = sumW === avail
-      ? columns
-      : columns.map((c, i, arr) => {
-          const scaled = Math.floor((c.w * avail) / sumW);
-          if (i === arr.length - 1) {
-            const acc = arr.slice(0, i).reduce((s, cc) => s + Math.floor((cc.w * avail) / sumW), 0);
-            return { ...c, w: avail - acc };
-          }
-          return { ...c, w: scaled };
-        });
-
-    const xs:number[] = []; let acc = left;
-    for (const c of cols) { xs.push(acc); acc += c.w; }
-
-    let y = doc.y + 6;
-
-    // Header
-    doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
-      .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-    this.fontBold(doc);
-    doc.fontSize(9).fillColor(this.UI.gray);
-    cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
-    y += 34;
-
-    const bottom = () => doc.page.height - doc.page.margins.bottom;
-    const ensure = (rowH=22) => {
-      if (y + rowH > bottom()) {
-        doc.addPage(); y = doc.page.margins.top;
-        doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
-          .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-        this.fontBold(doc);
-        doc.fontSize(9).fillColor(this.UI.gray);
-        cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
-        y += 34;
-      }
-    };
-
-    if (!rows.length) {
-      ensure(40);
+    if (subtitle) {
       this.fontRegular(doc);
-      doc.fontSize(10).fillColor('#EF4444').text('Sin resultados con los filtros aplicados.', left, y + 6);
-      doc.y = y + 40; return;
+      doc
+        .fontSize(10)
+        .fillColor(palette.text)
+        .text(subtitle, x + 14, top + 24, {
+          width: W - 28,
+          lineBreak: false,
+        });
     }
 
-    rows.forEach((row, idx) => {
-      ensure(24);
-      doc.rect(left, y, avail, 22).fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA').fill();
+    // Valor → ajusta tamaño para 1 línea
+    const maxWidth = W - 28;
+    const valueY = subtitle ? top + 40 : top + 28;
+    let fontSize = 18;
 
-      this.fontRegular(doc);
-      doc.fontSize(9).fillColor(this.UI.ink);
-      cols.forEach((c,i) => {
-        const raw = c.map ? c.map(row) : (row as any)[c.key];
-        const isMoney = (c.align === 'right');
-        const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
-        doc.text(txt, xs[i] + 10, y + 6, { width: c.w - 20, align: (c.align ?? 'left'), lineBreak:false });
+    this.fontBold(doc);
+    doc.fontSize(fontSize);
+
+    let textWidth = doc.widthOfString(value);
+    while (textWidth > maxWidth && fontSize > 10) {
+      fontSize -= 1;
+      doc.fontSize(fontSize);
+      textWidth = doc.widthOfString(value);
+    }
+
+    doc
+      .fillColor(palette.text)
+      .text(value, x + 14, valueY, {
+        width: maxWidth,
+        align: 'right',
+        lineBreak: false,
       });
 
-      y += 22;
-      doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
+  };
+
+  const pctDept =
+    total > 0 ? Math.round((Number(topDept.total || 0) / total) * 100) : 0;
+  const pctSub =
+    total > 0 ? Math.round((Number(topSub.total || 0) / total) * 100) : 0;
+
+  draw(50, 'Total', this.formatCRC(total), this.UI.card.total, 100);
+  draw(
+    50 + W + GAP,
+    'Top Depto',
+    this.formatCRC(Number(topDept.total || 0)),
+    this.UI.card.used,
+    pctDept,
+    topDept.departmentName,
+  );
+  draw(
+    50 + 2 * (W + GAP),
+    'Top Subtipo',
+    this.formatCRC(Number(topSub.total || 0)),
+    this.UI.card.remain,
+    pctSub,
+    topSubName,
+  );
+
+  doc.y = top + H + 16;
+}
+
+
+addSummaryCardsCompare(
+  doc: PDFDoc,
+  totals: { real: number; projected: number; difference: number },
+  diffLabel?: string,
+) {
+  const GAP = 10;
+  const W = (doc.page.width - 100 - GAP * 2) / 3;
+  const H = 80;
+  const top = doc.y;
+
+  const draw = (
+    x: number,
+    label: string,
+    value: number,
+    palette: any,
+    pct?: number,
+  ) => {
+    const prevY = doc.y;
+    doc
+      .roundedRect(x, top, W, H, 16)
+      .lineWidth(1)
+      .strokeColor(palette.ring)
+      .fillAndStroke(palette.bg);
+
+    this.fontBold(doc);
+    doc
+      .fontSize(9)
+      .fillColor(palette.text)
+      .text(label.toUpperCase(), x + 14, top + 10);
+
+    const valueText = this.formatCRC(value);
+    const maxWidth = W - 28;
+    let fontSize = 18;
+
+    this.fontBold(doc);
+    doc.fontSize(fontSize);
+
+    let textWidth = doc.widthOfString(valueText);
+    while (textWidth > maxWidth && fontSize > 10) {
+      fontSize -= 1;
+      doc.fontSize(fontSize);
+      textWidth = doc.widthOfString(valueText);
+    }
+
+    doc
+      .fillColor(palette.text)
+      .text(valueText, x + 14, top + 28, {
+        width: maxWidth,
+        align: 'right',
+        lineBreak: false,
+      });
+
+  };
+
+  const total =
+    Math.max(1, (totals.real ?? 0) + (totals.projected ?? 0));
+
+  draw(
+    50,
+    'Total Real',
+    totals.real ?? 0,
+    this.UI.card.total
+  );
+  draw(
+    50 + W + GAP,
+    'Total Proyectado',
+    totals.projected ?? 0,
+    this.UI.card.used
+  );
+  draw(
+    50 + 2 * (W + GAP),
+    diffLabel ?? 'Diferencia',
+    totals.difference ?? 0,
+    this.UI.card.remain
+  );
+
+  doc.y = top + H + 16;
+}
+
+
+ private addTableGeneric(
+  doc: PDFDoc,
+  columns: Array<{ key: string; title: string; w: number; map?: (row:any)=>any; align?: 'left'|'right' }>,
+  rows: any[]
+) {
+  this.fontBold(doc);
+  doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+  doc.moveDown(0.5);
+
+  this.addWatermark(doc);
+
+  const left = 50, right = doc.page.width - 50, avail = right - left;
+
+  const sumW = columns.reduce((s,c)=>s + c.w, 0);
+  const cols = sumW === avail
+    ? columns
+    : columns.map((c, i, arr) => {
+        const scaled = Math.floor((c.w * avail) / sumW);
+        if (i === arr.length - 1) {
+          const acc = arr.slice(0, i).reduce((s, cc) => s + Math.floor((cc.w * avail) / sumW), 0);
+          return { ...c, w: avail - acc };
+        }
+        return { ...c, w: scaled };
+      });
+
+  const xs:number[] = []; let acc = left;
+  for (const c of cols) { xs.push(acc); acc += c.w; }
+
+  let y = doc.y + 6;
+
+  // Header
+  doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
+    .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+  this.fontBold(doc);
+  doc.fontSize(9).fillColor(this.UI.gray);
+  cols.forEach((c,i) =>
+    doc.text(c.title, xs[i] + 10, y + 9, {
+      width: c.w - 20,
+      align: (c.align ?? 'left'),
+    })
+  );
+  y += 34;
+
+  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const ensure = (rowH=22) => {
+    if (y + rowH > bottom()) {
+      doc.addPage();
+      y = doc.page.margins.top;
+
+      // Header en nueva página
+      doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
+        .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+      this.fontBold(doc);
+      doc.fontSize(9).fillColor(this.UI.gray);
+      cols.forEach((c,i) =>
+        doc.text(c.title, xs[i] + 10, y + 9, {
+          width: c.w - 20,
+          align: (c.align ?? 'left'),
+        })
+      );
+      y += 34;
+    }
+  };
+
+  if (!rows.length) {
+    ensure(40);
+    this.fontRegular(doc);
+    doc.fontSize(10).fillColor('#EF4444').text('Sin resultados con los filtros aplicados.', left, y + 6);
+    doc.y = y + 40; 
+    return;
+  }
+
+  const paddingY = 6;
+
+  rows.forEach((row, idx) => {
+    this.fontRegular(doc);
+    doc.fontSize(9).fillColor(this.UI.ink);
+
+    // 1) calcular textos y alturas
+    const cellTexts: string[] = [];
+    const cellAligns: ('left'|'right')[] = [];
+    const cellHeights: number[] = [];
+
+    cols.forEach((c,i) => {
+      const raw = c.map ? c.map(row) : (row as any)[c.key];
+      const isMoney = (c.align === 'right');
+      const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
+      const align = (c.align ?? (isMoney ? 'right' : 'left')) as 'left'|'right';
+
+      const h = doc.heightOfString(txt, {
+        width: c.w - 20,
+        align,
+      });
+
+      cellTexts[i] = txt;
+      cellAligns[i] = align;
+      cellHeights[i] = h;
     });
 
-    doc.y = y + 8;
-  }
+    const contentHeight = Math.max(...cellHeights, 10);
+    const rowHeight = contentHeight + paddingY * 2;
+
+    // 2) paginación
+    ensure(rowHeight);
+
+    // 3) fondo
+    doc.rect(left, y, avail, rowHeight)
+      .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+      .fill();
+
+    // 4) texto (multi-línea)
+    this.fontRegular(doc);
+    doc.fontSize(9).fillColor(this.UI.ink);
+    cols.forEach((c,i) => {
+      const txt = cellTexts[i];
+      const align = cellAligns[i];
+      doc.text(txt, xs[i] + 10, y + paddingY, {
+        width: c.w - 20,
+        align,
+      });
+    });
+
+    // 5) línea inferior
+    y += rowHeight;
+    doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
+  });
+
+  doc.y = y + 8;
+}
+
 
   private addFooter(doc: PDFDoc, caption = 'Sistema de Presupuesto — Reporte') {
     const y = doc.page.height - 32;
@@ -574,14 +748,14 @@ private async projectedSpendAgg(filters: SpendFilters) {
     });
   }
 
-  async getPIncomeTable(filters: IncomeFilters) {
+async getPIncomeTable(filters: IncomeFilters) {
+  // Usar las RELACIONES del entity, igual que en projectedIncomeAgg
   const qb = this.pIncomeRepo.createQueryBuilder('pi')
-    .leftJoin(PIncomeSubType, 'pist', 'pist.id = pi.subTypeId')
-    .leftJoin(PIncomeType, 'pit', 'pit.id = pist.typeId')
-    .leftJoin(Department, 'd', 'd.id = pit.departmentId');
+    .leftJoin('pi.pIncomeSubType', 'pist')   // relación hacia el subtipo proyectado
+    .leftJoin('pist.pIncomeType', 'pit')     // relación hacia el tipo proyectado
+    .leftJoin('pit.department', 'd');        // relación hacia departamento
 
-
-  // Optional date filters
+  // Filtros por fecha
   const start = this.parseISO(filters.start);
   const end = this.parseISO(filters.end);
   if (start && end) {
@@ -592,36 +766,36 @@ private async projectedSpendAgg(filters: SpendFilters) {
     qb.andWhere('pi.date <= :to', { to: end });
   }
 
+  // Otros filtros
   if (filters.departmentId) {
     qb.andWhere('d.id = :dep', { dep: filters.departmentId });
   }
-
   if (filters.incomeTypeId) {
     qb.andWhere('pit.id = :t', { t: filters.incomeTypeId });
   }
-
   if (filters.incomeSubTypeId) {
     qb.andWhere('pist.id = :pst', { pst: filters.incomeSubTypeId });
   }
 
-  const raw = await qb.select([
-    'pi.id AS id',
-    'pi.date AS date',
-    'pi.amount AS amount',
-    'd.id AS departmentId',
-    'd.name AS departmentName',
-    'pit.id AS incomeTypeId',
-    'pit.name AS incomeTypeName',
-    'pist.id AS incomeSubTypeId',
-    'pist.name AS incomeSubTypeName',
-  ])
-  .orderBy('pi.date', 'ASC')
-  .addOrderBy('d.name', 'ASC')
-  .addOrderBy('pit.name', 'ASC')
-  .addOrderBy('pist.name', 'ASC')
-  .getRawMany();
+  const raw = await qb
+    .select([
+      'pi.id AS id',
+      'pi.date AS date',
+      'pi.amount AS amount',
+      'd.id AS departmentId',
+      'd.name AS departmentName',
+      'pit.id AS incomeTypeId',
+      'pit.name AS incomeTypeName',
+      'pist.id AS incomeSubTypeId',
+      'pist.name AS incomeSubTypeName',
+    ])
+    .orderBy('pi.date', 'ASC')
+    .addOrderBy('d.name', 'ASC')
+    .addOrderBy('pit.name', 'ASC')
+    .addOrderBy('pist.name', 'ASC')
+    .getRawMany();
 
-  return raw.map(r => ({
+  return raw.map((r) => ({
     id: r.id,
     date: r.date,
     amount: Number(r.amount) || 0,
@@ -632,39 +806,69 @@ private async projectedSpendAgg(filters: SpendFilters) {
 }
 
 
-  async getPIncomeSummary(filters: IncomeFilters) {
-    const qb = this.pIncomeRepo.createQueryBuilder('pi')
-      .leftJoin(PIncomeSubType, 'pist', 'pist.id = pi.subTypeId')
-      .leftJoin(PIncomeType, 'pit', 'pit.id = pist.typeId')
-      .leftJoin(Department, 'd', 'd.id = pit.departmentId');
+async getPIncomeSummary(filters: IncomeFilters) {
+  // Igual que arriba: usar relaciones, no joins manuales
+  const qb = this.pIncomeRepo.createQueryBuilder('pi')
+    .leftJoin('pi.pIncomeSubType', 'pist')
+    .leftJoin('pist.pIncomeType', 'pit')
+    .leftJoin('pit.department', 'd');
 
-    const start = this.parseISO(filters.start);
-    const end = this.parseISO(filters.end);
-    if (start && end) qb.andWhere('pi.date BETWEEN :from AND :to', { from: start, to: end });
-    else if (start) qb.andWhere('pi.date >= :from', { from: start });
-    else if (end) qb.andWhere('pi.date <= :to', { to: end });
+  const start = this.parseISO(filters.start);
+  const end = this.parseISO(filters.end);
 
-    if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
-    if (filters.incomeTypeId) qb.andWhere('pit.id = :t', { t: filters.incomeTypeId });
-    if (filters.incomeSubTypeId) qb.andWhere('pist.id = :pst', { pst: filters.incomeSubTypeId });
-
-    const bySubType = await qb.clone()
-      .select(['pist.id AS incomeSubTypeId','pist.name AS incomeSubTypeName','COALESCE(SUM(pi.amount),0) AS total'])
-      .groupBy('pist.id').addGroupBy('pist.name').getRawMany<any>();
-
-    const byDepartment = await qb.clone()
-      .select(['d.id AS departmentId','d.name AS departmentName','COALESCE(SUM(pi.amount),0) AS total'])
-      .groupBy('d.id').addGroupBy('d.name').getRawMany<any>();
-
-    const grand = await qb.clone()
-      .select('COALESCE(SUM(pi.amount),0)','grand').getRawOne<{ grand:string }>();
-
-    return {
-      byIncomeSubType: bySubType.map(x => ({ incomeSubTypeId:x.incomeSubTypeId, incomeSubTypeName:x.incomeSubTypeName, total:Number(x.total||0) })),
-      byDepartment: byDepartment.map(x => ({ departmentId:x.departmentId, departmentName:x.departmentName, total:Number(x.total||0) })),
-      grandTotal: Number(grand?.grand||0),
-    };
+  if (start && end) {
+    qb.andWhere('pi.date BETWEEN :from AND :to', { from: start, to: end });
+  } else if (start) {
+    qb.andWhere('pi.date >= :from', { from: start });
+  } else if (end) {
+    qb.andWhere('pi.date <= :to', { to: end });
   }
+
+  if (filters.departmentId) qb.andWhere('d.id = :dep', { dep: filters.departmentId });
+  if (filters.incomeTypeId) qb.andWhere('pit.id = :t', { t: filters.incomeTypeId });
+  if (filters.incomeSubTypeId) qb.andWhere('pist.id = :pst', { pst: filters.incomeSubTypeId });
+
+  // Totales por subtipo
+  const bySubType = await qb.clone()
+    .select([
+      'pist.id AS incomeSubTypeId',
+      'pist.name AS incomeSubTypeName',
+      'COALESCE(SUM(pi.amount),0) AS total',
+    ])
+    .groupBy('pist.id')
+    .addGroupBy('pist.name')
+    .getRawMany<any>();
+
+  // Totales por departamento
+  const byDepartment = await qb.clone()
+    .select([
+      'd.id AS departmentId',
+      'd.name AS departmentName',
+      'COALESCE(SUM(pi.amount),0) AS total',
+    ])
+    .groupBy('d.id')
+    .addGroupBy('d.name')
+    .getRawMany<any>();
+
+  // Gran total
+  const grand = await qb.clone()
+    .select('COALESCE(SUM(pi.amount),0)', 'grand')
+    .getRawOne<{ grand: string }>();
+
+  return {
+    byIncomeSubType: bySubType.map((x) => ({
+      incomeSubTypeId: x.incomeSubTypeId,
+      incomeSubTypeName: x.incomeSubTypeName,
+      total: Number(x.total || 0),
+    })),
+    byDepartment: byDepartment.map((x) => ({
+      departmentId: x.departmentId,
+      departmentName: x.departmentName,
+      total: Number(x.total || 0),
+    })),
+    grandTotal: Number(grand?.grand || 0),
+  };
+}
 
   // =================== PSPEND -> PDF ===================
   async generatePSpendPDF(filters: SpendFilters) {

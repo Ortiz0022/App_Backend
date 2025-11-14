@@ -406,6 +406,7 @@ private addHeader(doc: PDFDoc, title: string) {
 }
 
 // ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
+// ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
 private addTable(
   doc: PDFDoc,
   columns: Array<{ key: string; title: string; w: number; map?: (row: any) => any; align?: 'left'|'right' }>,
@@ -439,20 +440,32 @@ private addTable(
     .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
   this.fontBold(doc);
   doc.fontSize(9).fillColor(this.UI.gray);
-  cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
+  cols.forEach((c,i) =>
+    doc.text(c.title, xs[i] + 10, y + 9, {
+      width: c.w - 20,
+      align: (c.align ?? 'left'),
+    })
+  );
   y += 34;
 
   const bottom = () => doc.page.height - doc.page.margins.bottom;
-  const ensure = (rowH=22) => {
+  const ensure = (rowH = 22) => {
     if (y + rowH > bottom()) {
-     this.addWatermark(doc);  // ✅ Sellar la página ACTUAL por encima de todo
+      this.addWatermark(doc);  // ✅ Sellar la página ACTUAL por encima de todo
       doc.addPage();
       y = doc.page.margins.top;
+
+      // Redibujar encabezado en nueva página
       doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
         .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
       this.fontBold(doc);
       doc.fontSize(9).fillColor(this.UI.gray);
-      cols.forEach((c,i) => doc.text(c.title, xs[i] + 10, y + 9, { width: c.w - 20, align: (c.align ?? 'left') }));
+      cols.forEach((c,i) =>
+        doc.text(c.title, xs[i] + 10, y + 9, {
+          width: c.w - 20,
+          align: (c.align ?? 'left'),
+        })
+      );
       y += 34;
     }
   };
@@ -461,39 +474,79 @@ private addTable(
     ensure(40);
     this.fontRegular(doc);
     doc.fontSize(10).fillColor('#EF4444').text('Sin resultados con los filtros aplicados.', left, y + 6);
-    doc.y = y + 40; return;
+    doc.y = y + 40; 
+    return;
   }
 
-  rows.forEach((row, idx) => {
-    ensure(24);
-    doc.rect(left, y, avail, 22).fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA').fill();
+  const paddingY = 6;
 
+  rows.forEach((row, idx) => {
+    this.fontRegular(doc);
+    doc.fontSize(9).fillColor(this.UI.ink);
+
+    // 1) Calcular textos y alturas de cada celda
+    const cellTexts: string[] = [];
+    const cellAligns: ('left'|'right')[] = [];
+    const cellHeights: number[] = [];
+
+    cols.forEach((c,i) => {
+      let raw = c.map ? c.map(row) : (row as any)[c.key];
+
+      // formateo de fecha
+      if (String(c.key).toLowerCase().includes('date') || String(c.title).toLowerCase().includes('fecha')) {
+        raw = this.safeDate(raw);
+      }
+
+      const isMoney = (c.align === 'right') ||
+        /monto|total|amount|used|remaining/i.test(c.title) ||
+        /amount|total/i.test(c.key);
+
+      const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
+      const align = (c.align ?? (isMoney ? 'right' : 'left')) as 'left'|'right';
+
+      const h = doc.heightOfString(txt, {
+        width: c.w - 20,
+        align,
+      });
+
+      cellTexts[i] = txt;
+      cellAligns[i] = align;
+      cellHeights[i] = h;
+    });
+
+    // 2) Altura de la fila (máximo de las columnas + padding)
+    const contentHeight = Math.max(...cellHeights, 10);
+    const rowHeight = contentHeight + paddingY * 2;
+
+    // 3) Verificar paginación con la ALTURA real
+    ensure(rowHeight);
+
+    // 4) Fondo de la fila
+    doc.rect(left, y, avail, rowHeight)
+      .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+      .fill();
+
+    // 5) Pintar textos (permitiendo varias líneas)
     this.fontRegular(doc);
     doc.fontSize(9).fillColor(this.UI.ink);
     cols.forEach((c,i) => {
-      let raw = c.map ? c.map(row) : (row as any)[c.key];
-      
-      // ✅ CORREGIR: Detectar y formatear fechas correctamente
-      if (String(c.key).toLowerCase().includes('date') || String(c.title).toLowerCase().includes('fecha')) {
-        raw = this.safeDate(raw);  // Usa el método helper que ya tienes
-      }
-
-      const isMoney = (c.align === 'right') || /monto|total|amount|used|remaining/i.test(c.title) || /amount|total/i.test(c.key);
-      const txt = isMoney ? this.formatCRC(Number(raw ?? 0)) : String(raw ?? '—');
-      
-      doc.text(txt, xs[i] + 10, y + 6, {
+      const txt = cellTexts[i];
+      const align = cellAligns[i];
+      doc.text(txt, xs[i] + 10, y + paddingY, {
         width: c.w - 20,
-        align: (c.align ?? (isMoney ? 'right' : 'left')) as any,
-        lineBreak: false,
+        align,
+        // 👇 sin lineBreak:false → permite 2+ líneas dentro del ancho
       });
     });
 
-    y += 22;
+    // 6) Línea inferior
+    y += rowHeight;
     doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
   });
 
   doc.y = y + 8;
 }
+
 
   private addFiltersIncome(doc: PDFDoc, f: IncomeFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
@@ -547,46 +600,110 @@ private addTable(
     doc.y = y + H + 16;
   }
 
-  private addSummaryCards(doc: PDFDoc, _title: string, summary: any) {
-    const GAP = 10;
-    const W = (doc.page.width - 100 - GAP*2) / 3;
-    const H = 88;
-    const top = doc.y;
+private addSummaryCards(doc: PDFDoc, _title: string, summary: any) {
+  const GAP = 10;
+  const W = (doc.page.width - 100 - GAP * 2) / 3;
+  const H = 88;
+  const top = doc.y;
 
-    const total = Number(summary?.grandTotal ?? 0);
-    const depts = (summary?.byDepartment ?? []) as Array<{ departmentName:string; total:number }>;
-    const topDept = [...depts].sort((a,b)=> (b.total||0)-(a.total||0))[0] ?? { departmentName:'—', total:0 };
-    const anyGroup = (summary?.byIncomeSubType ?? summary?.bySpendSubType ?? []) as Array<{ total:number; [k:string]:any }>;
-    const topGroup = [...anyGroup].sort((a,b)=> (b.total||0)-(a.total||0))[0] ?? { total:0 };
-    const topGroupName = (topGroup as any).incomeSubTypeName ?? (topGroup as any).spendSubTypeName ?? '—';
-
-    const drawCard = (x:number, label:string, valueText:string, palette:any, subtitle?:string) => {
-      const prevY = doc.y;
-
-      doc.roundedRect(x, top, W, H, 16).lineWidth(1).strokeColor(palette.ring).fillAndStroke(palette.bg);
-
-      this.fontBold(doc);
-      doc.fontSize(9).fillColor(palette.text).text(label.toUpperCase(), x + 14, top + 10);
-
-      if (subtitle) {
-        this.fontRegular(doc);
-        doc.fontSize(10).fillColor(palette.text).text(subtitle, x + 14, top + 24, { width: W - 28, lineBreak:false });
-      }
-
-      const valueY = subtitle ? (top + 40) : (top + 28);
-      this.fontBold(doc);
-      doc.fontSize(18).fillColor(palette.text)
-         .text(valueText, x + 14, valueY, { width: W - 28, align:'right', lineBreak:false });
-
-      doc.y = prevY;
+  const total = Number(summary?.grandTotal ?? 0);
+  const depts = (summary?.byDepartment ?? []) as Array<{
+    departmentName: string;
+    total: number;
+  }>;
+  const topDept =
+    [...depts].sort((a, b) => (b.total || 0) - (a.total || 0))[0] ?? {
+      departmentName: '—',
+      total: 0,
     };
 
-    drawCard(50,               'Total',       this.formatCRC(total),                   this.UI.card.total);
-    drawCard(50 + W + GAP,     'Top Depto',   this.formatCRC(Number(topDept.total||0)),this.UI.card.used,   topDept.departmentName);
-    drawCard(50 + 2*(W + GAP), 'Top Subtipo', this.formatCRC(Number(topGroup.total||0)),this.UI.card.remain, topGroupName);
+  const anyGroup = (summary?.byIncomeSubType ?? summary?.bySpendSubType ?? []) as Array<{
+    total: number;
+    [k: string]: any;
+  }>;
+  const topGroup =
+    [...anyGroup].sort((a, b) => (b.total || 0) - (a.total || 0))[0] ?? {
+      total: 0,
+    };
+  const topGroupName =
+    (topGroup as any).incomeSubTypeName ??
+    (topGroup as any).spendSubTypeName ??
+    '—';
 
-    doc.y = top + H + 16;
-  }
+  const drawCard = (
+    x: number,
+    label: string,
+    valueText: string,
+    palette: any,
+    subtitle?: string,
+  ) => {
+    const prevY = doc.y;
+
+    // Card
+    doc
+      .roundedRect(x, top, W, H, 16)
+      .lineWidth(1)
+      .strokeColor(palette.ring)
+      .fillAndStroke(palette.bg);
+
+    // Título (TOTAL / TOP DEPTO / TOP SUBTIPO)
+    this.fontBold(doc);
+    doc.fontSize(9).fillColor(palette.text).text(label.toUpperCase(), x + 14, top + 10);
+
+    // Subtítulo (nombre depto / subtipo)
+    if (subtitle) {
+      this.fontRegular(doc);
+      doc
+        .fontSize(10)
+        .fillColor(palette.text)
+        .text(subtitle, x + 14, top + 24, { width: W - 28, lineBreak: false });
+    }
+
+    // Valor – se ajusta para que siempre quede en UNA sola línea
+    const valueY = subtitle ? top + 40 : top + 28;
+    const maxWidth = W - 28;
+
+    this.fontBold(doc);
+    let fontSize = 18;
+    doc.fontSize(fontSize);
+
+    let textWidth = doc.widthOfString(valueText);
+    while (textWidth > maxWidth && fontSize > 10) {
+      fontSize -= 1;
+      doc.fontSize(fontSize);
+      textWidth = doc.widthOfString(valueText);
+    }
+
+    doc
+      .fillColor(palette.text)
+      .text(valueText, x + 14, valueY, {
+        width: maxWidth,
+        align: 'right',
+        lineBreak: false, // 👈 fuerza una sola línea
+      });
+
+    doc.y = prevY;
+  };
+
+  drawCard(50, 'Total', this.formatCRC(total), this.UI.card.total);
+  drawCard(
+    50 + W + GAP,
+    'Depto',
+    this.formatCRC(Number(topDept.total ?? 0)),
+    this.UI.card.used,
+    topDept.departmentName,
+  );
+  drawCard(
+    50 + 2 * (W + GAP),
+    'Subtipo',
+    this.formatCRC(Number(topGroup.total ?? 0)),
+    this.UI.card.remain,
+    topGroupName,
+  );
+
+  doc.y = top + H + 16;
+}
+
 
   private addFooter(doc: PDFDoc) {
     const y = doc.page.height - 32;

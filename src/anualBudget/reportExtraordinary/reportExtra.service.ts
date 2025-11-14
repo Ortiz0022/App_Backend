@@ -328,43 +328,93 @@ private addHeader(doc: PDFDoc) {
     doc.y = y + H + 16;
   }
 
-  private addSummary(doc: PDFDoc, summary: any) {
-    const GAP = 10;
-    const W = (doc.page.width - 100 - GAP*2) / 3;
-    const H = 72;
-    const top = doc.y;
+private addSummary(doc: PDFDoc, summary: any) {
+  const GAP = 10;
+  const W = (doc.page.width - 100 - GAP * 2) / 3;
+  const H = 72;
+  const top = doc.y;
 
-    const drawCard = (x: number, label: string, value: number, palette: any, pct?: number) => {
-      const prevY = doc.y; // no alterar flujo
-      doc.roundedRect(x, top, W, H, 16)
-         .lineWidth(1).strokeColor(palette.ring).fillAndStroke(palette.bg);
+  const drawCard = (
+    x: number,
+    label: string,
+    value: number,
+    palette: any,
+    pct?: number,
+  ) => {
+    const prevY = doc.y; // no alterar flujo
 
-      doc.font('NotoSansBold').fontSize(9).fillColor(palette.text)
-         .text(label.toUpperCase(), x + 14, top + 10);
+    // Card
+    doc
+      .roundedRect(x, top, W, H, 16)
+      .lineWidth(1)
+      .strokeColor(palette.ring)
+      .fillAndStroke(palette.bg);
 
-      doc.font('NotoSansBold').fontSize(18).fillColor(palette.text)
-         .text(
-           value.toLocaleString('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 2 }),
-           x + 14, top + 26, { width: W - 28 }
-         );
+    // Título
+    doc
+      .font('NotoSansBold')
+      .fontSize(9)
+      .fillColor(palette.text)
+      .text(label.toUpperCase(), x + 14, top + 10);
 
-      // const barW = W - 28, barY = top + H - 16;
-      // doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
-      // const p = Math.max(0, Math.min(100, pct ?? 100));
-      // doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
+    // Valor → quepa en una sola línea
+    const valueText = value.toLocaleString('es-CR', {
+      style: 'currency',
+      currency: 'CRC',
+      minimumFractionDigits: 2,
+    });
 
-      doc.y = prevY; // restaurar cursor
-    };
+    const maxWidth = W - 28;
+    let fontSize = 18;
 
-    const usedPct = summary.totalAmount > 0 ? Math.round((summary.totalUsed / summary.totalAmount) * 100) : 0;
-    const remPct  = summary.totalAmount > 0 ? Math.round((summary.totalRemaining / summary.totalAmount) * 100) : 0;
+    doc.font('NotoSansBold').fontSize(fontSize);
 
-    drawCard(50,               'Total',     summary.totalAmount,    this.UI.card.total,  100);
-    drawCard(50 + W + GAP,     'Usado',     summary.totalUsed,      this.UI.card.used,   usedPct);
-    drawCard(50 + 2*(W + GAP), 'Restante',  summary.totalRemaining, this.UI.card.remain, remPct);
+    let textWidth = doc.widthOfString(valueText);
+    while (textWidth > maxWidth && fontSize > 10) {
+      fontSize -= 1;
+      doc.fontSize(fontSize);
+      textWidth = doc.widthOfString(valueText);
+    }
 
-    doc.y = top + H + 16;
-  }
+    doc
+      .fillColor(palette.text)
+      .text(valueText, x + 14, top + 26, {
+        width: maxWidth,
+        align: 'right',
+        lineBreak: false, // 👈 siempre una línea
+      });
+
+    // (si quisieras reactivar la barrita, aquí sigue igual)
+    // const barW = W - 28, barY = top + H - 16;
+    // doc.roundedRect(x + 14, barY, barW, 6, 3).fillColor(palette.barSoft).fill();
+    // const p = Math.max(0, Math.min(100, pct ?? 100));
+    // doc.roundedRect(x + 14, barY, Math.max(6, (barW * p) / 100), 6, 3).fillColor(palette.bar).fill();
+
+    doc.y = prevY; // restaurar cursor
+  };
+
+  const usedPct =
+    summary.totalAmount > 0
+      ? Math.round((summary.totalUsed / summary.totalAmount) * 100)
+      : 0;
+  const remPct =
+    summary.totalAmount > 0
+      ? Math.round((summary.totalRemaining / summary.totalAmount) * 100)
+      : 0;
+
+  drawCard(50, 'Total', summary.totalAmount, this.UI.card.total, 100);
+  drawCard(50 + W + GAP, 'Usado', summary.totalUsed, this.UI.card.used, usedPct);
+  drawCard(
+    50 + 2 * (W + GAP),
+    'Restante',
+    summary.totalRemaining,
+    this.UI.card.remain,
+    remPct,
+  );
+
+  doc.y = top + H + 16;
+}
+
 
 
   private hasFilters(filters: ExtraFilters): boolean {
@@ -378,76 +428,119 @@ private addHeader(doc: PDFDoc) {
 
   
   private addTable(doc: PDFDoc, table: ExtraRow[]) {
-    doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
-    doc.moveDown(0.5);
+  doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+  doc.moveDown(0.5);
 
-    const left = 50, right = doc.page.width - 50;
-    const cols = [
-      { key: 'name',    title: 'CONCEPTO',  w: Math.floor((right-left)*0.40), align: 'left' as const },
-      { key: 'date',    title: 'FECHA',     w: Math.floor((right-left)*0.15), align: 'left' as const },
-      { key: 'amount',  title: 'MONTO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
-      { key: 'used',    title: 'USADO',     w: Math.floor((right-left)*0.15), align: 'right' as const },
-      { key: 'rem',     title: 'RESTANTE',  w: Math.floor((right-left)*0.15), align: 'right' as const },
-    ];
-    const x: number[] = [];
-    cols.reduce((acc, c, i) => { const xx = i === 0 ? left : acc + cols[i-1].w; x.push(xx); return xx; }, 0);
+  const left = 50, right = doc.page.width - 50;
+  const totalW = right - left;
 
-    let y = doc.y + 6;
+  const cols = [
+    { key: 'name',    title: 'CONCEPTO',  w: Math.floor(totalW * 0.40), align: 'left' as const },
+    { key: 'date',    title: 'FECHA',     w: Math.floor(totalW * 0.15), align: 'left' as const },
+    { key: 'amount',  title: 'MONTO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
+    { key: 'used',    title: 'USADO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
+    { key: 'rem',     title: 'RESTANTE',  w: Math.floor(totalW * 0.15), align: 'right' as const },
+  ];
 
-    // Header
-    doc.roundedRect(left, y, right-left, 28, 12)
-       .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-    doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
-    cols.forEach((c, i) => doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align }));
-    y += 34;
+  const x: number[] = [];
+  let currentX = left;
+  cols.forEach((c, idx) => {
+    x.push(currentX);
+    currentX += c.w;
+  });
 
-    const bottom = () => doc.page.height - doc.page.margins.bottom;
-    const ensure = (rowH=22) => {
-      if (y + rowH > bottom()) {
-        doc.addPage(); y = doc.page.margins.top;
-        doc.roundedRect(left, y, right-left, 28, 12)
-           .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-        doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
-        cols.forEach((c, i) => doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align }));
-        y += 34;  
-      }
-    };
+  let y = doc.y + 6;
 
-    if (table.length === 0) {
-      ensure(40);
-      doc.font('NotoSans').fontSize(10).fillColor('#EF4444')
-         .text('Sin resultados con los filtros aplicados.', left, y + 6);
-      doc.y = y + 40;
-      return;
+  // Header
+  doc.roundedRect(left, y, totalW, 28, 12)
+     .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+  doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
+  cols.forEach((c, i) =>
+    doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
+  );
+  y += 34;
+
+  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const ensure = (rowH = 22) => {
+    if (y + rowH > bottom()) {
+      doc.addPage();
+      y = doc.page.margins.top;
+
+      // Redibujar header en nueva página
+      doc.roundedRect(left, y, totalW, 28, 12)
+         .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+      doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
+      cols.forEach((c, i) =>
+        doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
+      );
+      y += 34;
     }
+  };
 
-    // Filas (solo presentación)
-    table.forEach((row, idx) => {
-      ensure(24);
+  if (table.length === 0) {
+    ensure(40);
+    doc.font('NotoSans').fontSize(10).fillColor('#EF4444')
+       .text('Sin resultados con los filtros aplicados.', left, y + 6);
+    doc.y = y + 40;
+    return;
+  }
 
-      // zebra
-      doc.rect(left, y, right-left, 22)
-         .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
-         .fill();
+  const paddingY = 6;
 
-      const name   = row.name ?? '—';
-      const date   = row.date ? new Date(row.date).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
-      const amount = row.amount.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
-      const used   = row.used.toLocaleString('es-CR',   { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
-      const rem    = row.remaining.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+  table.forEach((row, idx) => {
+    const name   = row.name ?? '—';
+    const date   = row.date
+      ? new Date(row.date).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })
+      : '—';
+    const amount = row.amount.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+    const used   = row.used.toLocaleString('es-CR',   { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+    const rem    = row.remaining.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
 
-      doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
-      const vals = { name, date, amount, used, rem };
-      cols.forEach((c, i) => {
-        doc.text(String((vals as any)[c.key]), x[i] + 10, y + 6, { width: c.w - 20, align: c.align });
+    const vals = { name, date, amount, used, rem };
+
+    // 1) Calcular altura de cada celda
+    doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
+
+    const cellHeights: number[] = [];
+    cols.forEach((c, i) => {
+      const txt = String((vals as any)[c.key]);
+      const h = doc.heightOfString(txt, {
+        width: c.w - 20,
+        align: c.align,
       });
-
-      y += 22;
-      doc.moveTo(left, y).lineTo(right, y).strokeColor(this.UI.line).lineWidth(0.5).stroke();
+      cellHeights[i] = h;
     });
 
-    doc.y = y + 8;
-  }
+    const contentHeight = Math.max(...cellHeights, 10);
+    const rowHeight = contentHeight + paddingY * 2;
+
+    // 2) Paginación
+    ensure(rowHeight);
+
+    // 3) Fondo
+    doc.rect(left, y, totalW, rowHeight)
+       .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+       .fill();
+
+    // 4) Texto (permitiendo varias líneas)
+    doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
+    cols.forEach((c, i) => {
+      const txt = String((vals as any)[c.key]);
+      doc.text(txt, x[i] + 10, y + paddingY, {
+        width: c.w - 20,
+        align: c.align,
+      });
+    });
+
+    // 5) Línea inferior
+    y += rowHeight;
+    doc.moveTo(left, y).lineTo(right, y)
+       .strokeColor(this.UI.line).lineWidth(0.5).stroke();
+  });
+
+  doc.y = y + 8;
+}
+
 
   private addFooter(doc: PDFDoc) {
     const y = doc.page.height - 32;
