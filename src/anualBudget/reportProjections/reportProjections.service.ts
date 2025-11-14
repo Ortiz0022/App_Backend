@@ -696,39 +696,60 @@ private async projectedSpendAgg(filters: SpendFilters) {
 }
 
   async compareSpend(filters: SpendFilters) {
-    const [real, proj] = await Promise.all([
-      this.realSpendAgg(filters),
-      this.projectedSpendAgg(filters),
-    ]);
+  const [real, proj] = await Promise.all([
+    this.realSpendAgg(filters),
+    this.projectedSpendAgg(filters),
+  ]);
 
-    const map = new Map<number, { name:string; real:number; proj:number }>();
-    real.forEach(r => map.set(r.subTypeId, { name: r.subTypeName, real: Number(r.realTotal||0), proj: 0 }));
-    proj.forEach(p => {
-      const prev = map.get(p.subTypeId);
-      if (prev) prev.proj = Number(p.projTotal||0);
-      else map.set(p.subTypeId, { name: p.subTypeName, real: 0, proj: Number(p.projTotal||0) });
+  // 👇 CAMBIO CLAVE: Usar NOMBRE como key en lugar de ID
+  const map = new Map<string, { id: number; real: number; proj: number }>();
+
+  // Procesar gastos reales
+  real.forEach(r => {
+    const key = r.subTypeName.trim().toLowerCase(); // 👈 Normalizar
+    map.set(key, { 
+      id: r.subTypeId,
+      real: Number(r.realTotal || 0), 
+      proj: 0 
     });
+  });
 
-    const rows = Array.from(map.entries()).map(([id, v]) => ({
-      spendSubTypeId: id,
-      name: v.name,
-      real: v.real,
-      projected: v.proj,
-      // *** igual que ingresos: PROYECTADO - REAL ***
-      difference: Number((v.proj - v.real).toFixed(2)),
-    }));
+  // Procesar gastos proyectados
+  proj.forEach(p => {
+    const key = p.subTypeName.trim().toLowerCase(); // 👈 Normalizar
+    const prev = map.get(key);
+    if (prev) {
+      prev.proj = Number(p.projTotal || 0);
+    } else {
+      map.set(key, { 
+        id: p.subTypeId,
+        real: 0, 
+        proj: Number(p.projTotal || 0) 
+      });
+    }
+  });
 
-    const totals = rows.reduce(
-      (acc, r) => {
-        acc.real += r.real; acc.projected += r.projected; acc.difference += r.difference;
-        return acc;
-      },
-      { real: 0, projected: 0, difference: 0 },
-    );
+  // Convertir a rows
+  const rows = Array.from(map.entries()).map(([name, v]) => ({
+    spendSubTypeId: v.id,
+    name: name.charAt(0).toUpperCase() + name.slice(1), // Capitalizar
+    real: v.real,
+    projected: v.proj,
+    difference: Number((v.proj - v.real).toFixed(2)),
+  }));
 
-    return { filters, rows, totals };
-  }
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.real += r.real;
+      acc.projected += r.projected;
+      acc.difference += r.difference;
+      return acc;
+    },
+    { real: 0, projected: 0, difference: 0 },
+  );
 
+  return { filters, rows, totals };
+}
   // =================== PINCOME -> PDF ===================
   async generatePIncomePDF(filters: IncomeFilters) {
     const table = await this.getPIncomeTable(filters);
