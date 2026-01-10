@@ -8,6 +8,9 @@ export class AboutUs {
   @Column({ nullable: false })
   title: string;
 
-  @Column({ nullable: false })
-  description: string;
+  @Column({
+  type: 'varchar',
+  length: 500,
+  })
+  description: string
 }
