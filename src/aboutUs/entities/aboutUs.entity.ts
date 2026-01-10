@@ -10,7 +10,7 @@ export class AboutUs {
 
   @Column({
   type: 'varchar',
-  length: 500,
+  length: 1000,
   })
   description: string
 }
