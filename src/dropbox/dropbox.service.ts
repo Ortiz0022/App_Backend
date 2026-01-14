@@ -29,70 +29,31 @@ export class DropboxService {
    * @returns URL pública del archivo
    */
   async uploadFile(
-  file: {
-    buffer: Buffer;
-    originalname: string;
-    mimetype: string;
-    size: number;
-  },
+  file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
   dropboxPath: string,
 ): Promise<string> {
-    this.ensureInitialized();
-    
-    try {
-      // Asegurar que el path comience con /
-      let fullPath = `${dropboxPath}/${file.originalname}`;
-      
-      if (!fullPath.startsWith('/')) {
-        fullPath = `/${fullPath}`;
-      }
-      
-      // Limpiar barras duplicadas
-      fullPath = fullPath.replace(/\/+/g, '/');
+  this.ensureInitialized();
 
+  try {
+    let fullPath = `${dropboxPath}/${file.originalname}`;
+    if (!fullPath.startsWith("/")) fullPath = `/${fullPath}`;
+    fullPath = fullPath.replace(/\/+/g, "/");
 
-      // Subir archivo a Dropbox
-      const response = await this.dbx.filesUpload({
-        path: fullPath,
-        contents: file.buffer,
-        mode: { '.tag': 'overwrite' },
-        autorename: true,
-      });
+    const response = await this.dbx.filesUpload({
+      path: fullPath,
+      contents: file.buffer,
+      mode: { ".tag": "overwrite" },
+      //autorename: true,
+    });
 
-
-      // Crear enlace compartido público
-      const sharedLink = await this.dbx.sharingCreateSharedLinkWithSettings({
-        path: response.result.path_display!,
-        settings: {
-          requested_visibility: { '.tag': 'public' },
-        },
-      });
-
-
-      return sharedLink.result.url;
-    } catch (error: any) {
-      console.error('[Dropbox] Error al subir archivo:', error.message);
-      
-      // Si el error es porque ya existe un enlace compartido, intentar obtenerlo
-      if (error.error?.error['.tag'] === 'shared_link_already_exists') {
-        try {
-          const existingLinks = await this.dbx.sharingListSharedLinks({
-            path: `${dropboxPath}/${file.originalname}`,
-          });
-          
-          if (existingLinks.result.links.length > 0) {
-            return existingLinks.result.links[0].url;
-          }
-        } catch (linkError: any) {
-          console.error('[Dropbox] Error al obtener enlace existente:', linkError.message);
-        }
-      }
-      
-      throw new BadRequestException(
-        `Error al subir archivo a Dropbox: ${error.message}`,
-      );
-    }
+    // ✅ DEVOLVER EL PATH (rápido)
+    return response.result.path_lower ?? response.result.path_display!;
+  } catch (error: any) {
+    console.error("[Dropbox] Error al subir archivo:", error.message);
+    throw new BadRequestException(`Error al subir archivo a Dropbox: ${error.message}`);
   }
+}
+
 
   /**
    * Elimina un archivo de Dropbox usando su URL

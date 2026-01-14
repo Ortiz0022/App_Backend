@@ -633,17 +633,22 @@ private async sendStatusChangeEmail(
   }
   // ========== MÉTODOS DE DROPBOX ==========
 
-  async uploadDocuments(
+async uploadDocuments(
   idSolicitud: number,
   files: {
     cedula?: any[];
     planoFinca?: any[];
   },
 ): Promise<any> {
+  const tAll = Date.now();
+
+  // 1) Medir findOne
+  const t0 = Date.now();
   const solicitud = await this.solicitudRepository.findOne({
     where: { idSolicitud },
-    relations: ['persona', 'asociado'],
+    relations: ["persona", "asociado"],
   });
+  console.log("[perf] findOne ms:", Date.now() - t0);
 
   if (!solicitud) {
     throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
@@ -655,46 +660,57 @@ private async sendStatusChangeEmail(
   };
 
   try {
-    // Construir nombre de carpeta con formato: nombre-apellido-cedula
-    const nombreCarpeta = `${solicitud.persona.nombre}-${solicitud.persona.apellido1}-${solicitud.persona.cedula}`.toLowerCase().replace(/\s+/g, '-');
-    // Asegurar que existan las carpetas base
-    await this.dropboxService.ensureFolder('/Solicitudes Asociados');
-    await this.dropboxService.ensureFolder(`/Solicitudes Asociados/${nombreCarpeta}`);
+    const nombreCarpeta = `${solicitud.persona.nombre}-${solicitud.persona.apellido1}-${solicitud.persona.cedula}`
+      .toLowerCase()
+      .replace(/\s+/g, "-");
 
-    // Subir cédulas
-    if (files.cedula && files.cedula.length > 0) {
+    // 2) Medir Dropbox uploads (paralelo)
+    const uploads: Promise<void>[] = [];
+
+    if (files.cedula?.length) {
       for (const file of files.cedula) {
-        const url = await this.dropboxService.uploadFile(
-          file,
-          `/Solicitudes Asociados/${nombreCarpeta}/cedula`,
+        uploads.push(
+          this.dropboxService
+            .uploadFile(file, `/Solicitudes Asociados/${nombreCarpeta}/cedula`)
+            .then((path) => {
+              formData.cedula.push(path);
+            }),
         );
-        formData.cedula.push(url);
       }
     }
 
-    // Subir planos de finca
-    if (files.planoFinca && files.planoFinca.length > 0) {
+    if (files.planoFinca?.length) {
       for (const file of files.planoFinca) {
-        const url = await this.dropboxService.uploadFile(
-          file,
-          `/Solicitudes Asociados/${nombreCarpeta}/plano`,
+        uploads.push(
+          this.dropboxService
+            .uploadFile(file, `/Solicitudes Asociados/${nombreCarpeta}/plano`)
+            .then((path) => {
+              formData.planoFinca.push(path);
+            }),
         );
-        formData.planoFinca.push(url);
       }
     }
+
+    const t1 = Date.now();
+    await Promise.all(uploads);
+    console.log("[perf] dropbox uploads ms:", Date.now() - t1);
 
     solicitud.formData = formData;
-    await this.solicitudRepository.save(solicitud);
 
-    return { 
-      message: 'Documentos subidos exitosamente',
-      urls: formData 
+    // 3) Medir save
+    const t2 = Date.now();
+    await this.solicitudRepository.save(solicitud);
+    console.log("[perf] db save ms:", Date.now() - t2);
+
+    console.log("[perf] total uploadDocuments ms:", Date.now() - tAll);
+
+    return {
+      message: "Documentos subidos exitosamente",
+      urls: formData,
     };
   } catch (error: any) {
-    console.error('[Service] Error al subir documentos:', error.message);
-    throw new BadRequestException(
-      `Error al subir documentos: ${error.message}`,
-    );
+    console.error("[Service] Error al subir documentos:", error.message);
+    throw new BadRequestException(`Error al subir documentos: ${error.message}`);
   }
 }
 
