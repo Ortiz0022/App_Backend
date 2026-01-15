@@ -41,118 +41,141 @@ export class SolicitudVoluntariadoService {
      private emailService: EmailService,
   ) {}
 
-  async create(
-    createSolicitudDto: CreateSolicitudVoluntariadoDto,
-  ): Promise<SolicitudVoluntariado> {
-    return this.dataSource.transaction(async (manager) => {
-      let voluntario: VoluntarioIndividual | undefined;
-      let organizacion: Organizacion | undefined;
+ async create(
+  createSolicitudDto: CreateSolicitudVoluntariadoDto,
+): Promise<SolicitudVoluntariado> {
+  return this.dataSource.transaction(async (manager) => {
+    let voluntario: VoluntarioIndividual | undefined;
+    let organizacion: Organizacion | undefined;
 
-      // Crear según el tipo de solicitante
-      if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
-        if (!createSolicitudDto.voluntario) {
-          throw new BadRequestException(
-            'Debe proporcionar los datos del voluntario individual',
-          );
-        }
-        voluntario = await this.voluntarioService.createInTransaction(
-          createSolicitudDto.voluntario,
-          manager,
-        );
+    // Helpers seguros
+    const disponibilidades = createSolicitudDto.disponibilidades ?? [];
+    const areasInteres = createSolicitudDto.areasInteres ?? [];
+    const representantes = createSolicitudDto.representantes ?? [];
+    const razonesSociales = createSolicitudDto.razonesSociales ?? [];
 
-        // Crear disponibilidades para el voluntario
-        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
-          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
-            await this.disponibilidadService.createForVoluntarioInTransaction(
-              disponibilidadDto,
-              voluntario,
-              manager,
-            );
-          }
-        }
-
-        // Crear áreas de interés para el voluntario
-        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
-          for (const areaInteresDto of createSolicitudDto.areasInteres) {
-            await this.areasInteresService.createForVoluntarioInTransaction(
-              areaInteresDto,
-              voluntario,
-              manager,
-            );
-          }
-        }
-      } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
-        if (!createSolicitudDto.organizacion) {
-          throw new BadRequestException(
-            'Debe proporcionar los datos de la organización',
-          );
-        }
-        organizacion = await this.organizacionService.createInTransaction(
-          createSolicitudDto.organizacion,
-          manager,
-        );
-
-        // Crear representantes si existen
-        if (createSolicitudDto.representantes && createSolicitudDto.representantes.length > 0) {
-          for (const representanteDto of createSolicitudDto.representantes) {
-            await this.representanteService.createInTransaction(
-              representanteDto,
-              organizacion,
-              manager,
-            );
-          }
-        }
-
-        // Crear razones sociales si existen
-        if (createSolicitudDto.razonesSociales && createSolicitudDto.razonesSociales.length > 0) {
-          for (const razonSocialDto of createSolicitudDto.razonesSociales) {
-            await this.razonSocialService.createInTransaction(
-              razonSocialDto,
-              organizacion,
-              manager,
-            );
-          }
-        }
-
-        // Crear disponibilidades para la organización
-        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
-          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
-            await this.disponibilidadService.createForOrganizacionInTransaction(
-              disponibilidadDto,
-              organizacion,
-              manager,
-            );
-          }
-        }
-
-        // Crear áreas de interés para la organización
-        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
-          for (const areaInteresDto of createSolicitudDto.areasInteres) {
-            await this.areasInteresService.createForOrganizacionInTransaction(
-              areaInteresDto,
-              organizacion,
-              manager,
-            );
-          }
-        }
-      } else {
+    // Crear según el tipo de solicitante
+    if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
+      if (!createSolicitudDto.voluntario) {
         throw new BadRequestException(
-          'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
+          'Debe proporcionar los datos del voluntario individual',
         );
       }
 
-      // Crear solicitud
-      const solicitud = manager.create(SolicitudVoluntariado, {
-        tipoSolicitante: createSolicitudDto.tipoSolicitante,
-        voluntario,
-        organizacion,
-        fechaSolicitud: new Date(),
-        estado: SolicitudVoluntariadoStatus.PENDIENTE,
-      });
+      // 1) Crear voluntario
+      voluntario = await this.voluntarioService.createInTransaction(
+        createSolicitudDto.voluntario,
+        manager,
+      );
 
-      return manager.save(solicitud);
+      // 2) Crear disponibilidades EN PARALELO
+      if (disponibilidades.length > 0) {
+        await Promise.all(
+          disponibilidades.map((disponibilidadDto) =>
+            this.disponibilidadService.createForVoluntarioInTransaction(
+              disponibilidadDto,
+              voluntario!,
+              manager,
+            ),
+          ),
+        );
+      }
+
+      // 3) Crear áreas de interés EN PARALELO
+      if (areasInteres.length > 0) {
+        await Promise.all(
+          areasInteres.map((areaInteresDto) =>
+            this.areasInteresService.createForVoluntarioInTransaction(
+              areaInteresDto,
+              voluntario!,
+              manager,
+            ),
+          ),
+        );
+      }
+    } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
+      if (!createSolicitudDto.organizacion) {
+        throw new BadRequestException(
+          'Debe proporcionar los datos de la organización',
+        );
+      }
+
+      // 1) Crear organización
+      organizacion = await this.organizacionService.createInTransaction(
+        createSolicitudDto.organizacion,
+        manager,
+      );
+
+      // 2) Crear representantes EN PARALELO
+      if (representantes.length > 0) {
+        await Promise.all(
+          representantes.map((representanteDto) =>
+            this.representanteService.createInTransaction(
+              representanteDto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        );
+      }
+
+      // 3) Crear razones sociales EN PARALELO
+      if (razonesSociales.length > 0) {
+        await Promise.all(
+          razonesSociales.map((razonSocialDto) =>
+            this.razonSocialService.createInTransaction(
+              razonSocialDto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        );
+      }
+
+      // 4) Crear disponibilidades EN PARALELO
+      if (disponibilidades.length > 0) {
+        await Promise.all(
+          disponibilidades.map((disponibilidadDto) =>
+            this.disponibilidadService.createForOrganizacionInTransaction(
+              disponibilidadDto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        );
+      }
+
+      // 5) Crear áreas de interés EN PARALELO
+      if (areasInteres.length > 0) {
+        await Promise.all(
+          areasInteres.map((areaInteresDto) =>
+            this.areasInteresService.createForOrganizacionInTransaction(
+              areaInteresDto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        );
+      }
+    } else {
+      throw new BadRequestException(
+        'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
+      );
+    }
+
+    // Crear solicitud
+    const solicitud = manager.create(SolicitudVoluntariado, {
+      tipoSolicitante: createSolicitudDto.tipoSolicitante,
+      voluntario,
+      organizacion,
+      fechaSolicitud: new Date(),
+      estado: SolicitudVoluntariadoStatus.PENDIENTE,
     });
-  }
+
+    return manager.save(solicitud);
+  });
+}
+
 
 async findAllPaginated(params: {
   page?: number;
@@ -219,102 +242,98 @@ async findAllPaginated(params: {
 }
 
   // ✅ NUEVO: Método para subir documentos a Dropbox
-  async uploadDocuments(
-    idSolicitud: number,
-    files: {
-      cv?: any[];
-      cedula?: any[];
-      carta?: any[];
-    },
-  ): Promise<any> {
-    const solicitud = await this.solicitudRepository.findOne({
-      where: { idSolicitudVoluntariado: idSolicitud },
-      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
-    });
+ async uploadDocuments(
+  idSolicitud: number,
+  files: { cv?: any[]; cedula?: any[]; carta?: any[] },
+): Promise<any> {
+  const t0 = Date.now();
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitudVoluntariado: idSolicitud },
+    relations: ['voluntario.persona', 'organizacion'],
+  });
+console.log("findOne ms:", Date.now() - t0);
 
-    if (!solicitud) {
-      throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+  if (!solicitud) {
+    throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+  }
+
+  const formData = {
+    cv: [] as string[],
+    cedula: [] as string[],
+    carta: [] as string[],
+  };
+
+  try {
+    let nombreCarpeta: string;
+
+    if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario?.persona) {
+      const p = solicitud.voluntario.persona;
+      nombreCarpeta = `${p.nombre}-${p.apellido1}-${p.cedula}`.toLowerCase().replace(/\s+/g, '-');
+    } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
+      nombreCarpeta = `${solicitud.organizacion.nombre}`.toLowerCase().replace(/\s+/g, '-');
+    } else {
+      throw new BadRequestException('No se puede determinar el nombre de la carpeta');
     }
 
-    const formData = {
-      cv: [] as string[],
-      cedula: [] as string[],
-      carta: [] as string[],
-    };
+    // (Opcional) si vas a asumir que existen, dejalas comentadas
+    // await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
+    // await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
 
-    try {
-      // Determinar nombre de carpeta según tipo de solicitante
-      let nombreCarpeta: string;
+    const mkPath = (kind: "cv" | "cedula" | "carta") =>
+      `/Solicitudes Voluntarios/${nombreCarpeta}/${kind}`;
 
-      if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario?.persona) {
-        const persona = solicitud.voluntario.persona;
-        nombreCarpeta = `${persona.nombre}-${persona.apellido1}-${persona.cedula}`
-          .toLowerCase()
-          .replace(/\s+/g, '-');
-      } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
-        nombreCarpeta = `${solicitud.organizacion.nombre}`
-          .toLowerCase()
-          .replace(/\s+/g, '-');
-      } else {
-        throw new BadRequestException('No se puede determinar el nombre de la carpeta');
-      }
+    const uploads: Array<Promise<void>> = [];
 
-      // Asegurar que existan las carpetas base
-      await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
-      await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
-
-      // Subir CV
-      if (files.cv && files.cv.length > 0) {
-        for (const file of files.cv) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/cv`,
-          );
-          formData.cv.push(url);
-        }
-      }
-
-      // Subir Cédula
-      if (files.cedula && files.cedula.length > 0) {
-        for (const file of files.cedula) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/cedula`,
-          );
-          formData.cedula.push(url);
-        }
-      }
-
-      // Subir Carta
-      if (files.carta && files.carta.length > 0) {
-        for (const file of files.carta) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/carta`,
-          );
-          formData.carta.push(url);
-        }
-      }
-
-      // Guardar URLs en formData y también en campos temp
-      solicitud.formData = formData;
-      solicitud.cvUrlTemp = formData.cv[0] ?? undefined;
-      solicitud.cedulaUrlTemp = formData.cedula[0] ?? undefined;
-      solicitud.cartaUrlTemp = formData.carta[0] ?? undefined;
-
-      await this.solicitudRepository.save(solicitud);
-
-      return {
-        message: 'Documentos subidos exitosamente',
-        urls: formData,
-      };
-    } catch (error: any) {
-      console.error('[Service] Error al subir documentos:', error.message);
-      throw new BadRequestException(
-        `Error al subir documentos: ${error.message}`,
+    if (files.cv?.length) {
+      uploads.push(
+        Promise.all(
+          files.cv.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("cv"));
+            formData.cv.push(path);
+          })
+        ).then(() => void 0)
       );
     }
+
+    if (files.cedula?.length) {
+      uploads.push(
+        Promise.all(
+          files.cedula.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("cedula"));
+            formData.cedula.push(path);
+          })
+        ).then(() => void 0)
+      );
+    }
+
+    if (files.carta?.length) {
+      uploads.push(
+        Promise.all(
+          files.carta.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("carta"));
+            formData.carta.push(path);
+          })
+        ).then(() => void 0)
+      );
+    }
+const t1 = Date.now();
+    await Promise.all(uploads);
+console.log("dropbox uploads ms:", Date.now() - t1);
+
+    solicitud.formData = formData;
+    solicitud.cvUrlTemp = formData.cv[0] ?? undefined;
+    solicitud.cedulaUrlTemp = formData.cedula[0] ?? undefined;
+    solicitud.cartaUrlTemp = formData.carta[0] ?? undefined;
+const t2 = Date.now();
+    await this.solicitudRepository.save(solicitud);
+console.log("db save ms:", Date.now() - t2);
+    return { message: 'Documentos subidos exitosamente', urls: formData };
+  } catch (error: any) {
+    console.error('[Service] Error al subir documentos:', error.message);
+    throw new BadRequestException(`Error al subir documentos: ${error.message}`);
   }
+}
+
 
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({
