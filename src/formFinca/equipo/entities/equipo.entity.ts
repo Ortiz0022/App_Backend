@@ -23,6 +23,9 @@ export class InfraestructuraProduccion {
   @Column({ type: 'int', default: 0 })
   numeroSaleros: number;
 
+  @Column({ type: 'int', default: 0 })
+  numeroComederos: number;
+
   @OneToOne(() => Finca, (finca) => finca.infraestructura)
   @JoinColumn({ name: 'idFinca' })
   finca: Finca;

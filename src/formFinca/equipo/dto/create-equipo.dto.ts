@@ -20,4 +20,9 @@ export class CreateInfraestructuraProduccionDto {
   @IsInt()
   @Min(0)
   numeroSaleros: number;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Min(0)
+  numeroComederos: number;
 }
