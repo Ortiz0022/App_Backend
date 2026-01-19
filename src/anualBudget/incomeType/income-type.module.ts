@@ -6,14 +6,14 @@ import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub
 
 import { IncomeTypeController } from './income-type.controller';
 import { IncomeTypeService } from './income-type.service';
+import { PIncomeType } from '../pIncomeType/entities/pincome-type.entity';
 
 @Module({
   imports: [
-    // Usa ambos repos porque el service suma desde IncomeSubType
-    TypeOrmModule.forFeature([IncomeType, IncomeSubType]),
+    TypeOrmModule.forFeature([IncomeType, IncomeSubType, PIncomeType]),
   ],
   controllers: [IncomeTypeController],
   providers: [IncomeTypeService],
-  exports: [IncomeTypeService], // para que otros módulos (Income, IncomeSubType) lo inyecten
+  exports: [IncomeTypeService], 
 })
 export class IncomeTypeModule {}

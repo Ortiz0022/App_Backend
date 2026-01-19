@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query 
 import { IncomeSubTypeService } from './income-sub-type.service';
 import { CreateIncomeSubTypeDto } from './dto/createIncomeSubTypeDto';
 import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
+import { FromPIncomeSubTypeDto } from './dto/fromPIncomeSubTypeDto';
 
 @Controller('income-sub-type')
 export class IncomeSubTypeController {
@@ -38,5 +39,12 @@ export class IncomeSubTypeController {
   @Get('recalc/:id')
   recalc(@Param('id', ParseIntPipe) id: number) {
     return this.svc.recalcAmount(id);
+  }
+
+
+  // POST /income-sub-type/from-projection
+  @Post('from-projection')
+  fromProjection(@Body() dto: FromPIncomeSubTypeDto) {
+    return this.svc.fromProjectionSubType(dto.pIncomeSubTypeId);
   }
 }
