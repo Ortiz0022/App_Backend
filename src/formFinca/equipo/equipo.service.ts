@@ -29,6 +29,7 @@ export class InfraestructuraProduccionService {
       numeroAparatos: dto.numeroAparatos,
       numeroBebederos: dto.numeroBebederos,
       numeroSaleros: dto.numeroSaleros,
+      numeroComederos: dto.numeroComederos,
       finca,
     });
 
@@ -66,6 +67,7 @@ export class InfraestructuraProduccionService {
       numeroAparatos: dto.numeroAparatos,
       numeroBebederos: dto.numeroBebederos,
       numeroSaleros: dto.numeroSaleros,
+      numeroComederos: dto.numeroComederos,
       finca,
     });
 
