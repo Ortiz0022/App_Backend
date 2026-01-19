@@ -5,12 +5,14 @@ import { IncomeType } from './entities/income-type.entity';
 import { CreateIncomeTypeDto } from './dto/createIncomeTypeDto';
 import { UpdateIncomeTypeDto } from './dto/updateIncomeTypeDto';
 import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
+import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity'; 
 
 @Injectable()
 export class IncomeTypeService {
   constructor(
     @InjectRepository(IncomeType) private readonly repo: Repository<IncomeType>,
     @InjectRepository(IncomeSubType) private readonly subRepo: Repository<IncomeSubType>,
+    @InjectRepository(PIncomeType) private readonly pTypeRepo: Repository<PIncomeType>,
   ) {}
 
   async create(dto: CreateIncomeTypeDto) {
@@ -59,5 +61,41 @@ export class IncomeTypeService {
     await this.repo.update(incomeTypeId, { amountIncome: total });
 
     return this.findOne(incomeTypeId);
+  }
+
+   private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  async fromProjectionType(pIncomeTypeId: number) {
+    const pType = await this.pTypeRepo.findOne({
+      where: { id: pIncomeTypeId },
+      relations: ['department'],
+    });
+
+    if (!pType) throw new BadRequestException('PIncomeType not found');
+
+    const name = this.normalizeName(pType.name);
+    const deptId = pType.department?.id;
+
+    if (!deptId) throw new BadRequestException('PIncomeType has no department');
+
+    // Buscar si ya existe en real
+    const existing = await this.repo
+      .createQueryBuilder('t')
+      .innerJoin('t.department', 'd')
+      .where('d.id = :deptId', { deptId })
+      .andWhere('LOWER(t.name) = LOWER(:name)', { name })
+      .getOne();
+
+    if (existing) return existing;
+
+    // Crear si no existe
+    const created = this.repo.create({
+      name,
+      department: { id: deptId } as any,
+    });
+
+    return this.repo.save(created);
   }
 }

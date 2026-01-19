@@ -7,6 +7,7 @@ import { UpdateIncomeSubTypeDto } from './dto/updateIncomeSubTypeDto';
 import { IncomeType } from '../incomeType/entities/income-type.entity';
 import { Income } from '../income/entities/income.entity';
 import { IncomeTypeService } from '../incomeType/income-type.service';
+import { PIncomeSubType } from 'src/anualBudget/pIncomeSubType/entities/pincome-sub-type.entity'; 
 
 @Injectable()
 export class IncomeSubTypeService {
@@ -14,6 +15,7 @@ export class IncomeSubTypeService {
     @InjectRepository(IncomeSubType) private readonly repo: Repository<IncomeSubType>,
     @InjectRepository(IncomeType) private readonly typeRepo: Repository<IncomeType>,
     @InjectRepository(Income) private readonly incRepo: Repository<Income>,
+    @InjectRepository(PIncomeSubType) private readonly pSubRepo: Repository<PIncomeSubType>,
     private readonly typeService: IncomeTypeService,
   ) {}
 
@@ -133,4 +135,44 @@ export class IncomeSubTypeService {
   
     return total;
   }
+
+
+  
+  private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  async fromProjectionSubType(pIncomeSubTypeId: number) {
+    const pSub = await this.pSubRepo.findOne({
+      where: { id: pIncomeSubTypeId },
+      relations: ['pIncomeType', 'pIncomeType.department'],
+    });
+
+    if (!pSub) throw new BadRequestException('PIncomeSubType not found');
+
+    // 1) asegurar Type real
+    const realType = await this.typeService.fromProjectionType(pSub.pIncomeType.id);
+
+    // 2) buscar SubType real por (type + name)
+    const name = this.normalizeName(pSub.name);
+
+    const existing = await this.repo
+      .createQueryBuilder('s')
+      .innerJoin('s.incomeType', 't')
+      .where('t.id = :typeId', { typeId: realType.id })
+      .andWhere('LOWER(s.name) = LOWER(:name)', { name })
+      .getOne();
+
+    if (existing) return existing;
+
+    // 3) crear si no existe
+    const created = this.repo.create({
+      name,
+      incomeType: { id: realType.id } as any,
+    });
+
+    return this.repo.save(created);
+  }
+
+
 }

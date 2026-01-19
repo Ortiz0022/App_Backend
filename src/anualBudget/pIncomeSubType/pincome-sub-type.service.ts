@@ -61,10 +61,24 @@ export class PIncomeSubTypeService {
     return saved;
   }
 
-  async remove(id: number) {
-    const row = await this.findOne(id);
-    await this.repo.delete(id);
-    // si borras un subtipo, las sumas por tipo no cambian hasta que borres/reescribas sus incomes
-    return { deleted: true };
+async remove(id: number) {
+  const row = await this.repo.findOne({
+    where: { id },
+    relations: ['pIncomeType', 'pIncomes'],
+  });
+  if (!row) throw new NotFoundException('PIncomeSubType not found');
+
+  if (row.pIncomes?.length) {
+    throw new BadRequestException(
+      'No se puede eliminar el subtipo porque tiene proyecciones registradas.'
+    );
   }
+
+  const typeId = row.pIncomeType.id;
+  await this.repo.delete(id);
+  await this.typeService.recalcAmount(typeId);
+
+  return { deleted: true };
+}
+
 }

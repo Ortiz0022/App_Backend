@@ -6,14 +6,15 @@ import { IncomeType } from '../incomeType/entities/income-type.entity';
 import { IncomeSubTypeService } from './income-sub-type.service';
 import { IncomeTypeModule } from '../incomeType/income-type.module';
 import { IncomeSubTypeController } from './income-sub-type.controller';
+import { PIncomeSubType } from '../pIncomeSubType/entities/pincome-sub-type.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([IncomeSubType, IncomeType, Income]),
-    IncomeTypeModule, // porque IncomeSubTypeService usa IncomeTypeService
+    TypeOrmModule.forFeature([IncomeSubType, IncomeType, Income, PIncomeSubType]),
+    IncomeTypeModule, 
   ],
   controllers: [IncomeSubTypeController],
   providers: [IncomeSubTypeService],
-  exports: [IncomeSubTypeService], // ⬅️ NECESARIO
+  exports: [IncomeSubTypeService], 
 })
 export class IncomeSubTypeModule {}

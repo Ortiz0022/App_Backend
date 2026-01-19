@@ -64,29 +64,31 @@ export class PIncomeService {
     });
   }
 
-  async update(id: number, dto: { incomeSubTypeId?: number; amount?: string }) {
-    const row = await this.findOne(id);
-    const oldTypeId = row.pIncomeSubType.pIncomeType.id;
+async update(id: number, dto: { pIncomeSubTypeId?: number; amount?: string }) {
+  const row = await this.findOne(id);
+  const oldTypeId = row.pIncomeSubType.pIncomeType.id;
 
-    if (dto.incomeSubTypeId !== undefined) {
-      const s = await this.getSubType(dto.incomeSubTypeId);
-      row.pIncomeSubType = { id: s.id } as any;
-    }
-    if (dto.amount !== undefined) row.amount = dto.amount;
-
-    if (!row.fiscalYear) {
-      const fy = await this.fyService.getActiveOrCurrent();
-      row.fiscalYear = fy ?? undefined;
-    }
-
-    const saved = await this.repo.save(row);
-
-    const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
-    await this.pIncomeTypeService.recalcAmount(oldTypeId);
-    if (newTypeId !== oldTypeId) await this.pIncomeTypeService.recalcAmount(newTypeId);
-
-    return saved;
+  if (dto.pIncomeSubTypeId !== undefined) {
+    const s = await this.getSubType(dto.pIncomeSubTypeId);
+    row.pIncomeSubType = { id: s.id } as any;
   }
+
+  if (dto.amount !== undefined) row.amount = dto.amount;
+
+  if (!row.fiscalYear) {
+    const fy = await this.fyService.getActiveOrCurrent();
+    row.fiscalYear = fy ?? undefined;
+  }
+
+  const saved = await this.repo.save(row);
+
+  const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
+  await this.pIncomeTypeService.recalcAmount(oldTypeId);
+  if (newTypeId !== oldTypeId) await this.pIncomeTypeService.recalcAmount(newTypeId);
+
+  return saved;
+}
+
 
   async remove(id: number) {
     const row = await this.findOne(id);
