@@ -23,6 +23,7 @@ import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { SolicitudesListPdfService } from './solicitudesPdf.service';
+import { ValidateSolicitudDto } from './dto/validate-solicitud.dto';
 
 @Controller('solicitudes')
 export class SolicitudController {
@@ -51,6 +52,11 @@ export class SolicitudController {
     files: { cedula?: any[]; planoFinca?: any[] },
   ) {
     return this.solicitudService.uploadDocuments(id, files);
+  }
+
+    @Post('validate')
+  validateBeforeCreate(@Body() dto: ValidateSolicitudDto) {
+    return this.solicitudService.validateBeforeCreate(dto);
   }
 
   @Get()

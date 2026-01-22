@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Solicitud } from './entities/solicitud.entity';
 import { Associate } from 'src/formAssociates/associate/entities/associate.entity';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
@@ -39,6 +39,7 @@ import { AccesoService } from 'src/formFinca/acceso/acceso.service';
 import { CanalesComercializacionService } from 'src/formFinca/canal-comercializacion/canal.service';
 import { NecesidadesService } from 'src/formFinca/necesidades/necesidades.service';
 import { EmailService } from 'src/email/email.service';
+import { ValidateSolicitudDto } from './dto/validate-solicitud.dto';
 
 @Injectable()
 export class SolicitudService {
@@ -77,136 +78,126 @@ export class SolicitudService {
     private emailService: EmailService,
   ) {}
 
+  
+async validateBeforeCreate(dto: ValidateSolicitudDto) {
+  await this.validateOrThrow(dto);
+  return { ok: true };
+}
   async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-  
-    try {
-      // 1. Buscar o crear Persona del Asociado
-      let personaAsociado = await queryRunner.manager.findOne(Persona, {
-        where: [
-          { cedula: createDto.persona.cedula },
-          { email: createDto.persona.email }
-        ]
-      });
-  
-      if (personaAsociado) {
-        const existingAsociado = await queryRunner.manager.findOne(Associate, {
-          where: { persona: { idPersona: personaAsociado.idPersona } }
-        });
-        
-        if (existingAsociado) {
-          throw new ConflictException(
-            `Ya existe un asociado con esta cédula o email`
-          );
-        }
+   const queryRunner = this.dataSource.createQueryRunner()
+  await queryRunner.connect()
+  await queryRunner.startTransaction()
+
+  try {
+    // ✅ 1) SIEMPRE: buscar/crear Persona por cédula (y mergear campos vacíos)
+    // Esto es EXACTAMENTE el patrón que ya usaste para voluntarios.
+    const personaAsociado = await this.personaService.createInTransaction(
+      createDto.persona,
+      queryRunner.manager,
+    )
+
+    // ✅ 1.1) Evitar duplicar ASOCIADO (esto sí es conflicto real)
+    const existingAsociado = await queryRunner.manager.findOne(Associate, {
+      where: { persona: { idPersona: personaAsociado.idPersona } },
+    })
+    if (existingAsociado) {
+      throw new ConflictException("Ya existe un asociado con esta cédula.")
+    }
+
+    // 2) NucleoFamiliar (si viene)
+    let nucleoFamiliar: NucleoFamiliar | null = null
+    if (createDto.nucleoFamiliar) {
+      nucleoFamiliar = await this.nucleoFamiliarService.createInTransaction(
+        {
+          nucleoHombres: createDto.nucleoFamiliar.nucleoHombres,
+          nucleoMujeres: createDto.nucleoFamiliar.nucleoMujeres,
+        },
+        queryRunner.manager,
+      )
+    }
+
+    // 3) Crear Asociado
+    const asociado = queryRunner.manager.create(Associate, {
+      persona: personaAsociado,
+      viveEnFinca: createDto.datosAsociado.viveEnFinca,
+      marcaGanado: createDto.datosAsociado.marcaGanado,
+      CVO: createDto.datosAsociado.CVO,
+      estado: false,
+    })
+
+    if (nucleoFamiliar) asociado.nucleoFamiliar = nucleoFamiliar
+
+    await queryRunner.manager.save(asociado)
+
+    if (createDto.necesidades && createDto.necesidades.length > 0) {
+      await this.necesidadesService.createManyInTransaction(
+        createDto.necesidades,
+        asociado,
+        queryRunner.manager,
+      )
+    }
+
+    // 4) Propietario (igual lo dejé como lo tenés)
+    let propietario: Propietario | null = null
+
+    if (createDto.propietario) {
+      const cedAsoc = (personaAsociado.cedula ?? "").trim()
+      const emailAsoc = (personaAsociado.email ?? "").trim().toLowerCase()
+
+      const cedProp = (createDto.propietario.persona.cedula ?? "").trim()
+      const emailProp = (createDto.propietario.persona.email ?? "").trim().toLowerCase()
+
+      const esLaMismaPersona = (cedProp && cedProp === cedAsoc) || (emailProp && emailProp === emailAsoc)
+
+      if (esLaMismaPersona) {
+        propietario = await this.propietarioService.createInTransaction(
+          personaAsociado,
+          queryRunner.manager,
+        )
       } else {
-        personaAsociado = await this.personaService.createInTransaction(
-          createDto.persona,
+        // ✅ acá también es mejor usar createInTransaction para evitar choque por “persona ya existe”
+        const personaPropietario = await this.personaService.createInTransaction(
+          createDto.propietario.persona,
           queryRunner.manager,
-        );
-      }
-  
-      // 2. Crear NucleoFamiliar (si viene)
-      let nucleoFamiliar: NucleoFamiliar | null = null; 
-      if (createDto.nucleoFamiliar) {
-        nucleoFamiliar = await this.nucleoFamiliarService.createInTransaction(
-          {
-            nucleoHombres: createDto.nucleoFamiliar.nucleoHombres,
-            nucleoMujeres: createDto.nucleoFamiliar.nucleoMujeres,
-          },
-          queryRunner.manager,
-        );
-      }
-  
-      // 3. Crear Asociado
-      const asociado = queryRunner.manager.create(Associate, {
-        persona: personaAsociado,
-        viveEnFinca: createDto.datosAsociado.viveEnFinca,
-        marcaGanado: createDto.datosAsociado.marcaGanado,
-        CVO: createDto.datosAsociado.CVO,
-        estado: false,
-      });
-  
-      if (nucleoFamiliar) {
-        asociado.nucleoFamiliar = nucleoFamiliar;
-      }
-  
-      await queryRunner.manager.save(asociado);
-  
-      if (createDto.necesidades && createDto.necesidades.length > 0) {
-        await this.necesidadesService.createManyInTransaction(
-          createDto.necesidades,
-          asociado,
-          queryRunner.manager,
-        );
-      }
+        )
 
-      // 4. Procesar Propietario
-      let propietario: Propietario | null = null;
-  
-      if (createDto.propietario) {
-        const esLaMismaPersona = 
-          createDto.propietario.persona.cedula === personaAsociado.cedula ||
-          createDto.propietario.persona.email === personaAsociado.email;
-        
-        if (esLaMismaPersona) {
-          propietario = await this.propietarioService.createInTransaction(
-            personaAsociado,
-            queryRunner.manager,
-          );
-        } else {
-          let personaPropietario = await queryRunner.manager.findOne(Persona, {
-            where: [
-              { cedula: createDto.propietario.persona.cedula },
-              { email: createDto.propietario.persona.email }
-            ]
-          });
-  
-          if (!personaPropietario) {
-            personaPropietario = await this.personaService.createInTransaction(
-              createDto.propietario.persona,
-              queryRunner.manager,
-            );
-          }
-  
-          propietario = await this.propietarioService.createInTransaction(
-            personaPropietario,
-            queryRunner.manager,
-          );
-        }
-      }
-  
-      // 5. Geografia
-      const geografia = await this.geografiaService.findOrCreateInTransaction(
-        createDto.datosFinca.geografia,
-        queryRunner.manager,
-      );
-
-      let corriente: CorrienteElectrica | null = null;
-      if (createDto.corrienteElectrica) {
-        corriente = await this.corrienteElectricaService.findOrCreateInTransaction(
-          createDto.corrienteElectrica,
+        propietario = await this.propietarioService.createInTransaction(
+          personaPropietario,
           queryRunner.manager,
-        );
+        )
       }
-  
-      // 6. Crear Finca
-      const finca = await this.fincaService.createInTransaction(
-        {
-          nombre: createDto.datosFinca.nombre,
-          areaHa: createDto.datosFinca.areaHa,
-          numeroPlano: createDto.datosFinca.numeroPlano,
-        },
-        {
-          idAsociado: asociado.idAsociado,
-          geografia,
-          propietario: propietario || undefined,
-          corriente: corriente || undefined,
-        },
+    }
+
+    // 5) Geografía
+    const geografia = await this.geografiaService.findOrCreateInTransaction(
+      createDto.datosFinca.geografia,
+      queryRunner.manager,
+    )
+
+    // 5.1) Corriente (si viene)
+    let corriente: CorrienteElectrica | null = null
+    if (createDto.corrienteElectrica) {
+      corriente = await this.corrienteElectricaService.findOrCreateInTransaction(
+        createDto.corrienteElectrica,
         queryRunner.manager,
-      );
+      )
+    }
+
+    // 6) Crear Finca
+    const finca = await this.fincaService.createInTransaction(
+      {
+        nombre: createDto.datosFinca.nombre,
+        areaHa: createDto.datosFinca.areaHa,
+        numeroPlano: createDto.datosFinca.numeroPlano,
+      },
+      {
+        idAsociado: asociado.idAsociado,
+        geografia,
+        propietario: propietario || undefined,
+        corriente: corriente || undefined,
+      },
+      queryRunner.manager,
+    )
   
       // 7. Crear Hato (si viene en el DTO)
       if (createDto.hato) {
@@ -301,7 +292,7 @@ export class SolicitudService {
         );
       }
       
-       // 16. ✅ Crear Tipo de Cerca (si viene)
+       // 16. Crear Tipo de Cerca (si viene)
       if (createDto.tipoCerca) {
   const tiposCercaConfig = [
     { key: 'alambrePuas', active: createDto.tipoCerca.alambrePuas },
@@ -359,24 +350,77 @@ export class SolicitudService {
         }
 
       // 18. Crear Solicitud
-      const solicitud = queryRunner.manager.create(Solicitud, {
-        persona: personaAsociado,
-        asociado,
-        fechaSolicitud: new Date(),
-        estado: SolicitudStatus.PENDIENTE,
-      });
-      await queryRunner.manager.save(solicitud);
-  
-      await queryRunner.commitTransaction();
-      return this.findOne(solicitud.idSolicitud);
-    } catch (error) {
-      console.error('❌ Error en transacción:', error);
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+       const solicitud = queryRunner.manager.create(Solicitud, {
+      persona: personaAsociado,
+      asociado,
+      fechaSolicitud: new Date(),
+      estado: SolicitudStatus.PENDIENTE,
+    })
+    await queryRunner.manager.save(solicitud)
+
+    await queryRunner.commitTransaction()
+    return this.findOne(solicitud.idSolicitud)
+  } catch (error) {
+    await queryRunner.rollbackTransaction()
+    throw error
+  } finally {
+    await queryRunner.release()
   }
+  }
+
+private async validateOrThrow(
+  dto: ValidateSolicitudDto,
+  manager?: EntityManager,
+): Promise<void> {
+  const solicitudRepo: Repository<Solicitud> = manager
+    ? manager.getRepository(Solicitud)
+    : this.solicitudRepository;
+
+  const personaRepo: Repository<Persona> = manager
+    ? manager.getRepository(Persona)
+    : this.personaRepository;
+
+  const associateRepo: Repository<Associate> = manager
+    ? manager.getRepository(Associate)
+    : this.associateRepository;
+
+  const cedula = (dto?.cedula ?? '').trim();
+  if (!cedula) throw new BadRequestException('Debe proporcionar la cédula');
+
+  // 1) Buscar persona (si no existe, no hay pendiente en DB)
+  const persona = await personaRepo.findOne({ where: { cedula } });
+  if (!persona) return;
+
+  // 2) Si tiene SOLICITUD PENDIENTE => bloquear
+  const pendiente = await solicitudRepo.findOne({
+    where: {
+      persona: { idPersona: persona.idPersona } as any,
+      estado: SolicitudStatus.PENDIENTE,
+    },
+    relations: ['persona'],
+  });
+
+  if (pendiente) {
+    throw new ConflictException({
+      code: 'SOLICITUD_PENDIENTE_ASOCIADO',
+      message: 'Ya enviaste una solicitud de asociado y está en revisión.',
+    });
+  }
+
+  // 3) Si ya es asociado (opcional pero recomendado)
+  const existingAsociado = await associateRepo.findOne({
+    where: { persona: { idPersona: persona.idPersona } as any },
+    relations: ['persona'],
+  });
+
+  if (existingAsociado) {
+    throw new ConflictException({
+      code: 'YA_ES_ASOCIADO',
+      message: 'Ya eres asociado/a en el sistema.',
+    });
+  }
+}
+
 
   async findAllPaginated(params: {
     page?: number;
