@@ -2,12 +2,14 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { CreatePersonaDto } from './dto/create-persona.dto';
 import { UpdatePersonaDto } from './dto/update-persona.dto';
 import { Persona } from './entities/persona.entity';
+import { PersonaFormLookupDto } from './dto/persona-form-lookup.dto';
 
 @Injectable()
 export class PersonaService {
@@ -45,12 +47,104 @@ export class PersonaService {
   }
 
   // ✅ Método transaccional (sin validaciones, usa EntityManager externo)
-  createInTransaction(
-    createPersonaDto: CreatePersonaDto,
-    manager: EntityManager,
-  ): Promise<Persona> {
-    const persona = manager.create(Persona, createPersonaDto);
-    return manager.save(persona);
+  async createInTransaction(
+  createPersonaDto: CreatePersonaDto,
+  manager: EntityManager,
+): Promise<Persona> {
+  const repo = manager.getRepository(Persona);
+
+  const cedula = (createPersonaDto.cedula ?? "").trim();
+  if (!cedula) {
+    throw new BadRequestException("La cédula es requerida");
+  }
+
+  // 1) Buscar por cédula
+  const existente = await repo.findOne({ where: { cedula } });
+
+  if (existente) {
+    // 2) Autorellenar en backend (sin sobre-escribir lo existente)
+    //    Solo completa campos vacíos en BD con lo que venga en el DTO
+    const merged: Persona = repo.merge(existente, {
+      nombre: existente.nombre || createPersonaDto.nombre,
+      apellido1: existente.apellido1 || createPersonaDto.apellido1,
+      apellido2: existente.apellido2 || createPersonaDto.apellido2,
+      telefono: existente.telefono || createPersonaDto.telefono,
+      email: existente.email || createPersonaDto.email,
+      fechaNacimiento: existente.fechaNacimiento || createPersonaDto.fechaNacimiento,
+      direccion: existente.direccion || createPersonaDto.direccion,
+      cedulaUrl: existente.cedulaUrl || (createPersonaDto as any).cedulaUrl,
+    });
+
+    return repo.save(merged);
+  }
+
+  // 3) Si no existe, crear normal
+  const persona = repo.create(createPersonaDto);
+  return repo.save(persona);
+}
+
+
+  async findByCedulaForForms(cedula: string): Promise<PersonaFormLookupDto> {
+    const v = (cedula ?? '').trim();
+    if (!v) {
+      // si preferís, podés tirar BadRequest; aquí lo dejo como not found
+      throw new NotFoundException('Cédula requerida');
+    }
+
+    // Usá tu repo normal (o manager si estás dentro de transacción)
+    const repo: Repository<Persona> = this.personaRepository; // ajustá si tu service lo inyecta
+
+    const persona = await repo.findOne({ where: { cedula: v } });
+
+    if (!persona) {
+      throw new NotFoundException(`No existe persona con cédula ${v}`);
+    }
+
+    const direccion = persona.direccion ?? '';
+
+    const dto: PersonaFormLookupDto = {
+      found: true,
+      persona: {
+        idPersona: persona.idPersona,
+        cedula: persona.cedula,
+        nombre: persona.nombre,
+        apellido1: persona.apellido1,
+        apellido2: persona.apellido2,
+        telefono: persona.telefono,
+        email: persona.email,
+        fechaNacimiento: persona.fechaNacimiento,
+        direccion: persona.direccion ?? undefined,
+      },
+      volunteerIndividual: {
+        idNumber: persona.cedula,
+        name: persona.nombre,
+        lastName1: persona.apellido1,
+        lastName2: persona.apellido2,
+        phone: persona.telefono,
+        email: persona.email,
+        birthDate: persona.fechaNacimiento,
+        address: direccion,
+      },
+      representanteOrganizacion: {
+        persona: {
+          cedula: persona.cedula,
+          nombre: persona.nombre,
+          apellido1: persona.apellido1,
+          apellido2: persona.apellido2,
+          telefono: persona.telefono,
+          email: persona.email,
+          fechaNacimiento: persona.fechaNacimiento,
+          direccion: persona.direccion ?? undefined,
+        },
+      },
+      legacy: {
+        firstname: persona.nombre,
+        lastname1: persona.apellido1,
+        lastname2: persona.apellido2,
+      },
+    };
+
+    return dto;
   }
 
   async findAll(): Promise<Persona[]> {
@@ -58,6 +152,7 @@ export class PersonaService {
       relations: ['asociado'],
     });
   }
+
 
   async findOne(id: number): Promise<Persona> {
     const persona = await this.personaRepository.findOne({

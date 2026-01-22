@@ -28,37 +28,34 @@ export class RepresentanteService {
     organizacion: Organizacion,
     manager: EntityManager,
   ): Promise<Representante> {
-    try {
-      // Crear persona dentro de la transacción
-      const persona = await this.personaService.createInTransaction(
-        createRepresentanteDto.persona,
-        manager,
-      );
+    const repo = manager.getRepository(Representante);
 
-      // Crear representante
-      const representante = manager.create(Representante, {
-        persona,
-        cargo: createRepresentanteDto.cargo,
-        organizacion,
-      });
+    // 1) Reusar Persona por cédula (ya no explota)
+    const persona = await this.personaService.createInTransaction(
+      createRepresentanteDto.persona,
+      manager,
+    );
 
-      return manager.save(representante);
-    } catch (error) {
-      // Manejar error de duplicado
-      if (error.code === 'ER_DUP_ENTRY') {
-        if (error.message.includes('cedula')) {
-          throw new ConflictException(
-            `Ya existe una persona registrada con la cédula ${createRepresentanteDto.persona.cedula}`,
-          );
-        }
-        if (error.message.includes('email')) {
-          throw new ConflictException(
-            `Ya existe una persona registrada con el email ${createRepresentanteDto.persona.email}`,
-          );
-        }
-      }
-      throw error;
+    // 2) Si ya existe ese representante para esa organización, devolverlo
+    const existente = await repo.findOne({
+      where: {
+        persona: { idPersona: persona.idPersona },
+        organizacion: { idOrganizacion: organizacion.idOrganizacion },
+      },
+    });
+
+    if (existente) {
+      return existente;
     }
+
+    // 3) Crear representante nuevo
+    const representante = repo.create({
+      persona,
+      cargo: createRepresentanteDto.cargo,
+      organizacion,
+    });
+
+    return repo.save(representante);
   }
 
   async findAll(): Promise<Representante[]> {

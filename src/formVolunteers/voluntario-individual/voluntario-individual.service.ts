@@ -26,26 +26,43 @@ export class VoluntarioIndividualService {
 
   // Método transaccional (sin validaciones, usa EntityManager externo)
   async createInTransaction(
-    createVoluntarioDto: CreateVoluntarioIndividualDto,
-    manager: EntityManager,
-  ): Promise<VoluntarioIndividual> {
-    // Crear persona dentro de la transacción
-    const persona = await this.personaService.createInTransaction(
-      createVoluntarioDto.persona,
-      manager,
-    );
+  dto: CreateVoluntarioIndividualDto,
+  manager: EntityManager,
+): Promise<VoluntarioIndividual> {
+  const persona = await this.personaService.createInTransaction(dto.persona, manager);
 
-    // Crear voluntario
-    const voluntario = manager.create(VoluntarioIndividual, {
-      persona,
-      motivacion: createVoluntarioDto.motivacion,
-      habilidades: createVoluntarioDto.habilidades,
-      experiencia: createVoluntarioDto.experiencia,
-      nacionalidad: createVoluntarioDto.nacionalidad,
+  const repo = manager.getRepository(VoluntarioIndividual);
+
+  // Buscar si ya existe voluntario para esa persona
+  const existente = await repo.findOne({
+    where: { persona: { idPersona: persona.idPersona } as any },
+    relations: ["persona"],
+  });
+
+  if (existente) {
+    // opcional: rellenar campos vacíos del voluntario
+    const merged = repo.merge(existente, {
+      motivacion: existente.motivacion || dto.motivacion,
+      habilidades: existente.habilidades || dto.habilidades,
+      experiencia: existente.experiencia || dto.experiencia,
+      nacionalidad: existente.nacionalidad || dto.nacionalidad,
+      // isActive NO lo tocamos aquí (solo con aprobación)
     });
-
-    return manager.save(voluntario);
+    return repo.save(merged);
   }
+
+  const voluntario = repo.create({
+    persona,
+    motivacion: dto.motivacion,
+    habilidades: dto.habilidades,
+    experiencia: dto.experiencia,
+    nacionalidad: dto.nacionalidad,
+    isActive: false,
+  });
+
+  return repo.save(voluntario);
+}
+
 
   // Listado paginado - SOLO voluntarios con solicitud APROBADA
   async findAll(query?: QueryVoluntarioIndividualDto) {

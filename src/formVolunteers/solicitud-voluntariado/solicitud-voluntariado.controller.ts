@@ -12,12 +12,14 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { SolicitudVoluntariadoService } from './solicitud-voluntariado.service';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
+import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
 @Controller('solicitudes-voluntariado')
 export class SolicitudVoluntariadoController {
@@ -30,8 +32,13 @@ export class SolicitudVoluntariadoController {
   create(@Body() createSolicitudDto: CreateSolicitudVoluntariadoDto) {
     return this.solicitudService.create(createSolicitudDto);
   }
+ @Post('validate')
+  @HttpCode(HttpStatus.OK)
+  validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
+    return this.solicitudService.validateBeforeCreate(dto);
+  }
 
-  // ✅ NUEVO: Endpoint para subir documentos
+  // Endpoint para subir documentos
   @Post(':id/upload-documents')
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -73,7 +80,6 @@ export class SolicitudVoluntariadoController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.findOne(id);
   }
-
   @Patch(':id/status')
   changeStatus(
     @Param('id', ParseIntPipe) id: number,

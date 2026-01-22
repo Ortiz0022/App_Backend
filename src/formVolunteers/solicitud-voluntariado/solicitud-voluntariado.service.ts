@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariado } from './entities/solicitud-voluntariado.entity';
@@ -19,6 +20,8 @@ import { AreasInteresService } from '../areas-interes/areas-interes.service';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { DropboxService } from 'src/dropbox/dropbox.service';
 import { EmailService } from 'src/email/email.service';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
+import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
@@ -30,6 +33,8 @@ export class SolicitudVoluntariadoService {
     private voluntarioRepository: Repository<VoluntarioIndividual>,
     @InjectRepository(Organizacion)
     private organizacionRepository: Repository<Organizacion>,
+    @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>,
     private voluntarioService: VoluntarioIndividualService,
     private organizacionService: OrganizacionService,
     private representanteService: RepresentanteService,
@@ -41,140 +46,104 @@ export class SolicitudVoluntariadoService {
      private emailService: EmailService,
   ) {}
 
- async create(
-  createSolicitudDto: CreateSolicitudVoluntariadoDto,
-): Promise<SolicitudVoluntariado> {
-  return this.dataSource.transaction(async (manager) => {
-    let voluntario: VoluntarioIndividual | undefined;
-    let organizacion: Organizacion | undefined;
+    async validateBeforeCreate(dto: ValidateSolicitudVoluntariadoDto) {
+    await this.validateOrThrow(dto);
+    return { ok: true };
+  }
+ async create(createSolicitudDto: CreateSolicitudVoluntariadoDto): Promise<SolicitudVoluntariado> {
+    return this.dataSource.transaction(async (manager) => {
+      // 1) Validar antes de crear nada (misma lógica DRY)
+      await this.validateOrThrow(createSolicitudDto, manager);
 
-    // Helpers seguros
-    const disponibilidades = createSolicitudDto.disponibilidades ?? [];
-    const areasInteres = createSolicitudDto.areasInteres ?? [];
-    const representantes = createSolicitudDto.representantes ?? [];
-    const razonesSociales = createSolicitudDto.razonesSociales ?? [];
+      let voluntario: VoluntarioIndividual | undefined;
+      let organizacion: Organizacion | undefined;
 
-    // Crear según el tipo de solicitante
-    if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
-      if (!createSolicitudDto.voluntario) {
-        throw new BadRequestException(
-          'Debe proporcionar los datos del voluntario individual',
+      const disponibilidades = createSolicitudDto.disponibilidades ?? [];
+      const areasInteres = createSolicitudDto.areasInteres ?? [];
+      const representantes = createSolicitudDto.representantes ?? [];
+      const razonesSociales = createSolicitudDto.razonesSociales ?? [];
+
+      if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
+        if (!createSolicitudDto.voluntario) {
+          throw new BadRequestException('Debe proporcionar los datos del voluntario individual');
+        }
+
+        voluntario = await this.voluntarioService.createInTransaction(
+          createSolicitudDto.voluntario,
+          manager,
         );
-      }
 
-      // 1) Crear voluntario
-      voluntario = await this.voluntarioService.createInTransaction(
-        createSolicitudDto.voluntario,
-        manager,
-      );
-
-      // 2) Crear disponibilidades EN PARALELO
-      if (disponibilidades.length > 0) {
-        await Promise.all(
-          disponibilidades.map((disponibilidadDto) =>
-            this.disponibilidadService.createForVoluntarioInTransaction(
-              disponibilidadDto,
-              voluntario!,
-              manager,
+        if (disponibilidades.length > 0) {
+          await Promise.all(
+            disponibilidades.map((dto) =>
+              this.disponibilidadService.createForVoluntarioInTransaction(dto, voluntario!, manager),
             ),
-          ),
-        );
-      }
+          );
+        }
 
-      // 3) Crear áreas de interés EN PARALELO
-      if (areasInteres.length > 0) {
-        await Promise.all(
-          areasInteres.map((areaInteresDto) =>
-            this.areasInteresService.createForVoluntarioInTransaction(
-              areaInteresDto,
-              voluntario!,
-              manager,
+        if (areasInteres.length > 0) {
+          await Promise.all(
+            areasInteres.map((dto) =>
+              this.areasInteresService.createForVoluntarioInTransaction(dto, voluntario!, manager),
             ),
-          ),
-        );
-      }
-    } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
-      if (!createSolicitudDto.organizacion) {
-        throw new BadRequestException(
-          'Debe proporcionar los datos de la organización',
-        );
-      }
+          );
+        }
+      } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
+        if (!createSolicitudDto.organizacion) {
+          throw new BadRequestException('Debe proporcionar los datos de la organización');
+        }
 
-      // 1) Crear organización
-      organizacion = await this.organizacionService.createInTransaction(
-        createSolicitudDto.organizacion,
-        manager,
-      );
+        organizacion = await this.organizacionService.createInTransaction(
+          createSolicitudDto.organizacion,
+          manager,
+        );
 
-      // 2) Crear representantes EN PARALELO
-      if (representantes.length > 0) {
-        await Promise.all(
-          representantes.map((representanteDto) =>
-            this.representanteService.createInTransaction(
-              representanteDto,
-              organizacion!,
-              manager,
+        if (representantes.length > 0) {
+          await Promise.all(
+            representantes.map((dto) =>
+              this.representanteService.createInTransaction(dto, organizacion!, manager),
             ),
-          ),
-        );
-      }
+          );
+        }
 
-      // 3) Crear razones sociales EN PARALELO
-      if (razonesSociales.length > 0) {
-        await Promise.all(
-          razonesSociales.map((razonSocialDto) =>
-            this.razonSocialService.createInTransaction(
-              razonSocialDto,
-              organizacion!,
-              manager,
+        if (razonesSociales.length > 0) {
+          await Promise.all(
+            razonesSociales.map((dto) =>
+              this.razonSocialService.createInTransaction(dto, organizacion!, manager),
             ),
-          ),
-        );
-      }
+          );
+        }
 
-      // 4) Crear disponibilidades EN PARALELO
-      if (disponibilidades.length > 0) {
-        await Promise.all(
-          disponibilidades.map((disponibilidadDto) =>
-            this.disponibilidadService.createForOrganizacionInTransaction(
-              disponibilidadDto,
-              organizacion!,
-              manager,
+        if (disponibilidades.length > 0) {
+          await Promise.all(
+            disponibilidades.map((dto) =>
+              this.disponibilidadService.createForOrganizacionInTransaction(dto, organizacion!, manager),
             ),
-          ),
-        );
-      }
+          );
+        }
 
-      // 5) Crear áreas de interés EN PARALELO
-      if (areasInteres.length > 0) {
-        await Promise.all(
-          areasInteres.map((areaInteresDto) =>
-            this.areasInteresService.createForOrganizacionInTransaction(
-              areaInteresDto,
-              organizacion!,
-              manager,
+        if (areasInteres.length > 0) {
+          await Promise.all(
+            areasInteres.map((dto) =>
+              this.areasInteresService.createForOrganizacionInTransaction(dto, organizacion!, manager),
             ),
-          ),
-        );
+          );
+        }
+      } else {
+        throw new BadRequestException('Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION');
       }
-    } else {
-      throw new BadRequestException(
-        'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
-      );
-    }
 
-    // Crear solicitud
-    const solicitud = manager.create(SolicitudVoluntariado, {
-      tipoSolicitante: createSolicitudDto.tipoSolicitante,
-      voluntario,
-      organizacion,
-      fechaSolicitud: new Date(),
-      estado: SolicitudVoluntariadoStatus.PENDIENTE,
+      const solicitud = manager.create(SolicitudVoluntariado, {
+        tipoSolicitante: createSolicitudDto.tipoSolicitante,
+        voluntario,
+        organizacion,
+        fechaSolicitud: new Date(),
+        estado: SolicitudVoluntariadoStatus.PENDIENTE,
+      });
+
+      return manager.save(solicitud);
     });
-
-    return manager.save(solicitud);
-  });
-}
+  }
 
 
 async findAllPaginated(params: {
@@ -241,7 +210,124 @@ async findAllPaginated(params: {
   };
 }
 
-  // ✅ NUEVO: Método para subir documentos a Dropbox
+private async validateOrThrow(
+  dto: {
+    tipoSolicitante: 'INDIVIDUAL' | 'ORGANIZACION';
+    voluntario?: any;
+    organizacion?: any;
+    cedula?: string;
+    cedulaJuridica?: string;
+  },
+  manager?: EntityManager,
+): Promise<void> {
+  const solicitudRepo = manager ? manager.getRepository(SolicitudVoluntariado) : this.solicitudRepository;
+  const personaRepo = manager ? manager.getRepository(Persona) : this.personaRepository;
+  const voluntarioRepo = manager ? manager.getRepository(VoluntarioIndividual) : this.voluntarioRepository;
+  const orgRepo = manager ? manager.getRepository(Organizacion) : this.organizacionRepository;
+
+  const tipo = dto.tipoSolicitante;
+
+  // ==========================
+  // INDIVIDUAL (ya lo tenés)
+  // ==========================
+  if (tipo === 'INDIVIDUAL') {
+    const cedula = (dto?.voluntario?.persona?.cedula ?? dto?.cedula ?? '').trim();
+    if (!cedula) throw new BadRequestException('Debe proporcionar la cédula del voluntario');
+
+    const persona = await personaRepo.findOne({ where: { cedula } });
+    if (!persona) return;
+
+    const pendiente = await solicitudRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.voluntario', 'v')
+      .leftJoin('v.persona', 'p')
+      .where('s.tipoSolicitante = :tipo', { tipo: 'INDIVIDUAL' })
+      .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.PENDIENTE })
+      .andWhere('p.idPersona = :idPersona', { idPersona: persona.idPersona })
+      .getOne();
+
+    if (pendiente) {
+      throw new ConflictException({
+        code: 'SOLICITUD_PENDIENTE_VOLUNTARIO',
+        message: 'Ya llenaste este formulario y tu solicitud de voluntariado está en revisión.',
+      });
+    }
+
+    const voluntarioExistente = await voluntarioRepo.findOne({
+      where: { persona: { idPersona: persona.idPersona } as any },
+      relations: ['persona'],
+    });
+
+    if (voluntarioExistente?.isActive) {
+      const aprobada = await solicitudRepo
+        .createQueryBuilder('s')
+        .leftJoin('s.voluntario', 'v')
+        .leftJoin('v.persona', 'p')
+        .where('s.tipoSolicitante = :tipo', { tipo: 'INDIVIDUAL' })
+        .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.APROBADO })
+        .andWhere('p.idPersona = :idPersona', { idPersona: persona.idPersona })
+        .getOne();
+
+      if (aprobada) {
+        throw new ConflictException({
+          code: 'YA_ES_VOLUNTARIO',
+          message: 'Ya eres voluntario/a activo/a en el sistema.',
+        });
+      }
+    }
+
+    return;
+  }
+
+  // ==========================
+  // ORGANIZACION (nuevo)
+  // ==========================
+  if (tipo === 'ORGANIZACION') {
+    const cj = (dto?.organizacion?.cedulaJuridica ?? dto?.cedulaJuridica ?? '').trim();
+    if (!cj) throw new BadRequestException('Debe proporcionar la cédula jurídica de la organización');
+
+    // A) pendiente por misma cedula juridica
+    const pendienteOrg = await solicitudRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.organizacion', 'o')
+      .where('s.tipoSolicitante = :tipo', { tipo: 'ORGANIZACION' })
+      .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.PENDIENTE })
+      .andWhere('o.cedulaJuridica = :cj', { cj })
+      .getOne();
+
+    if (pendienteOrg) {
+      throw new ConflictException({
+        code: 'SOLICITUD_PENDIENTE_ORG',
+        message: 'Esta organización ya envió una solicitud y está en revisión.',
+      });
+    }
+
+    // B) ya es org activa (org existe + aprobada + isActive)
+    const orgExistente = await orgRepo.findOne({ where: { cedulaJuridica: cj } });
+
+    if (orgExistente?.isActive) {
+      const aprobadaOrg = await solicitudRepo
+        .createQueryBuilder('s')
+        .leftJoin('s.organizacion', 'o')
+        .where('s.tipoSolicitante = :tipo', { tipo: 'ORGANIZACION' })
+        .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.APROBADO })
+        .andWhere('o.cedulaJuridica = :cj', { cj })
+        .getOne();
+
+      if (aprobadaOrg) {
+        throw new ConflictException({
+          code: 'YA_ES_ORGANIZACION_VOLUNTARIA',
+          message: 'Esta organización ya es voluntaria activa en el sistema.',
+        });
+      }
+    }
+
+    return;
+  }
+
+  throw new BadRequestException('Tipo de solicitante no válido');
+}
+
  async uploadDocuments(
   idSolicitud: number,
   files: { cv?: any[]; cedula?: any[]; carta?: any[] },

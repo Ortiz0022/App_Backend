@@ -11,15 +11,17 @@ import { RepresentanteModule } from '../representante/representante.module';
 import { RazonSocialModule } from '../razon-social/razon-social.module';
 import { DisponibilidadModule } from '../disponibilidad/disponibilidad.module';
 import { AreasInteresModule } from '../areas-interes/areas-interes.module';
-import { DropboxModule } from 'src/dropbox/dropbox.module'; // ✅ NUEVO
+import { DropboxModule } from 'src/dropbox/dropbox.module';
 import { EmailModule } from 'src/email/email.module';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       SolicitudVoluntariado,
       VoluntarioIndividual, 
-      Organizacion,         
+      Organizacion,      
+      Persona   
     ]),
     VoluntarioIndividualModule,
     OrganizacionModule,
@@ -28,8 +30,7 @@ import { EmailModule } from 'src/email/email.module';
     DisponibilidadModule,
     AreasInteresModule,
     DropboxModule,
-    EmailModule,
-  ],
+    EmailModule  ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService],
   exports: [SolicitudVoluntariadoService],
