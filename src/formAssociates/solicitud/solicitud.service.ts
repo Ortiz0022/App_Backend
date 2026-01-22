@@ -283,6 +283,7 @@ export class SolicitudService {
         );
       }
 
+
       // 15. Crear Otros Equipos (si vienen)
       if (createDto.otrosEquipos && createDto.otrosEquipos.length > 0) {
         await this.fincaOtroEquipoService.createManyInTransaction(
@@ -460,28 +461,87 @@ export class SolicitudService {
     return solicitud;
   }
   
-  async findOneComplete(id: number): Promise<Solicitud> {
-    const solicitud = await this.solicitudRepository.findOne({
-      where: { idSolicitud: id },
-      relations: [
-        'persona',
-        'asociado',
-        'asociado.persona',
-        'asociado.nucleoFamiliar',
-        'asociado.fincas',
-        'asociado.fincas.geografia',
-        'asociado.fincas.propietario',
-        'asociado.fincas.propietario.persona',
-        'asociado.fincas.corriente',
-      ],
-    });
-  
-    if (!solicitud) {
-      throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
-    }
-  
-    return solicitud;
+ // ✅ Reemplaza el método findOneComplete en solicitud.service.ts
+
+// solicitud.service.ts
+
+async findOneComplete(id: number): Promise<Solicitud> {
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitud: id },
+    relations: [
+      // Persona del solicitante
+      'persona',
+
+      // Asociado + persona
+      'asociado',
+      'asociado.persona',
+      'asociado.nucleoFamiliar',
+      'asociado.necesidades',
+
+      // FINCAS
+      'asociado.fincas',
+      'asociado.fincas.geografia',
+      'asociado.fincas.propietario',
+      'asociado.fincas.propietario.persona',
+      'asociado.fincas.corriente',
+
+      // HATO + ANIMALES
+      'asociado.fincas.hato',
+      'asociado.fincas.hato.animales',
+
+      // FORRAJES
+      'asociado.fincas.forrajes',
+
+      // REGISTROS PRODUCTIVOS
+      'asociado.fincas.registrosProductivos',
+
+      // FUENTES DE AGUA
+      'asociado.fincas.fuentesAgua',
+
+      // MÉTODOS DE RIEGO
+      'asociado.fincas.metodosRiego',
+
+      // ACTIVIDADES
+      'asociado.fincas.actividades',
+
+      // ✅ INFRAESTRUCTURA (tu OneToOne)
+      'asociado.fincas.infraestructura',
+
+      // OTROS EQUIPOS
+      'asociado.fincas.otrosEquipos',
+
+      // TIPOS DE CERCA
+      'asociado.fincas.tipoCercaLinks',
+      'asociado.fincas.tipoCercaLinks.tipoCerca',
+
+      // INFRAESTRUCTURAS (muchos a muchos por tabla intermedia)
+      'asociado.fincas.infraLinks',
+      'asociado.fincas.infraLinks.infraestructura',
+
+      // ACCESOS
+      'asociado.fincas.accesos',
+
+      // CANALES
+      'asociado.fincas.canalesComercializacion',
+    ],
+  });
+
+  if (!solicitud) {
+    throw new NotFoundException(`Solicitud con ID ${id} no encontrada`);
   }
+
+  return solicitud;
+}
+
+/**
+ * ✅ EJEMPLO: si en algún lugar estabas haciendo:
+ *   return this.solicitudRepository.findOneComplete(id)
+ * cámbialo por:
+ */
+async algunaFuncionQueAntesFallaba(id: number) {
+  return this.findOneComplete(id); // ✅ así
+}
+
 
   async changeStatus(
     id: number,
@@ -728,4 +788,6 @@ async uploadDocuments(
       await this.fincaRepository.save(finca);
     }
   }
+
+  
 }

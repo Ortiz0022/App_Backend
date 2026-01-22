@@ -4,13 +4,14 @@ import { AssociateService } from './associate.service';
 import { AssociateController } from './associate.controller';
 import { Associate } from './entities/associate.entity';
 import { Persona } from '../persona/entities/persona.entity';
+import { AssociatePdfService } from './pdf.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Associate, Persona]) // ✅ Resolver dependencia circular
   ],
   controllers: [AssociateController],
-  providers: [AssociateService],
-  exports: [AssociateService],
+  providers: [AssociateService, AssociatePdfService],
+  exports: [AssociateService, AssociatePdfService],
 })
 export class AssociateModule {}

@@ -4,10 +4,11 @@ import { Personal } from './entities/personal.entity';
 import { PersonalService } from './personal.service';
 import { PersonalController } from './personal.controller';
 import { User } from 'src/users/entities/user.entity';
+import { PersonalPdfService } from './pdf.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Personal, User])],
   controllers: [PersonalController],
-  providers: [PersonalService],
+  providers: [PersonalService, PersonalPdfService],
 })
 export class PersonalModule {}

@@ -6,7 +6,7 @@ import { Solicitud } from './entities/solicitud.entity';
 import { Associate } from 'src/formAssociates/associate/entities/associate.entity';
 import { PersonaModule } from '../persona/persona.module';
 import { NucleoFamiliarModule } from '../nucleo-familiar/nucleo-familiar.module';
-import { FincaModule } from 'src/formFinca/finca/finca.module'; 
+import { FincaModule } from 'src/formFinca/finca/finca.module';
 import { GeografiaModule } from 'src/formFinca/geografia/geografia.module';
 import { PropietarioModule } from '../propietario/propietario.module';
 import { Persona } from '../persona/entities/persona.entity';
@@ -29,21 +29,19 @@ import { CorrienteElectricaModule } from 'src/formFinca/corriente-electrica/corr
 import { AccesoModule } from 'src/formFinca/acceso/acceso.module';
 import { CanalesComercializacionModule } from 'src/formFinca/canal-comercializacion/canal.module';
 import { NecesidadesModule } from 'src/formFinca/necesidades/necesidades.module';
-import { PdfService } from './pdf.service';
+import { PdfService } from './solicitudPdf.service';
 import { EmailModule } from 'src/email/email.module';
+import { SolicitudesListPdfService } from './solicitudesPdf.service';
+
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Solicitud,
-      Associate,
-      Persona,
-      Finca,
-    ]),
+    TypeOrmModule.forFeature([Solicitud, Associate, Persona, Finca]),
     PersonaModule,
     NucleoFamiliarModule,
     FincaModule,
     GeografiaModule,
-    PropietarioModule,  
+    PropietarioModule,
     DropboxModule,
     HatoModule,
     AnimalModule,
@@ -51,21 +49,25 @@ import { EmailModule } from 'src/email/email.module';
     RegistrosProductivosModule,
     FuentesAguaModule,
     MetodoRiegoModule,
-    ActividadesAgropecuariasModule, 
-    InfraestructuraProduccionModule,  
-    FincaOtroEquipoModule,   
-    TiposCercaModule,          
-    FincaTipoCercaModule, 
-    InfraestructurasModule,           
-    FincaInfraestructurasModule,    
-    CorrienteElectricaModule, 
+    ActividadesAgropecuariasModule,
+    InfraestructuraProduccionModule,
+    FincaOtroEquipoModule,
+    TiposCercaModule,
+    FincaTipoCercaModule,
+    InfraestructurasModule,
+    FincaInfraestructurasModule,
+    CorrienteElectricaModule,
     AccesoModule,
     CanalesComercializacionModule,
     NecesidadesModule,
     EmailModule,
   ],
   controllers: [SolicitudController],
-  providers: [SolicitudService, PdfService],
+  providers: [
+    SolicitudService,
+    PdfService,
+    SolicitudesListPdfService, // ✅ NUEVO
+  ],
   exports: [SolicitudService],
 })
 export class SolicitudModule {}
