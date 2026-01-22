@@ -14,19 +14,22 @@ import {
   UploadedFiles,
   Res,
 } from '@nestjs/common';
-import express from 'express';  // ← CAMBIA: Elimina "import express from 'express'" y usa esto
+import type { Response } from 'express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+
 import { SolicitudService } from './solicitud.service';
+import { PdfService } from './solicitudPdf.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { PdfService } from './pdf.service';
+import { SolicitudesListPdfService } from './solicitudesPdf.service';
 
 @Controller('solicitudes')
 export class SolicitudController {
   constructor(
     private readonly solicitudService: SolicitudService,
     private readonly pdfService: PdfService,
+    private readonly solicitudesListPdfService: SolicitudesListPdfService,
   ) {}
 
   @Post()
@@ -45,10 +48,7 @@ export class SolicitudController {
   async uploadDocuments(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles()
-    files: {
-      cedula?: any[];
-      planoFinca?: any[];
-    },
+    files: { cedula?: any[]; planoFinca?: any[] },
   ) {
     return this.solicitudService.uploadDocuments(id, files);
   }
@@ -75,14 +75,52 @@ export class SolicitudController {
     return this.solicitudService.getStats();
   }
 
+  // ======================================================
+  // ✅ PDF LISTADO (GET)  -> /solicitudes/pdf-list?estado=PENDIENTE&search=...&sort=createdAt:DESC
+  // ======================================================
+@Get('pdf-list')
+async downloadSolicitudesListPDF(
+  @Query('estado') estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO',
+  @Query('search') search: string,
+  @Query('sort') sort: string,
+  @Res() res: Response,
+): Promise<void> {
+    // Traer muchos (ajusta si ocupas)
+    const result = await this.solicitudService.findAllPaginated({
+      estado,
+      search,
+      page: 1,
+      limit: 10000,
+      sort,
+    });
+
+    const filterParts: string[] = [];
+    if (estado) filterParts.push(`Estado: ${estado}`);
+    if (search?.trim()) filterParts.push(`Búsqueda: ${search.trim()}`);
+    if (sort?.trim()) filterParts.push(`Orden: ${sort.trim()}`);
+    const filterText = filterParts.join(' · ');
+
+    const pdfBuffer = await this.solicitudesListPdfService.generateSolicitudesListPDF({
+      solicitudes: result.items,
+      filterText,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="solicitudes.pdf"');
+    res.setHeader('Content-Length', String(pdfBuffer.length));
+    res.setHeader('Cache-Control', 'no-store');
+
+    res.end(pdfBuffer);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.findOne(id);
   }
 
   @Get(':id/complete')
-  findOneComplete(@Param('id', ParseIntPipe) id: number) {
-    return this.solicitudService.findOneComplete(id);
+  findOneComplete(@Param('id') id: string) {
+    return this.solicitudService.findOneComplete(+id);
   }
 
   @Patch(':id/status')
@@ -99,21 +137,21 @@ export class SolicitudController {
     return this.solicitudService.remove(id);
   }
 
+  // ✅ PDF COMPLETO (por solicitud)
   @Get(':id/pdf')
   async downloadPDF(
-    @Param('id') id: string,
-    @Res() res: express.Response, 
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
   ): Promise<void> {
-    const solicitud = await this.solicitudService.findOneComplete(+id);
-    
+    const solicitud = await this.solicitudService.findOneComplete(id);
+
     const pdfBuffer = await this.pdfService.generateSolicitudPDF(solicitud);
-    
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=solicitud-${id}.pdf`,
-      'Content-Length': pdfBuffer.length,
-    });
-    
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="solicitud-${id}.pdf"`);
+    res.setHeader('Content-Length', String(pdfBuffer.length));
+    res.setHeader('Cache-Control', 'no-store');
+
     res.end(pdfBuffer);
   }
 }
