@@ -18,11 +18,11 @@ export class RepresentanteService {
     @InjectRepository(Representante)
     private representanteRepository: Repository<Representante>,
     private personaService: PersonaService,
-      @InjectRepository(Persona)
-    private personaRepository: Repository<Persona>
+    @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>,
   ) {}
 
-  // Método transaccional (sin validaciones, usa EntityManager externo)
+  // Método transaccional (usa EntityManager externo)
   async createInTransaction(
     createRepresentanteDto: CreateRepresentanteDto,
     organizacion: Organizacion,
@@ -30,22 +30,40 @@ export class RepresentanteService {
   ): Promise<Representante> {
     const repo = manager.getRepository(Representante);
 
-    // 1) Reusar Persona por cédula (ya no explota)
+    // 1) Reusar/crear Persona por cédula
     const persona = await this.personaService.createInTransaction(
       createRepresentanteDto.persona,
       manager,
     );
 
-    // 2) Si ya existe ese representante para esa organización, devolverlo
-    const existente = await repo.findOne({
-      where: {
-        persona: { idPersona: persona.idPersona },
-        organizacion: { idOrganizacion: organizacion.idOrganizacion },
-      },
+    // 2) REGLA NUEVA:
+    //    Una persona NO puede ser representante de dos organizaciones.
+    //    (Con tu OneToOne ya existe un UNIQUE en idPersona, pero aquí lo controlamos con 409 en vez de 500)
+    const representanteExistente = await repo.findOne({
+      where: { persona: { idPersona: persona.idPersona } as any },
+      relations: ['organizacion', 'persona'],
     });
 
-    if (existente) {
-      return existente;
+    if (representanteExistente) {
+      const orgExistenteId = representanteExistente.organizacion?.idOrganizacion;
+      const orgNuevaId = organizacion?.idOrganizacion;
+
+      // Si ya estaba asignado a otra organización -> conflicto
+      if (orgExistenteId && orgNuevaId && orgExistenteId !== orgNuevaId) {
+        throw new ConflictException({
+          code: 'REPRESENTANTE_YA_ASIGNADO',
+          message:
+            'Esta persona ya está registrada como representante de otra organización. No se permite ser representante de dos organizaciones.',
+          meta: {
+            idPersona: persona.idPersona,
+            idOrganizacionActual: orgExistenteId,
+            idOrganizacionIntento: orgNuevaId,
+          },
+        });
+      }
+
+      // Si es la misma organización -> idempotente (no duplicar)
+      return representanteExistente;
     }
 
     // 3) Crear representante nuevo
@@ -55,7 +73,19 @@ export class RepresentanteService {
       organizacion,
     });
 
-    return repo.save(representante);
+    try {
+      return await repo.save(representante);
+    } catch (e: any) {
+      // Por si hay condición de carrera y pega el UNIQUE en DB, igual devolvemos 409 bonito.
+      if (e?.code === 'ER_DUP_ENTRY') {
+        throw new ConflictException({
+          code: 'REPRESENTANTE_YA_ASIGNADO',
+          message:
+            'Esta persona ya está registrada como representante de otra organización. No se permite ser representante de dos organizaciones.',
+        });
+      }
+      throw e;
+    }
   }
 
   async findAll(): Promise<Representante[]> {
@@ -77,12 +107,25 @@ export class RepresentanteService {
   ): Promise<Representante> {
     const representante = await this.findOne(id);
 
-    // Extraer campos que pertenecen a Persona
-    const { nombre, apellido1, apellido2, telefono, email, direccion, ...representanteFields } = updateRepresentanteDto;
+    const {
+      nombre,
+      apellido1,
+      apellido2,
+      telefono,
+      email,
+      direccion,
+      ...representanteFields
+    } = updateRepresentanteDto as any;
 
-    // Actualizar campos de Persona si existen
-    if (nombre !== undefined || apellido1 !== undefined || apellido2 !== undefined ||
-        telefono !== undefined || email !== undefined || direccion !== undefined) {
+    // Actualizar campos de Persona si vienen
+    if (
+      nombre !== undefined ||
+      apellido1 !== undefined ||
+      apellido2 !== undefined ||
+      telefono !== undefined ||
+      email !== undefined ||
+      direccion !== undefined
+    ) {
       const personaUpdate: any = {};
       if (nombre !== undefined) personaUpdate.nombre = nombre;
       if (apellido1 !== undefined) personaUpdate.apellido1 = apellido1;
@@ -93,25 +136,75 @@ export class RepresentanteService {
 
       await this.personaRepository.update(
         representante.persona.idPersona,
-        personaUpdate
+        personaUpdate,
       );
 
-      // RECARGAR la persona después de actualizarla
-      representante.persona = await this.personaRepository.findOne({
-        where: { idPersona: representante.persona.idPersona },
-      }) || representante.persona;
+      representante.persona =
+        (await this.personaRepository.findOne({
+          where: { idPersona: representante.persona.idPersona },
+        })) ?? representante.persona;
     }
 
-    // Actualizar campos del representante (solo cargo)
     if (representanteFields.cargo !== undefined) {
       representante.cargo = representanteFields.cargo;
     }
 
-    // Guardar representante
-    const savedRepresentante = await this.representanteRepository.save(representante);
+    const saved = await this.representanteRepository.save(representante);
+    return this.findOne(saved.idRepresentante);
+  }
 
-    // Retornar con todas las relaciones recargadas
-    return this.findOne(savedRepresentante.idRepresentante);
+ async validatePersonaDisponibleParaRepresentante(
+    cedula: string,
+    manager?: EntityManager,
+  ): Promise<{
+    ok: boolean;
+    code?: string;
+    message?: string;
+    meta?: any;
+  }> {
+    const digits = String(cedula ?? "").replace(/\D/g, "").trim();
+    if (!digits) return { ok: true };
+
+    const personaRepo = manager ? manager.getRepository(Persona) : this.personaRepository;
+    const repRepo = manager ? manager.getRepository(Representante) : this.representanteRepository;
+
+    // 1) Si la persona no existe aún, entonces está disponible
+    const persona = await personaRepo.findOne({ where: { cedula: digits } });
+    if (!persona) return { ok: true };
+
+    // 2) Si ya existe un representante ligado a esa persona, NO se permite otro
+    const existente = await repRepo
+      .createQueryBuilder("r")
+      .leftJoin("r.persona", "p")
+      .leftJoin("r.organizacion", "o")
+      .addSelect(["o.idOrganizacion", "o.nombre", "o.cedulaJuridica", "o.email"])
+      .where("p.idPersona = :idPersona", { idPersona: persona.idPersona })
+      .getOne();
+
+    if (existente) {
+      return {
+        ok: false,
+        code: "REPRESENTANTE_YA_ASIGNADO",
+        message:
+          "Esta persona ya está registrada como representante de otra organización. No se permite ser representante de dos organizaciones.",
+        meta: {
+          idPersona: persona.idPersona,
+          cedula: persona.cedula,
+          idRepresentante: existente.idRepresentante,
+          cargo: existente.cargo,
+          organizacion: existente.organizacion
+            ? {
+                idOrganizacion: existente.organizacion.idOrganizacion,
+                nombre: (existente.organizacion as any).nombre,
+                cedulaJuridica: (existente.organizacion as any).cedulaJuridica,
+                email: (existente.organizacion as any).email,
+              }
+            : null,
+        },
+      };
+    }
+
+    return { ok: true };
   }
 
   async findOne(id: number): Promise<Representante> {

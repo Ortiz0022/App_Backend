@@ -32,6 +32,11 @@ export class RepresentanteController {
     return this.representanteService.findByOrganizacion(idOrganizacion);
   }
 
+   @Get("validate-cedula/:cedula")
+  validateCedula(@Param("cedula") cedula: string) {
+    return this.representanteService.validatePersonaDisponibleParaRepresentante(cedula);
+  }
+
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
