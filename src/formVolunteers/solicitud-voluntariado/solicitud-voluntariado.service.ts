@@ -7,6 +7,7 @@ import {
   Res,
   StreamableFile,
   Header,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
@@ -25,6 +26,7 @@ import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status
 import { DropboxService } from 'src/dropbox/dropbox.service';
 import { EmailService } from 'src/email/email.service';
 import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
