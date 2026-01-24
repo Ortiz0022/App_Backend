@@ -2,6 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Get,
+  Query,
+  Res,
+  StreamableFile,
+  Header,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -19,6 +24,7 @@ import { AreasInteresService } from '../areas-interes/areas-interes.service';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { DropboxService } from 'src/dropbox/dropbox.service';
 import { EmailService } from 'src/email/email.service';
+import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
@@ -39,6 +45,7 @@ export class SolicitudVoluntariadoService {
     private dropboxService: DropboxService,
     private dataSource: DataSource,
      private emailService: EmailService,
+     private readonly solicitudesPdfService: SolicitudesVoluntariadoPdfService,
   ) {}
 
   async create(
@@ -530,4 +537,39 @@ private async sendStatusChangeEmail(
       await this.organizacionRepository.save(solicitud.organizacion);
     }
   }
+
+async generarPdfSolicitudVoluntarioIndividual(idSolicitud: number): Promise<Buffer> {
+  // 1) Trae solicitud para saber cuál voluntario es
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitudVoluntariado: idSolicitud },
+    relations: ['voluntario'], // solo para agarrar el id
+  })
+
+  if (!solicitud) {
+    throw new NotFoundException(`No existe la solicitud ${idSolicitud}`)
+  }
+  if (!solicitud.voluntario?.idVoluntario) {
+    throw new NotFoundException(`La solicitud ${idSolicitud} no tiene voluntario asociado`)
+  }
+
+  // 2) 🔥 RECARGA el voluntario COMPLETO (incluye motivación/habilidades/experiencia)
+  const voluntarioFull = await this.voluntarioRepository.findOne({
+    where: { idVoluntario: solicitud.voluntario.idVoluntario },
+    relations: ['persona', 'areasInteres', 'disponibilidades', 'solicitud'],
+  })
+
+  if (!voluntarioFull) {
+    throw new NotFoundException(`No existe el voluntario asociado a la solicitud ${idSolicitud}`)
+  }
+
+  // ✅ Debug de servidor para confirmar que YA vienen
+  console.log('[PDF] voluntarioFull =>', {
+    id: voluntarioFull.idVoluntario,
+    motivacion: voluntarioFull.motivacion,
+    habilidades: voluntarioFull.habilidades,
+    experiencia: voluntarioFull.experiencia,
+  })
+
+  return this.voluntarioPdfService.generateVoluntarioIndividualPDF(voluntarioFull)
+}
 }

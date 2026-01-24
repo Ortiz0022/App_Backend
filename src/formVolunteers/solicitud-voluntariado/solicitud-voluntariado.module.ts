@@ -13,6 +13,9 @@ import { DisponibilidadModule } from '../disponibilidad/disponibilidad.module';
 import { AreasInteresModule } from '../areas-interes/areas-interes.module';
 import { DropboxModule } from 'src/dropbox/dropbox.module'; // ✅ NUEVO
 import { EmailModule } from 'src/email/email.module';
+import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
+import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
+import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
 
 @Module({
   imports: [
@@ -31,7 +34,7 @@ import { EmailModule } from 'src/email/email.module';
     EmailModule,
   ],
   controllers: [SolicitudVoluntariadoController],
-  providers: [SolicitudVoluntariadoService],
-  exports: [SolicitudVoluntariadoService],
+  providers: [SolicitudVoluntariadoService, VoluntarioPdfService, SolicitudesVoluntariadoPdfService, VoluntariosListadoPdfService],
+  exports: [SolicitudVoluntariadoService, VoluntarioPdfService, SolicitudesVoluntariadoPdfService, VoluntariosListadoPdfService],
 })
 export class SolicitudVoluntariadoModule {}

@@ -282,7 +282,7 @@ export class EmailService {
     }
   }
 
-  async sendApplicationApprovedEmailAssociates(to: string, name?: string) {
+async sendApplicationApprovedEmailAssociates(to: string, name?: string) {
     const from = process.env.SMTP_FROM || "no-reply@example.com"
 
     const html = `
@@ -335,8 +335,12 @@ export class EmailService {
                       <p style="margin:0 0 8px 0;font-size:12px;color:#737373;text-transform:uppercase;letter-spacing:0.5px">
                         Cuota de inscripción
                       </p>
-                      <p style="margin:0;font-size:28px;font-weight:700;color:#D4A574">
+                      <p style="margin:0 0 16px 0;font-size:28px;font-weight:700;color:#D4A574">
                         ₡5,000
+                      </p>
+                      <p style="margin:0;font-size:14px;color:#4a4a4a;line-height:1.6">
+                        Puede cancelar por <strong>SINPE Móvil</strong> al número: <strong style="color:#D4A574">8501 1152</strong>.<br/>
+                        En el detalle agregue su número de cédula y posteriormente envíe el comprobante a este correo o a ese número.
                       </p>
                     </div>
                   </div>
@@ -384,7 +388,6 @@ export class EmailService {
       throw e;
     } 
   }
-
   async sendApplicationRejectionEmailAssociates(to: string, name?: string, reason?: string) {
     const from = process.env.SMTP_FROM || "no-reply@example.com"
 
