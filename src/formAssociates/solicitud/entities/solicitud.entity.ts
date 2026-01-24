@@ -16,7 +16,7 @@ export class Solicitud {
   @PrimaryGeneratedColumn()
   idSolicitud: number;
 
-  @OneToOne(() => Persona, { eager: false, cascade: true })
+  @OneToOne(() => Persona, { eager: false, cascade: false })
   @JoinColumn({ name: 'idPersona' })
   persona: Persona;
 

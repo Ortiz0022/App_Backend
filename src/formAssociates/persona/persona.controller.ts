@@ -13,6 +13,7 @@ import {
   import { PersonaService } from './persona.service';
   import { CreatePersonaDto } from './dto/create-persona.dto';
   import { UpdatePersonaDto } from './dto/update-persona.dto';
+import { PersonaFormLookupDto } from './dto/persona-form-lookup.dto';
   
   @Controller('personas')
   export class PersonaController {
@@ -35,9 +36,9 @@ import {
     }
   
     @Get('cedula/:cedula')
-    findByCedula(@Param('cedula') cedula: string) {
-      return this.personaService.findByCedula(cedula);
-    }
+  findByCedulaForForms(@Param('cedula') cedula: string): Promise<PersonaFormLookupDto> {
+    return this.personaService.findByCedulaForForms(cedula);
+  }
   
     @Get('email/:email')
     findByEmail(@Param('email') email: string) {

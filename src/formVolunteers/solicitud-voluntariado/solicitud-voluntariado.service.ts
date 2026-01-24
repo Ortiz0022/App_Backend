@@ -9,7 +9,7 @@ import {
   Header,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariado } from './entities/solicitud-voluntariado.entity';
@@ -36,6 +36,8 @@ export class SolicitudVoluntariadoService {
     private voluntarioRepository: Repository<VoluntarioIndividual>,
     @InjectRepository(Organizacion)
     private organizacionRepository: Repository<Organizacion>,
+    @InjectRepository(Persona)
+    private personaRepository: Repository<Persona>,
     private voluntarioService: VoluntarioIndividualService,
     private organizacionService: OrganizacionService,
     private representanteService: RepresentanteService,
@@ -52,103 +54,87 @@ export class SolicitudVoluntariadoService {
     createSolicitudDto: CreateSolicitudVoluntariadoDto,
   ): Promise<SolicitudVoluntariado> {
     return this.dataSource.transaction(async (manager) => {
+      // 1) Validar antes de crear nada (misma lógica DRY)
+      await this.validateOrThrow(createSolicitudDto, manager);
+
       let voluntario: VoluntarioIndividual | undefined;
       let organizacion: Organizacion | undefined;
 
-      // Crear según el tipo de solicitante
+      const disponibilidades = createSolicitudDto.disponibilidades ?? [];
+      const areasInteres = createSolicitudDto.areasInteres ?? [];
+      const representantes = createSolicitudDto.representantes ?? [];
+      const razonesSociales = createSolicitudDto.razonesSociales ?? [];
+
       if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
         if (!createSolicitudDto.voluntario) {
-          throw new BadRequestException(
-            'Debe proporcionar los datos del voluntario individual',
-          );
+          throw new BadRequestException('Debe proporcionar los datos del voluntario individual');
         }
+
         voluntario = await this.voluntarioService.createInTransaction(
           createSolicitudDto.voluntario,
           manager,
         );
 
-        // Crear disponibilidades para el voluntario
-        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
-          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
-            await this.disponibilidadService.createForVoluntarioInTransaction(
-              disponibilidadDto,
-              voluntario,
-              manager,
-            );
-          }
+        if (disponibilidades.length > 0) {
+          await Promise.all(
+            disponibilidades.map((dto) =>
+              this.disponibilidadService.createForVoluntarioInTransaction(dto, voluntario!, manager),
+            ),
+          );
         }
 
-        // Crear áreas de interés para el voluntario
-        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
-          for (const areaInteresDto of createSolicitudDto.areasInteres) {
-            await this.areasInteresService.createForVoluntarioInTransaction(
-              areaInteresDto,
-              voluntario,
-              manager,
-            );
-          }
+        if (areasInteres.length > 0) {
+          await Promise.all(
+            areasInteres.map((dto) =>
+              this.areasInteresService.createForVoluntarioInTransaction(dto, voluntario!, manager),
+            ),
+          );
         }
       } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
         if (!createSolicitudDto.organizacion) {
-          throw new BadRequestException(
-            'Debe proporcionar los datos de la organización',
-          );
+          throw new BadRequestException('Debe proporcionar los datos de la organización');
         }
+
         organizacion = await this.organizacionService.createInTransaction(
           createSolicitudDto.organizacion,
           manager,
         );
 
-        // Crear representantes si existen
-        if (createSolicitudDto.representantes && createSolicitudDto.representantes.length > 0) {
-          for (const representanteDto of createSolicitudDto.representantes) {
-            await this.representanteService.createInTransaction(
-              representanteDto,
-              organizacion,
-              manager,
-            );
-          }
+        if (representantes.length > 0) {
+          await Promise.all(
+            representantes.map((dto) =>
+              this.representanteService.createInTransaction(dto, organizacion!, manager),
+            ),
+          );
         }
 
-        // Crear razones sociales si existen
-        if (createSolicitudDto.razonesSociales && createSolicitudDto.razonesSociales.length > 0) {
-          for (const razonSocialDto of createSolicitudDto.razonesSociales) {
-            await this.razonSocialService.createInTransaction(
-              razonSocialDto,
-              organizacion,
-              manager,
-            );
-          }
+        if (razonesSociales.length > 0) {
+          await Promise.all(
+            razonesSociales.map((dto) =>
+              this.razonSocialService.createInTransaction(dto, organizacion!, manager),
+            ),
+          );
         }
 
-        // Crear disponibilidades para la organización
-        if (createSolicitudDto.disponibilidades && createSolicitudDto.disponibilidades.length > 0) {
-          for (const disponibilidadDto of createSolicitudDto.disponibilidades) {
-            await this.disponibilidadService.createForOrganizacionInTransaction(
-              disponibilidadDto,
-              organizacion,
-              manager,
-            );
-          }
+        if (disponibilidades.length > 0) {
+          await Promise.all(
+            disponibilidades.map((dto) =>
+              this.disponibilidadService.createForOrganizacionInTransaction(dto, organizacion!, manager),
+            ),
+          );
         }
 
-        // Crear áreas de interés para la organización
-        if (createSolicitudDto.areasInteres && createSolicitudDto.areasInteres.length > 0) {
-          for (const areaInteresDto of createSolicitudDto.areasInteres) {
-            await this.areasInteresService.createForOrganizacionInTransaction(
-              areaInteresDto,
-              organizacion,
-              manager,
-            );
-          }
+        if (areasInteres.length > 0) {
+          await Promise.all(
+            areasInteres.map((dto) =>
+              this.areasInteresService.createForOrganizacionInTransaction(dto, organizacion!, manager),
+            ),
+          );
         }
       } else {
-        throw new BadRequestException(
-          'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
-        );
+        throw new BadRequestException('Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION');
       }
 
-      // Crear solicitud
       const solicitud = manager.create(SolicitudVoluntariado, {
         tipoSolicitante: createSolicitudDto.tipoSolicitante,
         voluntario,
@@ -160,6 +146,7 @@ export class SolicitudVoluntariadoService {
       return manager.save(solicitud);
     });
   }
+
 
 async findAllPaginated(params: {
   page?: number;
@@ -225,103 +212,216 @@ async findAllPaginated(params: {
   };
 }
 
-  // ✅ NUEVO: Método para subir documentos a Dropbox
-  async uploadDocuments(
-    idSolicitud: number,
-    files: {
-      cv?: any[];
-      cedula?: any[];
-      carta?: any[];
-    },
-  ): Promise<any> {
-    const solicitud = await this.solicitudRepository.findOne({
-      where: { idSolicitudVoluntariado: idSolicitud },
-      relations: ['voluntario', 'voluntario.persona', 'organizacion'],
+private async validateOrThrow(
+  dto: {
+    tipoSolicitante: 'INDIVIDUAL' | 'ORGANIZACION';
+    voluntario?: any;
+    organizacion?: any;
+    cedula?: string;
+    cedulaJuridica?: string;
+  },
+  manager?: EntityManager,
+): Promise<void> {
+  const solicitudRepo = manager ? manager.getRepository(SolicitudVoluntariado) : this.solicitudRepository;
+  const personaRepo = manager ? manager.getRepository(Persona) : this.personaRepository;
+  const voluntarioRepo = manager ? manager.getRepository(VoluntarioIndividual) : this.voluntarioRepository;
+  const orgRepo = manager ? manager.getRepository(Organizacion) : this.organizacionRepository;
+
+  const tipo = dto.tipoSolicitante;
+
+  // ==========================
+  // INDIVIDUAL (ya lo tenés)
+  // ==========================
+  if (tipo === 'INDIVIDUAL') {
+    const cedula = (dto?.voluntario?.persona?.cedula ?? dto?.cedula ?? '').trim();
+    if (!cedula) throw new BadRequestException('Debe proporcionar la cédula del voluntario');
+
+    const persona = await personaRepo.findOne({ where: { cedula } });
+    if (!persona) return;
+
+    const pendiente = await solicitudRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.voluntario', 'v')
+      .leftJoin('v.persona', 'p')
+      .where('s.tipoSolicitante = :tipo', { tipo: 'INDIVIDUAL' })
+      .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.PENDIENTE })
+      .andWhere('p.idPersona = :idPersona', { idPersona: persona.idPersona })
+      .getOne();
+
+    if (pendiente) {
+      throw new ConflictException({
+        code: 'SOLICITUD_PENDIENTE_VOLUNTARIO',
+        message: 'Ya llenaste este formulario y tu solicitud de voluntariado está en revisión.',
+      });
+    }
+
+    const voluntarioExistente = await voluntarioRepo.findOne({
+      where: { persona: { idPersona: persona.idPersona } as any },
+      relations: ['persona'],
     });
 
-    if (!solicitud) {
-      throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+    if (voluntarioExistente?.isActive) {
+      const aprobada = await solicitudRepo
+        .createQueryBuilder('s')
+        .leftJoin('s.voluntario', 'v')
+        .leftJoin('v.persona', 'p')
+        .where('s.tipoSolicitante = :tipo', { tipo: 'INDIVIDUAL' })
+        .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.APROBADO })
+        .andWhere('p.idPersona = :idPersona', { idPersona: persona.idPersona })
+        .getOne();
+
+      if (aprobada) {
+        throw new ConflictException({
+          code: 'YA_ES_VOLUNTARIO',
+          message: 'Ya eres voluntario/a activo/a en el sistema.',
+        });
+      }
     }
 
-    const formData = {
-      cv: [] as string[],
-      cedula: [] as string[],
-      carta: [] as string[],
-    };
+    return;
+  }
 
-    try {
-      // Determinar nombre de carpeta según tipo de solicitante
-      let nombreCarpeta: string;
+  // ==========================
+  // ORGANIZACION (nuevo)
+  // ==========================
+  if (tipo === 'ORGANIZACION') {
+    const cj = (dto?.organizacion?.cedulaJuridica ?? dto?.cedulaJuridica ?? '').trim();
+    if (!cj) throw new BadRequestException('Debe proporcionar la cédula jurídica de la organización');
 
-      if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario?.persona) {
-        const persona = solicitud.voluntario.persona;
-        nombreCarpeta = `${persona.nombre}-${persona.apellido1}-${persona.cedula}`
-          .toLowerCase()
-          .replace(/\s+/g, '-');
-      } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
-        nombreCarpeta = `${solicitud.organizacion.nombre}`
-          .toLowerCase()
-          .replace(/\s+/g, '-');
-      } else {
-        throw new BadRequestException('No se puede determinar el nombre de la carpeta');
+    // A) pendiente por misma cedula juridica
+    const pendienteOrg = await solicitudRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.organizacion', 'o')
+      .where('s.tipoSolicitante = :tipo', { tipo: 'ORGANIZACION' })
+      .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.PENDIENTE })
+      .andWhere('o.cedulaJuridica = :cj', { cj })
+      .getOne();
+
+    if (pendienteOrg) {
+      throw new ConflictException({
+        code: 'SOLICITUD_PENDIENTE_ORG',
+        message: 'Esta organización ya envió una solicitud y está en revisión.',
+      });
+    }
+
+    // B) ya es org activa (org existe + aprobada + isActive)
+    const orgExistente = await orgRepo.findOne({ where: { cedulaJuridica: cj } });
+
+    if (orgExistente?.isActive) {
+      const aprobadaOrg = await solicitudRepo
+        .createQueryBuilder('s')
+        .leftJoin('s.organizacion', 'o')
+        .where('s.tipoSolicitante = :tipo', { tipo: 'ORGANIZACION' })
+        .andWhere('s.estado = :estado', { estado: SolicitudVoluntariadoStatus.APROBADO })
+        .andWhere('o.cedulaJuridica = :cj', { cj })
+        .getOne();
+
+      if (aprobadaOrg) {
+        throw new ConflictException({
+          code: 'YA_ES_ORGANIZACION_VOLUNTARIA',
+          message: 'Esta organización ya es voluntaria activa en el sistema.',
+        });
       }
+    }
 
-      // Asegurar que existan las carpetas base
-      await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
-      await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
+    return;
+  }
 
-      // Subir CV
-      if (files.cv && files.cv.length > 0) {
-        for (const file of files.cv) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/cv`,
-          );
-          formData.cv.push(url);
-        }
-      }
+  throw new BadRequestException('Tipo de solicitante no válido');
+}
 
-      // Subir Cédula
-      if (files.cedula && files.cedula.length > 0) {
-        for (const file of files.cedula) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/cedula`,
-          );
-          formData.cedula.push(url);
-        }
-      }
+ async uploadDocuments(
+  idSolicitud: number,
+  files: { cv?: any[]; cedula?: any[]; carta?: any[] },
+): Promise<any> {
+  const t0 = Date.now();
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitudVoluntariado: idSolicitud },
+    relations: ['voluntario.persona', 'organizacion'],
+  });
+console.log("findOne ms:", Date.now() - t0);
 
-      // Subir Carta
-      if (files.carta && files.carta.length > 0) {
-        for (const file of files.carta) {
-          const url = await this.dropboxService.uploadFile(
-            file,
-            `/Solicitudes Voluntarios/${nombreCarpeta}/carta`,
-          );
-          formData.carta.push(url);
-        }
-      }
+  if (!solicitud) {
+    throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+  }
 
-      // Guardar URLs en formData y también en campos temp
-      solicitud.formData = formData;
-      solicitud.cvUrlTemp = formData.cv[0] ?? undefined;
-      solicitud.cedulaUrlTemp = formData.cedula[0] ?? undefined;
-      solicitud.cartaUrlTemp = formData.carta[0] ?? undefined;
+  const formData = {
+    cv: [] as string[],
+    cedula: [] as string[],
+    carta: [] as string[],
+  };
 
-      await this.solicitudRepository.save(solicitud);
+  try {
+    let nombreCarpeta: string;
 
-      return {
-        message: 'Documentos subidos exitosamente',
-        urls: formData,
-      };
-    } catch (error: any) {
-      console.error('[Service] Error al subir documentos:', error.message);
-      throw new BadRequestException(
-        `Error al subir documentos: ${error.message}`,
+    if (solicitud.tipoSolicitante === 'INDIVIDUAL' && solicitud.voluntario?.persona) {
+      const p = solicitud.voluntario.persona;
+      nombreCarpeta = `${p.nombre}-${p.apellido1}-${p.cedula}`.toLowerCase().replace(/\s+/g, '-');
+    } else if (solicitud.tipoSolicitante === 'ORGANIZACION' && solicitud.organizacion) {
+      nombreCarpeta = `${solicitud.organizacion.nombre}`.toLowerCase().replace(/\s+/g, '-');
+    } else {
+      throw new BadRequestException('No se puede determinar el nombre de la carpeta');
+    }
+
+    // (Opcional) si vas a asumir que existen, dejalas comentadas
+    // await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
+    // await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
+
+    const mkPath = (kind: "cv" | "cedula" | "carta") =>
+      `/Solicitudes Voluntarios/${nombreCarpeta}/${kind}`;
+
+    const uploads: Array<Promise<void>> = [];
+
+    if (files.cv?.length) {
+      uploads.push(
+        Promise.all(
+          files.cv.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("cv"));
+            formData.cv.push(path);
+          })
+        ).then(() => void 0)
       );
     }
+
+    if (files.cedula?.length) {
+      uploads.push(
+        Promise.all(
+          files.cedula.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("cedula"));
+            formData.cedula.push(path);
+          })
+        ).then(() => void 0)
+      );
+    }
+
+    if (files.carta?.length) {
+      uploads.push(
+        Promise.all(
+          files.carta.map(async (file) => {
+            const path = await this.dropboxService.uploadFile(file, mkPath("carta"));
+            formData.carta.push(path);
+          })
+        ).then(() => void 0)
+      );
+    }
+const t1 = Date.now();
+    await Promise.all(uploads);
+console.log("dropbox uploads ms:", Date.now() - t1);
+
+    solicitud.formData = formData;
+    solicitud.cvUrlTemp = formData.cv[0] ?? undefined;
+    solicitud.cedulaUrlTemp = formData.cedula[0] ?? undefined;
+    solicitud.cartaUrlTemp = formData.carta[0] ?? undefined;
+const t2 = Date.now();
+    await this.solicitudRepository.save(solicitud);
+console.log("db save ms:", Date.now() - t2);
+    return { message: 'Documentos subidos exitosamente', urls: formData };
+  } catch (error: any) {
+    console.error('[Service] Error al subir documentos:', error.message);
+    throw new BadRequestException(`Error al subir documentos: ${error.message}`);
   }
+}
+
 
   async findAll(): Promise<SolicitudVoluntariado[]> {
     return this.solicitudRepository.find({

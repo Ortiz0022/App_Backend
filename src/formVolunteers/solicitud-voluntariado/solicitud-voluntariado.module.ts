@@ -11,8 +11,9 @@ import { RepresentanteModule } from '../representante/representante.module';
 import { RazonSocialModule } from '../razon-social/razon-social.module';
 import { DisponibilidadModule } from '../disponibilidad/disponibilidad.module';
 import { AreasInteresModule } from '../areas-interes/areas-interes.module';
-import { DropboxModule } from 'src/dropbox/dropbox.module'; // ✅ NUEVO
+import { DropboxModule } from 'src/dropbox/dropbox.module';
 import { EmailModule } from 'src/email/email.module';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
 import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
 import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
@@ -22,7 +23,8 @@ import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
     TypeOrmModule.forFeature([
       SolicitudVoluntariado,
       VoluntarioIndividual, 
-      Organizacion,         
+      Organizacion,      
+      Persona   
     ]),
     VoluntarioIndividualModule,
     OrganizacionModule,
@@ -31,8 +33,7 @@ import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
     DisponibilidadModule,
     AreasInteresModule,
     DropboxModule,
-    EmailModule,
-  ],
+    EmailModule  ],
   controllers: [SolicitudVoluntariadoController],
   providers: [SolicitudVoluntariadoService, VoluntarioPdfService, SolicitudesVoluntariadoPdfService, VoluntariosListadoPdfService],
   exports: [SolicitudVoluntariadoService, VoluntarioPdfService, SolicitudesVoluntariadoPdfService, VoluntariosListadoPdfService],

@@ -6,6 +6,7 @@ import {
   ValidateIf,
   IsArray,
   IsOptional,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateVoluntarioIndividualDto } from '../../voluntario-individual/dto/create-voluntario-individual.dto';
@@ -19,7 +20,8 @@ export class CreateSolicitudVoluntariadoDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
-  tipoSolicitante: string;
+   @IsIn(['INDIVIDUAL', 'ORGANIZACION'])
+  tipoSolicitante: 'INDIVIDUAL' | 'ORGANIZACION';
 
   @ValidateIf((o) => o.tipoSolicitante === 'INDIVIDUAL')
   @ValidateNested()

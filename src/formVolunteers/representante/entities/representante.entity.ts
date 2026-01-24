@@ -16,7 +16,7 @@ export class Representante {
   @PrimaryGeneratedColumn()
   idRepresentante: number;
 
-  @OneToOne(() => Persona, { eager: false, cascade: true })
+  @OneToOne(() => Persona, { eager: false, cascade: false })
   @JoinColumn({ name: 'idPersona' })
   persona: Persona;
 

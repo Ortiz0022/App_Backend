@@ -15,6 +15,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
   StreamableFile,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -23,6 +24,7 @@ import { SolicitudVoluntariadoService } from './solicitud-voluntariado.service';
 import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntariado.dto';
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
+import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
 // ✅ PDF de detalle (individual/organización)
 import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
@@ -47,7 +49,13 @@ export class SolicitudVoluntariadoController {
   create(@Body() createSolicitudDto: CreateSolicitudVoluntariadoDto) {
     return this.solicitudService.create(createSolicitudDto);
   }
+ @Post('validate')
+  @HttpCode(HttpStatus.OK)
+  validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
+    return this.solicitudService.validateBeforeCreate(dto);
+  }
 
+  // Endpoint para subir documentos
   @Post(':id/upload-documents')
   @UseInterceptors(
     FileFieldsInterceptor([
