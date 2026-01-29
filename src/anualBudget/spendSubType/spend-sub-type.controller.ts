@@ -5,6 +5,7 @@ import { UpdateSpendSubTypeDto } from './dto/updateSpendSubTypeDto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
+import { FromProjectionSpendSubTypeDto } from './dto/fromProjectionSpendSubType.dto';
 
 @Controller('spend-sub-type')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -38,4 +39,11 @@ export class SpendSubTypeController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.svc.remove(id);
   }
+
+  @Post('from-projection')
+  ensureFromProjection(@Body() dto: FromProjectionSpendSubTypeDto) {
+    return this.svc.ensureFromProjection(dto.pSpendSubTypeId);
+  }
+
+
 }

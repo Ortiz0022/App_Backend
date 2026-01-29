@@ -6,14 +6,15 @@ import { CreateSpendTypeDto } from './dto/createSpendTypeDto';
 import { UpdateSpendTypeDto } from './dto/updateSpendTypeDto';
 import { SpendSubType } from 'src/anualBudget/spendSubType/entities/spend-sub-type.entity';
 import { Spend } from '../spend/entities/spend.entity';
+import { PSpendType } from 'src/anualBudget/pSpendType/entities/p-spend-type.entity';
 
 @Injectable()
 export class SpendTypeService {
   constructor(
     @InjectRepository(SpendType)    private readonly repo: Repository<SpendType>,
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
-    // Mantengo la inyección para compatibilidad; no se usa con la nueva lógica
     @InjectRepository(Spend)        private readonly _spendRepo: Repository<Spend>,
+    @InjectRepository(PSpendType)   private readonly pTypeRepo: Repository<PSpendType>,
   ) {}
 
   async create(dto: CreateSpendTypeDto) {
@@ -74,4 +75,41 @@ export class SpendTypeService {
       await em.update(SpendType, spendTypeId, { amountSpend: total });
       return total;
     }
+
+async ensureFromProjection(pSpendTypeId: number) {
+  const pType = await this.pTypeRepo.findOne({
+    where: { id: pSpendTypeId },
+    relations: ['department'],
+  });
+
+  if (!pType) throw new NotFoundException('PSpendType not found');
+
+  const name = (pType.name ?? '').trim();
+  const deptId = pType.department?.id;
+
+  if (!name) throw new BadRequestException('Projection type name is empty');
+  if (!deptId) throw new BadRequestException('Projection type has no department');
+
+  // Buscar real por (name + department)
+  const existing = await this.repo.findOne({
+    where: {
+      name,
+      department: { id: deptId } as any,
+    },
+    relations: ['department'],
+  });
+
+  if (existing) return existing;
+
+  // Crear real (sin copiar montos)
+  const created = this.repo.create({
+    name,
+    department: { id: deptId } as any,
+    // amountSpend queda default
+  });
+
+  const saved = await this.repo.save(created);
+  return this.findOne(saved.id);
+}
+
 }
