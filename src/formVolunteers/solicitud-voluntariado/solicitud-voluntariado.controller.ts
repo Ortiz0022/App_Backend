@@ -26,6 +26,7 @@ import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-vol
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
+
 // ✅ PDF de detalle (individual/organización)
 import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
 // ✅ PDF listado de solicitudes (el que querés ahora)
@@ -49,11 +50,11 @@ export class SolicitudVoluntariadoController {
   create(@Body() createSolicitudDto: CreateSolicitudVoluntariadoDto) {
     return this.solicitudService.create(createSolicitudDto);
   }
- @Post('validate')
-  @HttpCode(HttpStatus.OK)
-  validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
-    return this.solicitudService.validateBeforeCreate(dto);
-  }
+@Post('validate')
+@HttpCode(HttpStatus.OK)
+validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
+  return this.solicitudService.validateBeforeCreate(dto);
+}
 
   // Endpoint para subir documentos
   @Post(':id/upload-documents')
@@ -92,6 +93,7 @@ export class SolicitudVoluntariadoController {
       sort,
     });
   }
+
 
   // ==========================
   // ✅ PDF LISTADO (EL QUE PEDISTE)

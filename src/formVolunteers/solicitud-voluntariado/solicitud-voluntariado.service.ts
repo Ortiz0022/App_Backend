@@ -27,6 +27,7 @@ import { DropboxService } from 'src/dropbox/dropbox.service';
 import { EmailService } from 'src/email/email.service';
 import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
+import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
 @Injectable()
 export class SolicitudVoluntariadoService {
@@ -148,6 +149,12 @@ export class SolicitudVoluntariadoService {
       return manager.save(solicitud);
     });
   }
+
+  async validateBeforeCreate(dto: ValidateSolicitudVoluntariadoDto) {
+  await this.validateOrThrow(dto);
+  return { ok: true };
+}
+
 
 
 async findAllPaginated(params: {
