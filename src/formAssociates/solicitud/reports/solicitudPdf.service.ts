@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import PDFDocument from 'pdfkit'
-import { Solicitud } from './entities/solicitud.entity'
 import https from 'https'
+import { Solicitud } from '../entities/solicitud.entity'
 
 type PDFDoc = InstanceType<typeof PDFDocument>
 
