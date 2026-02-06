@@ -78,6 +78,7 @@ import { DisponibilidadModule } from './formVolunteers/disponibilidad/disponibil
 import { RazonSocialModule } from './formVolunteers/razon-social/razon-social.module';
 import { RepresentanteModule } from './formVolunteers/representante/representante.module';
 import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 
 
@@ -110,6 +111,7 @@ import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes
       inject: [ConfigService],
     }),
 
+    CloudinaryModule,
     RealtimeModule,
     PrincipalModule,
     VolunteersModule,
