@@ -14,10 +14,14 @@ export class SpendSubTypeService {
   constructor(
     @InjectRepository(SpendSubType) private readonly repo: Repository<SpendSubType>,
     @InjectRepository(SpendType)    private readonly typeRepo: Repository<SpendType>,
-    @InjectRepository(Spend)        private readonly spendRepo: Repository<Spend>, 
+    @InjectRepository(Spend)        private readonly spendRepo: Repository<Spend>,
     private readonly typeService: SpendTypeService,
     @InjectRepository(PSpendSubType) private readonly pSubRepo: Repository<PSpendSubType>,
   ) {}
+
+  private normalizeName(name: string) {
+    return (name ?? '').trim().replace(/\s+/g, ' ');
+  }
 
   private async getType(id: number) {
     const t = await this.typeRepo.findOne({ where: { id } });
@@ -100,43 +104,39 @@ export class SpendSubTypeService {
 
     return { deleted: true };
   }
-  async ensureFromProjection(pSpendSubTypeId: number) {
-  const pSub = await this.pSubRepo.findOne({
-    where: { id: pSpendSubTypeId },
-    relations: ['type', 'type.department'],
-  });
+ async ensureFromProjection(pSpendSubTypeId: number) {
+    const pSub = await this.pSubRepo.findOne({
+      where: { id: pSpendSubTypeId },
+      relations: ['type', 'type.department'],
+    });
 
-  if (!pSub) throw new NotFoundException('PSpendSubType not found');
+    if (!pSub) throw new NotFoundException('PSpendSubType not found');
 
-  const name = (pSub.name ?? '').trim();
-  const pTypeId = pSub.type?.id;
+    const name = this.normalizeName(pSub.name);
+    const pTypeId = pSub.type?.id;
 
-  if (!name) throw new BadRequestException('Projection subType name is empty');
-  if (!pTypeId) throw new BadRequestException('Projection subType has no type');
+    if (!name) throw new BadRequestException('Projection subType name is empty');
+    if (!pTypeId) throw new BadRequestException('Projection subType has no type');
 
-  // 1) asegurar el SpendType real equivalente al pSpendType
-  const realType = await this.typeService.ensureFromProjection(pTypeId);
+    // 1) asegurar type real (igual que Income)
+    const realType = await this.typeService.ensureFromProjection(pTypeId);
 
-  // 2) buscar subtipo real por (name + spendType)
-  const existing = await this.repo.findOne({
-    where: {
+    // 2) buscar SubType real por (type + LOWER(name))
+    const existing = await this.repo
+      .createQueryBuilder('s')
+      .innerJoin('s.spendType', 't')
+      .where('t.id = :typeId', { typeId: realType.id })
+      .andWhere('LOWER(s.name) = LOWER(:name)', { name })
+      .getOne();
+
+    if (existing) return existing;
+
+    // 3) crear si no existe
+    const created = this.repo.create({
       name,
       spendType: { id: realType.id } as any,
-    },
-    relations: ['spendType'],
-  });
+    });
 
-  if (existing) return existing;
-
-  // 3) crear subtipo real (sin copiar montos)
-  const created = this.repo.create({
-    name,
-    spendType: { id: realType.id } as any,
-    // amountSubSpend default 0
-  });
-
-  return this.repo.save(created);
-}
-
-
+    return this.repo.save(created);
+  }
 }

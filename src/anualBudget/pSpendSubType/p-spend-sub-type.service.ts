@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { PSpendSubType } from './entities/p-spend-sub-type.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class PSpendSubTypeService {
@@ -13,14 +13,7 @@ export class PSpendSubTypeService {
     private readonly pSpendRepo: Repository<PSpend>,
   ) {}
 
-  /**
-   * Lista subtipos y agrega amountPSpend = SUM(ps.amount) por subTipo.
-   *
-   * Filtros:
-   * - departmentId: limita los subtipos a los de ese departamento (vía su type.department)
-   * - typeId: limita a un tipo específico
-   * - fiscalYearId: limita la SUMA al año fiscal indicado
-   */
+ 
   async findAll(
     departmentId?: number,
     typeId?: number,
@@ -93,19 +86,42 @@ export class PSpendSubTypeService {
     return this.subTypeRepo.save(entity);
   }
 
-  async update(id: number, dto: { name?: string; typeId?: number }) {
-    const partial: any = {};
-    if (dto.name !== undefined) partial.name = dto.name;
-    if (dto.typeId !== undefined) partial.type = { id: dto.typeId } as any;
-    await this.subTypeRepo.update(id, partial);
-    return this.subTypeRepo.findOne({
-      where: { id },
-      relations: ['type'],
-    });
+async remove(id: number) {
+  const row = await this.subTypeRepo.findOne({
+    where: { id },
+    relations: ['type', 'pSpends'],
+  });
+
+  if (!row) throw new NotFoundException('PSpendSubType not found');
+
+  if (row.pSpends?.length) {
+    throw new BadRequestException(
+      'No se puede eliminar el subtipo porque tiene proyecciones registradas.',
+    );
   }
 
-  async remove(id: number) {
-    await this.subTypeRepo.delete(id);
-    return { ok: true };
-  }
+  await this.subTypeRepo.delete(id);
+  return { ok: true };
 }
+
+
+async update(id: number, dto: { name?: string; typeId?: number }) {
+  const row = await this.subTypeRepo.findOne({
+    where: { id },
+    relations: ['type'],
+  });
+
+  if (!row) throw new NotFoundException('PSpendSubType not found');
+
+  if (dto.name !== undefined) row.name = dto.name;
+
+  if (dto.typeId !== undefined && dto.typeId !== row.type.id) {
+    row.type = { id: dto.typeId } as any;
+  }
+
+  return this.subTypeRepo.save(row);
+}
+
+}
+
+

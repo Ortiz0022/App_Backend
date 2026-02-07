@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { PSpendSubType } from 'src/anualBudget/pSpendSubType/entities/p-spend-sub-type.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PSpendType } from './entities/p-spend-type.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+
 
 @Injectable()
 export class PSpendTypeService {
@@ -11,6 +13,8 @@ export class PSpendTypeService {
     private readonly typeRepo: Repository<PSpendType>,
     @InjectRepository(PSpend)
     private readonly pSpendRepo: Repository<PSpend>,
+    @InjectRepository(PSpendSubType)
+    private readonly subTypeRepo: Repository<PSpendSubType>,
   ) {}
 
   /**
@@ -87,8 +91,33 @@ export class PSpendTypeService {
     });
   }
 
-  async remove(id: number) {
-    await this.typeRepo.delete(id);
-    return { ok: true };
+async remove(id: number) {
+  const type = await this.typeRepo.findOne({
+    where: { id },
+    relations: ['subTypes'],
+  });
+
+  if (!type) throw new NotFoundException('PSpendType not found');
+
+  // Si tiene subTypes, revisamos si alguno tiene pSpends
+  if (type.subTypes?.length) {
+    const subTypeIds = type.subTypes.map((s) => s.id);
+
+    const count = await this.pSpendRepo
+      .createQueryBuilder('ps')
+      .where('ps.subTypeId IN (:...ids)', { ids: subTypeIds })
+      .getCount();
+
+    if (count > 0) {
+      throw new BadRequestException(
+        'No se puede eliminar el tipo porque tiene proyecciones registradas en sus subtipos.',
+      );
+    }
   }
+
+  // Si no hay pSpends, sí se puede borrar (cascade se lleva subTypes vacíos)
+  await this.typeRepo.delete(id);
+  return { ok: true };
+}
+
 }

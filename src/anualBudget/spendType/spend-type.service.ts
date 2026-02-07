@@ -17,6 +17,10 @@ export class SpendTypeService {
     @InjectRepository(PSpendType)   private readonly pTypeRepo: Repository<PSpendType>,
   ) {}
 
+  private normalizeName(name: string) {
+    return (name ?? '').trim().replace(/\s+/g, ' ');
+  }
+
   async create(dto: CreateSpendTypeDto) {
     if (!dto.departmentId) throw new BadRequestException('departmentId is required');
     const entity = this.repo.create({
@@ -76,40 +80,38 @@ export class SpendTypeService {
       return total;
     }
 
-async ensureFromProjection(pSpendTypeId: number) {
-  const pType = await this.pTypeRepo.findOne({
-    where: { id: pSpendTypeId },
-    relations: ['department'],
-  });
 
-  if (!pType) throw new NotFoundException('PSpendType not found');
+  async ensureFromProjection(pSpendTypeId: number) {
+    const pType = await this.pTypeRepo.findOne({
+      where: { id: pSpendTypeId },
+      relations: ['department'],
+    });
 
-  const name = (pType.name ?? '').trim();
-  const deptId = pType.department?.id;
+    if (!pType) throw new NotFoundException('PSpendType not found');
 
-  if (!name) throw new BadRequestException('Projection type name is empty');
-  if (!deptId) throw new BadRequestException('Projection type has no department');
+    const name = this.normalizeName(pType.name);
+    const deptId = pType.department?.id;
 
-  // Buscar real por (name + department)
-  const existing = await this.repo.findOne({
-    where: {
+    if (!name) throw new BadRequestException('Projection type name is empty');
+    if (!deptId) throw new BadRequestException('PSpendType has no department');
+
+    // ✅ igual que Income: buscar por dept + LOWER(name)
+    const existing = await this.repo
+      .createQueryBuilder('t')
+      .innerJoin('t.department', 'd')
+      .where('d.id = :deptId', { deptId })
+      .andWhere('LOWER(t.name) = LOWER(:name)', { name })
+      .getOne();
+
+    if (existing) return existing;
+
+    const created = this.repo.create({
       name,
       department: { id: deptId } as any,
-    },
-    relations: ['department'],
-  });
+    });
 
-  if (existing) return existing;
-
-  // Crear real (sin copiar montos)
-  const created = this.repo.create({
-    name,
-    department: { id: deptId } as any,
-    // amountSpend queda default
-  });
-
-  const saved = await this.repo.save(created);
-  return this.findOne(saved.id);
+    const saved = await this.repo.save(created);
+    return this.findOne(saved.id);
+  }
 }
 
-}

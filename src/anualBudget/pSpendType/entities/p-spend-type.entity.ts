@@ -13,12 +13,12 @@ export class PSpendType {
   name: string;
 
   @Column('decimal', { precision: 15, scale: 2, default: 0 })
-  amountPSpend: number; // lo dejamos, pero NO se envía en create
+  amountPSpend: number; 
 
   @ManyToOne(() => Department, (d) => d.pSpendTypes, { onDelete: 'CASCADE' })
   department: Department;
 
-  // 👉 OPCIONAL en este flujo
+
   @ManyToOne(() => PSpendTypeByDepartment, (bd) => bd.pSpendTypes, {
     eager: true,
     nullable: true,
