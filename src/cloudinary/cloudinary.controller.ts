@@ -10,8 +10,8 @@ import {
   BadRequestException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
-import { CloudinaryService } from './cloudinary.service'
 import { v2 as cloudinary } from 'cloudinary'
+import { CloudinaryService } from './cloudinary.service'
 
 @Controller('cloudinary')
 export class CloudinaryController {
