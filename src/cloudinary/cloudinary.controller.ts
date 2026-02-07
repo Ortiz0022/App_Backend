@@ -22,22 +22,22 @@ export class CloudinaryController {
     return this.cloudinaryService.getUsage()
   }
 
-@Get('gallery')
-getGallery(@Query('maxResults') maxResults?: string, @Query('nextCursor') nextCursor?: string) {
-  return this.cloudinaryService.getGallery({
-    maxResults: maxResults ? Number(maxResults) : 50,
-    nextCursor,
-  });
-}
+  @Get('gallery')
+  getGallery(
+    @Query('maxResults') maxResults?: string,
+    @Query('nextCursor') nextCursor?: string,
+  ) {
+    return this.cloudinaryService.getGallery({
+      maxResults: maxResults ? Number(maxResults) : 50,
+      nextCursor,
+    })
+  }
 
-
-  // ✅ (si ya lo tenés, dejalo): /cloudinary/upload
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file')) // 👈 el campo debe llamarse "file"
-  async upload(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('File is required')
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(@UploadedFile() file: any) {
+    if (!file?.buffer) throw new BadRequestException('File is required')
 
-    // subimos buffer con upload_stream
     const result = await new Promise<any>((resolve, reject) => {
       cloudinary.uploader
         .upload_stream({ resource_type: 'image' }, (err, res) => {
@@ -53,7 +53,6 @@ getGallery(@Query('maxResults') maxResults?: string, @Query('nextCursor') nextCu
     }
   }
 
-  // ✅ NUEVO: /cloudinary/:publicId
   @Delete(':publicId')
   delete(@Param('publicId') publicId: string) {
     return this.cloudinaryService.delete(publicId)
