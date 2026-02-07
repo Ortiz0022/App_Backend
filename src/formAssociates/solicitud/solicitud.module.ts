@@ -29,9 +29,9 @@ import { CorrienteElectricaModule } from 'src/formFinca/corriente-electrica/corr
 import { AccesoModule } from 'src/formFinca/acceso/acceso.module';
 import { CanalesComercializacionModule } from 'src/formFinca/canal-comercializacion/canal.module';
 import { NecesidadesModule } from 'src/formFinca/necesidades/necesidades.module';
-import { PdfService } from './solicitudPdf.service';
 import { EmailModule } from 'src/email/email.module';
-import { SolicitudesListPdfService } from './solicitudesPdf.service';
+import { SolicitudesListPdfService } from './reports/solicitudesPdf.service';
+import { PdfService } from './reports/solicitudPdf.service';
 
 
 @Module({
@@ -66,7 +66,7 @@ import { SolicitudesListPdfService } from './solicitudesPdf.service';
   providers: [
     SolicitudService,
     PdfService,
-    SolicitudesListPdfService, // ✅ NUEVO
+    SolicitudesListPdfService,
   ],
   exports: [SolicitudService],
 })

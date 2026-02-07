@@ -421,7 +421,6 @@ private async validateOrThrow(
   }
 }
 
-
   async findAllPaginated(params: {
     page?: number;
     limit?: number;
@@ -504,10 +503,6 @@ private async validateOrThrow(
   
     return solicitud;
   }
-  
- // ✅ Reemplaza el método findOneComplete en solicitud.service.ts
-
-// solicitud.service.ts
 
 async findOneComplete(id: number): Promise<Solicitud> {
   const solicitud = await this.solicitudRepository.findOne({
@@ -577,15 +572,9 @@ async findOneComplete(id: number): Promise<Solicitud> {
   return solicitud;
 }
 
-/**
- * ✅ EJEMPLO: si en algún lugar estabas haciendo:
- *   return this.solicitudRepository.findOneComplete(id)
- * cámbialo por:
- */
 async algunaFuncionQueAntesFallaba(id: number) {
-  return this.findOneComplete(id); // ✅ así
+  return this.findOneComplete(id); 
 }
-
 
   async changeStatus(
     id: number,
@@ -616,34 +605,33 @@ async algunaFuncionQueAntesFallaba(id: number) {
       );
     }
   
-    if (solicitud.estado !== SolicitudStatus.PENDIENTE) {
+    const canProcess =
+    solicitud.estado === SolicitudStatus.PENDIENTE ||
+    solicitud.estado === SolicitudStatus.RECHAZADO;
+
+    if (!canProcess) {
       throw new BadRequestException(
-        'Solo se pueden procesar solicitudes pendientes',
+        'Solo se pueden procesar solicitudes pendientes o rechazadas',
       );
     }
   
     solicitud.estado = changeStatusDto.estado;
     solicitud.fechaResolucion = new Date();
-    solicitud.motivo =
-      changeStatusDto.estado === SolicitudStatus.RECHAZADO
-        ? changeStatusDto.motivo
-        : undefined;
-  
+    if (changeStatusDto.motivo !== undefined) {
+      solicitud.motivo = changeStatusDto.motivo; 
+    }
     await this.solicitudRepository.save(solicitud);
-    // ✅ Enviar email de notificación
     await this.sendStatusChangeEmail(solicitud, changeStatusDto);
   
     if (changeStatusDto.estado === SolicitudStatus.APROBADO) {
       solicitud.asociado.estado = true;
       await this.associateRepository.save(solicitud.asociado);
   
-      // ✅ Copiar documentos sin esperar (asíncrono)
       this.copyDocumentsToEntities(solicitud).catch(err => {
         console.error('Error copiando documentos:', err);
       });
     }
   
-    // ✅ Retornar el objeto que ya tienes (sin hacer otro query)
     return solicitud;
   }
   async remove(id: number): Promise<void> {

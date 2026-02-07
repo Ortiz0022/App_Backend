@@ -5,7 +5,7 @@ export class ChangeSolicitudStatusDto {
   @IsEnum(SolicitudStatus)
   estado: SolicitudStatus;
 
-  @ValidateIf((o) => o.estado === SolicitudStatus.RECHAZADO)
+  @ValidateIf((o) => o.motivo !== undefined)
   @IsString()
   @MaxLength(255)
   motivo?: string;

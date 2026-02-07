@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import PDFDocument from 'pdfkit'
-import { VoluntarioIndividual } from '../voluntario-individual/entities/voluntario-individual.entity'
-import { Organizacion } from '../organizacion/entities/organizacion.entity'
+
 import https from 'https'
+import { VoluntarioIndividual } from 'src/formVolunteers/voluntario-individual/entities/voluntario-individual.entity'
+import { Organizacion } from 'src/formVolunteers/organizacion/entities/organizacion.entity'
 
 type PDFDoc = InstanceType<typeof PDFDocument>
 

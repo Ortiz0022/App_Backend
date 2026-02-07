@@ -25,7 +25,7 @@ import { AreasInteresService } from '../areas-interes/areas-interes.service';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { DropboxService } from 'src/dropbox/dropbox.service';
 import { EmailService } from 'src/email/email.service';
-import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
+import { SolicitudesVoluntariadoPdfService } from './reports/solicitudes.pdf.service';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
 import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
 
@@ -482,11 +482,9 @@ async changeStatus(
   // Validar que el motivo esté presente solo si se rechaza
   if (
     changeStatusDto.estado === SolicitudVoluntariadoStatus.RECHAZADO &&
-    !changeStatusDto.motivo
+    (!changeStatusDto.motivo || changeStatusDto.motivo.trim().length < 5)
   ) {
-    throw new BadRequestException(
-      'El motivo es obligatorio al rechazar una solicitud',
-    );
+     throw new BadRequestException('El motivo es obligatorio al rechazar (mínimo 5 caracteres)');
   }
 
   // Actualizar estado y fecha de resolución

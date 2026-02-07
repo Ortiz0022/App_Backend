@@ -16,14 +16,13 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-
 import { SolicitudService } from './solicitud.service';
-import { PdfService } from './solicitudPdf.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { ChangeSolicitudStatusDto } from './dto/change-solicitud-status.dto';
 import { SolicitudStatus } from './dto/solicitud-status.enum';
-import { SolicitudesListPdfService } from './solicitudesPdf.service';
 import { ValidateSolicitudDto } from './dto/validate-solicitud.dto';
+import { PdfService } from './reports/solicitudPdf.service';
+import { SolicitudesListPdfService } from './reports/solicitudesPdf.service';
 
 @Controller('solicitudes')
 export class SolicitudController {
@@ -81,9 +80,7 @@ export class SolicitudController {
     return this.solicitudService.getStats();
   }
 
-  // ======================================================
-  // ✅ PDF LISTADO (GET)  -> /solicitudes/pdf-list?estado=PENDIENTE&search=...&sort=createdAt:DESC
-  // ======================================================
+
 @Get('pdf-list')
 async downloadSolicitudesListPDF(
   @Query('estado') estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO',
@@ -91,7 +88,6 @@ async downloadSolicitudesListPDF(
   @Query('sort') sort: string,
   @Res() res: Response,
 ): Promise<void> {
-    // Traer muchos (ajusta si ocupas)
     const result = await this.solicitudService.findAllPaginated({
       estado,
       search,
@@ -143,7 +139,6 @@ async downloadSolicitudesListPDF(
     return this.solicitudService.remove(id);
   }
 
-  // ✅ PDF COMPLETO (por solicitud)
   @Get(':id/pdf')
   async downloadPDF(
     @Param('id', ParseIntPipe) id: number,

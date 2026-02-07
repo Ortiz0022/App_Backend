@@ -14,9 +14,9 @@ import { AreasInteresModule } from '../areas-interes/areas-interes.module';
 import { DropboxModule } from 'src/dropbox/dropbox.module';
 import { EmailModule } from 'src/email/email.module';
 import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
-import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
-import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
-import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
+import { SolicitudesVoluntariadoPdfService } from './reports/solicitudes.pdf.service';
+import { VoluntariosListadoPdfService } from './reports/voluntariado.pdf.service';
+import { VoluntarioPdfService } from './reports/solicitud-individual.pdf.service';
 
 @Module({
   imports: [

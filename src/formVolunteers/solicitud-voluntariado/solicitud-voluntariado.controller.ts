@@ -25,15 +25,11 @@ import { CreateSolicitudVoluntariadoDto } from './dto/create-solicitud-voluntari
 import { ChangeSolicitudVoluntariadoStatusDto } from './dto/change-solicitud-voluntariado-status.dto';
 import { SolicitudVoluntariadoStatus } from './dto/solicitud-voluntariado-status.enum';
 import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-voluntariado.dto';
+import { SolicitudesVoluntariadoPdfService } from './reports/solicitudes.pdf.service';
+import { VoluntariosListadoPdfService } from './reports/voluntariado.pdf.service';
+import { VoluntarioPdfService } from './reports/solicitud-individual.pdf.service';
 
-
-// ✅ PDF de detalle (individual/organización)
-import { VoluntarioPdfService } from './solicitud-individual.pdf.service';
-// ✅ PDF listado de solicitudes (el que querés ahora)
-import { SolicitudesVoluntariadoPdfService } from './solicitudes.pdf.service';
-import { VoluntariosListadoPdfService } from './voluntariado.pdf.service';
-
-@Controller('solicitud-voluntariado') // ✅ para que sea /solicitud-voluntariado/...
+@Controller('solicitud-voluntariado') 
 export class SolicitudVoluntariadoController {
   constructor(
     private readonly solicitudService: SolicitudVoluntariadoService,
