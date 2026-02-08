@@ -4,17 +4,14 @@ import { Personal } from 'src/personal/entities/personal.entity';
 
 @Entity()
 export class User {
-  static username(username: any): (target: typeof import("../../auth/auth.service").AuthService, propertyKey: undefined, parameterIndex: 0) => void {
-      throw new Error("Method not implemented.");
-  }
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ unique: true })
   username: string; 
 
-  @Column()
-  password: string; //
+ @Column({ select: false })
+  password: string;
 
   @Column({ unique: true })
   email: string;
@@ -27,7 +24,6 @@ export class User {
 
   @Column({ type: 'datetime', nullable: true })
   resetPasswordTokenExpiresAt: Date | null;
-  // @OneToOne(() => Personal, (personal) => personal.user, { nullable: false })
-  // personal: Personal;
+
 }
 

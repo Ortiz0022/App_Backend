@@ -637,8 +637,17 @@ private async sendStatusChangeEmail(
 
     // Copiar documentos a Organizacion (si existe)
     if (solicitud.organizacion) {
+      // documento legal (ahorita viene en cedulaUrlTemp)
       if (solicitud.cedulaUrlTemp) {
         solicitud.organizacion.documentoLegalUrl = solicitud.cedulaUrlTemp;
+      }
+
+      if (solicitud.cvUrlTemp) {
+        solicitud.organizacion.cvUrl = solicitud.cvUrlTemp;
+      }
+
+      if (solicitud.cartaUrlTemp) {
+        solicitud.organizacion.cartaUrl = solicitud.cartaUrlTemp;
       }
 
       await this.organizacionRepository.save(solicitud.organizacion);

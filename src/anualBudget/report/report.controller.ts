@@ -2,8 +2,10 @@
 import { Controller, Get, Query, Header, Res, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportService } from './report.service';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('report')
+@Roles('ADMIN', 'JUNTA')
 export class ReportController {
   constructor(private readonly svc: ReportService) {}
 

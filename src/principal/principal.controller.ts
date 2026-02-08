@@ -2,13 +2,13 @@ import { Controller, Get, Query, Post, Body, Put, Param, Delete } from '@nestjs/
 import { PrincipalDto } from './dto/PrincipalDto';
 import { PrincipalService } from './principal.service';
 import { Public } from 'src/auth/public.decorator';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('principal')
 export class PrincipalController {
-
   constructor(private principalService: PrincipalService){}
-
   @Post()
+  @Roles('ADMIN')
   create(@Body() createPrincipalDto: PrincipalDto) {
     return this.principalService.createPrincipal(createPrincipalDto);
   }
@@ -26,11 +26,13 @@ export class PrincipalController {
   }
 
   @Put(':id')
+  @Roles('ADMIN')
   update(@Param('id') id: number, @Body() updateprincipalDto: PrincipalDto) {
     return this.principalService.updatePrincipal(id, updateprincipalDto);
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id') id: number) {
     return this.principalService.deletePrincipal(id);
   }

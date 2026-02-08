@@ -2,18 +2,13 @@ import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, ParseIntPip
 import { FaqService } from './faq.service';
 import { FaqDto } from './dto/FAQDto';
 import { Roles } from 'src/auth/roles.decorator';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/roles.guard';
 import { Public } from 'src/auth/public.decorator';
-
-
 @Controller('faq')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN') // Define roles that can access this controller
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 
   @Post()
+  @Roles('ADMIN')
   create(@Body() createFaqDto: FaqDto) {
     return this.faqService.createFaq(createFaqDto);
   }
@@ -31,11 +26,13 @@ export class FaqController {
   }
 
   @Put(':id')
+  @Roles('ADMIN')
   update(@Param('id') id: number, @Body() updateFaqDto: FaqDto) {
     return this.faqService.updateFaq(id, updateFaqDto);
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.faqService.deleteFaq(id);
   }
