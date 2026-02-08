@@ -376,8 +376,22 @@ console.log("findOne ms:", Date.now() - t0);
     // await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
     // await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
 
-    const mkPath = (kind: "cv" | "cedula" | "carta") =>
-      `/Solicitudes Voluntarios/${nombreCarpeta}/${kind}`;
+    const folderMap =
+  solicitud.tipoSolicitante === "INDIVIDUAL"
+    ? {
+        cedula: "cedula",
+        cv: "curriculum",
+        carta: "carta-recomendacion",
+      }
+    : {
+        cedula: "documento-legal",
+        cv: "documento-adicional",
+        carta: "carta-motivacion",
+      };
+
+const mkPath = (kind: "cv" | "cedula" | "carta") =>
+  `/Solicitudes Voluntarios/${nombreCarpeta}/${folderMap[kind]}`;
+
 
     const uploads: Array<Promise<void>> = [];
 
