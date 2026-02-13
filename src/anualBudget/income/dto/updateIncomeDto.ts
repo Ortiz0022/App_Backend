@@ -1,7 +1,12 @@
-// src/anualBudget/income/dto/updateIncomeDto.ts
-import { IsDateString, IsInt, IsOptional } from 'class-validator';
+
+import { IsDateString, IsInt, IsOptional, IsNumberString } from 'class-validator';
+
 export class UpdateIncomeDto {
   @IsOptional() @IsInt() incomeSubTypeId?: number;
-  @IsOptional() amount?: string;
-  @IsOptional() @IsDateString() date?: string;
+
+  @IsOptional() @IsNumberString()
+  amount?: string;
+
+  @IsOptional() @IsDateString()
+  date?: string;
 }

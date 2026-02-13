@@ -1,11 +1,13 @@
-import { IsDateString, IsInt, IsNotEmpty } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsNumberString } from 'class-validator';
+
 export class CreateIncomeDto {
-  @IsInt() 
+  @IsInt()
   incomeSubTypeId: number;
 
-  @IsNotEmpty() 
-  amount: string; // decimal como string
+  @IsNotEmpty()
+  @IsNumberString()
+  amount: string;
 
-  @IsDateString() 
+  @IsDateString()
   date: string;
 }
