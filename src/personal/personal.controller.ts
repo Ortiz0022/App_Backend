@@ -24,16 +24,19 @@ export class PersonalController {
   }
 
   @Get()
+  @Roles('ADMIN','JUNTA')
   findAll() {
     return this.personalService.findAllPersonal()
   }
 
   @Get(':id')
+  @Roles('ADMIN','JUNTA')
   findOne(@Param('id') id: number) {
     return this.personalService.findOnePersonal(id)
   }
 
   @Put(':id')
+  @Roles('ADMIN')
   @Roles('ADMIN')
   update(@Param('id') id: number, @Body() updatePersonalDto: PersonalDto) {
     return this.personalService.updatePersonal(id, updatePersonalDto)
@@ -41,17 +44,15 @@ export class PersonalController {
 
   @Delete(':id')
   @Roles('ADMIN')
+  @Roles('ADMIN')
   remove(@Param('id') id: number) {
     return this.personalService.deletePersonal(id)
   }
 
-  // ======================================================
-  // ✅ PDF INDIVIDUAL
-  // GET /personal/pdf/:id
-  // ======================================================
   @Get('pdf/:id')
+  @Roles('ADMIN','JUNTA')
   async pdfOne(
-    @Res() res: Response, // ✅ primero para evitar TS1016
+    @Res() res: Response, 
     @Param('id') id: string,
   ) {
     const person = await this.personalService.findOnePersonal(+id)

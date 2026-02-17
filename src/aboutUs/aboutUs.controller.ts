@@ -4,14 +4,14 @@ import { AboutUs } from "./entities/aboutUs.entity";
 import { AboutUsDto } from "./dto/AboutUsDto";
 import { AboutUsPatchDto } from "./dto/AboutUsPatchDto";
 import { Public } from "src/auth/public.decorator";
-
-
+import { Roles } from "src/auth/roles.decorator";
 @Controller('aboutUs')
 export class AboutUsController {
 
     constructor(private aboutUsService: AboutUsService) {}
 
     @Post()
+    @Roles('ADMIN')
     create(@Body() createAboutUsDto: AboutUsDto) {
         return this.aboutUsService.create(createAboutUsDto);
     }
@@ -29,16 +29,19 @@ export class AboutUsController {
     }
     
     @Put(':id')
+    @Roles('ADMIN')
     update(@Param('id') id: number, @Body() updateAboutUsDto: AboutUs) {
         return this.aboutUsService.update(id, updateAboutUsDto);
     }
 
     @Patch(':id')
+    @Roles('ADMIN')
     partialUpdate(@Param('id') id: number, @Body() dto: AboutUsPatchDto) {
         return this.aboutUsService.patch(id, dto);
     }
 
     @Delete(':id')
+    @Roles('ADMIN')
     remove(@Param('id') id: number) {
         return this.aboutUsService.delete(id);
     }   

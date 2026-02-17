@@ -2,12 +2,15 @@ import { Body, Controller, Get, Put } from '@nestjs/common';
 import { AssociatesPageService } from './associates-page.service';
 import { UpsertAssociatesPageDto } from './dto/upsert-associates-page.dto';
 import { AssociatesPageResponse } from './dto/associates-page.response';
+import { Public } from 'src/auth/public.decorator';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('associates-page')
 export class AssociatesPageController {
   constructor(private readonly service: AssociatesPageService) {}
 
   @Get()
+  @Public()
   async get(): Promise<AssociatesPageResponse> {
     const page = await this.service.get();
     return {
@@ -24,6 +27,7 @@ export class AssociatesPageController {
   }
 
   @Put()
+  @Roles('ADMIN')
   async upsert(@Body() dto: UpsertAssociatesPageDto): Promise<AssociatesPageResponse> {
     const page = await this.service.upsert(dto);
     return {

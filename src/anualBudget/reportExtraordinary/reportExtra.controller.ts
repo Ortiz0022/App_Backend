@@ -3,8 +3,11 @@ import type { Response } from 'express';
 import { ExtraordinaryService } from '../extraordinary/extraordinary.service';
 import { ReportExtraService } from './reportExtra.service';
 import { ExtraFilters } from './entities/report-extra-filter.entity';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('report-extra')
+@Roles('ADMIN', 'JUNTA')
+
 export class ReportExtraController {
   constructor(
     private readonly extraSvc: ExtraordinaryService,

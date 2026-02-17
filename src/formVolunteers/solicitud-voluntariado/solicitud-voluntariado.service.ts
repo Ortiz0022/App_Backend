@@ -376,8 +376,22 @@ console.log("findOne ms:", Date.now() - t0);
     // await this.dropboxService.ensureFolder('/Solicitudes Voluntarios');
     // await this.dropboxService.ensureFolder(`/Solicitudes Voluntarios/${nombreCarpeta}`);
 
-    const mkPath = (kind: "cv" | "cedula" | "carta") =>
-      `/Solicitudes Voluntarios/${nombreCarpeta}/${kind}`;
+    const folderMap =
+  solicitud.tipoSolicitante === "INDIVIDUAL"
+    ? {
+        cedula: "cedula",
+        cv: "curriculum",
+        carta: "carta-recomendacion",
+      }
+    : {
+        cedula: "documento-legal",
+        cv: "documento-adicional",
+        carta: "carta-motivacion",
+      };
+
+const mkPath = (kind: "cv" | "cedula" | "carta") =>
+  `/Solicitudes Voluntarios/${nombreCarpeta}/${folderMap[kind]}`;
+
 
     const uploads: Array<Promise<void>> = [];
 
@@ -637,8 +651,17 @@ private async sendStatusChangeEmail(
 
     // Copiar documentos a Organizacion (si existe)
     if (solicitud.organizacion) {
+      // documento legal (ahorita viene en cedulaUrlTemp)
       if (solicitud.cedulaUrlTemp) {
         solicitud.organizacion.documentoLegalUrl = solicitud.cedulaUrlTemp;
+      }
+
+      if (solicitud.cvUrlTemp) {
+        solicitud.organizacion.cvUrl = solicitud.cvUrlTemp;
+      }
+
+      if (solicitud.cartaUrlTemp) {
+        solicitud.organizacion.cartaUrl = solicitud.cartaUrlTemp;
       }
 
       await this.organizacionRepository.save(solicitud.organizacion);

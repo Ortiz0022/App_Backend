@@ -28,6 +28,8 @@ import { ValidateSolicitudVoluntariadoDto } from './dto/validate-solicitud-volun
 import { SolicitudesVoluntariadoPdfService } from './reports/solicitudes.pdf.service';
 import { VoluntariosListadoPdfService } from './reports/voluntariado.pdf.service';
 import { VoluntarioPdfService } from './reports/solicitud-individual.pdf.service';
+import { Public } from 'src/auth/public.decorator';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('solicitud-voluntariado') 
 export class SolicitudVoluntariadoController {
@@ -42,11 +44,13 @@ export class SolicitudVoluntariadoController {
   // CRUD normal
   // ==========================
   @Post()
+  @Public()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createSolicitudDto: CreateSolicitudVoluntariadoDto) {
     return this.solicitudService.create(createSolicitudDto);
   }
 @Post('validate')
+@Public()
 @HttpCode(HttpStatus.OK)
 validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
   return this.solicitudService.validateBeforeCreate(dto);
@@ -54,6 +58,7 @@ validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
 
   // Endpoint para subir documentos
   @Post(':id/upload-documents')
+  @Public()
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'cv', maxCount: 1 },
@@ -74,6 +79,7 @@ validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
   }
 
   @Get()
+  @Roles('ADMIN','JUNTA')
   findAll(
     @Query('estado') estado?: SolicitudVoluntariadoStatus,
     @Query('search') search?: string,
@@ -90,12 +96,8 @@ validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
     });
   }
 
-
-  // ==========================
-  // ✅ PDF LISTADO (EL QUE PEDISTE)
-  // GET /solicitud-voluntariado/pdf-solicitudes
-  // ==========================
-  @Get('pdf-solicitudes') // ✅ ojo: esto va ANTES de @Get(':id')
+  @Get('pdf-solicitudes') 
+  @Roles('ADMIN','JUNTA')
   async pdfSolicitudes(): Promise<StreamableFile> {
     // 1) Traer todo (simple)
     const solicitudes = await this.solicitudService.findAll();
@@ -142,6 +144,7 @@ validate(@Body() dto: ValidateSolicitudVoluntariadoDto) {
   }
 
 @Get('pdf-voluntarios')
+@Roles('ADMIN','JUNTA')
 async pdfVoluntarios(): Promise<StreamableFile> {
   const solicitudes = await this.solicitudService.findAll();
 
@@ -217,20 +220,14 @@ async pdfVoluntarios(): Promise<StreamableFile> {
   })
 }
 
-
-  // ==========================
-  // Detalle de una solicitud
-  // ==========================
   @Get(':id')
+  @Roles('ADMIN','JUNTA')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.findOne(id);
   }
 
-  // ==========================
-  // ✅ PDF DETALLE (si lo ocupás)
-  // GET /solicitud-voluntariado/:id/pdf
-  // ==========================
   @Get(':id/pdf')
+  @Roles('ADMIN','JUNTA')
   async pdfDetalle(@Param('id', ParseIntPipe) id: number): Promise<StreamableFile> {
     const solicitud = await this.solicitudService.findOne(id);
 
@@ -255,6 +252,7 @@ async pdfVoluntarios(): Promise<StreamableFile> {
   }
 
   @Patch(':id/status')
+  @Roles('ADMIN')
   changeStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() changeStatusDto: ChangeSolicitudVoluntariadoStatusDto,
@@ -263,6 +261,7 @@ async pdfVoluntarios(): Promise<StreamableFile> {
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.remove(id);

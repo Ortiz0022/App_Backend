@@ -52,6 +52,114 @@ export class EmailService {
     }
   }
 
+    async sendConfirmEmailChange(to: string, confirmLink: string): Promise<void> {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Confirmar cambio de correo</title>
+    </head>
+    <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#F5F5DC">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5DC;padding:40px 20px">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              
+              <!-- Header con logo -->
+              <tr>
+                <td style="padding:40px 40px 24px 40px;text-align:center;background-color:#ffffff">
+                  <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-camara-iok26UPZx7aeGSyqeWR5iqJkSDrixR.png"
+                       alt="Cámara de Ganaderos Hojancha"
+                       style="width:80px;height:auto;margin:0 auto;display:block" />
+                </td>
+              </tr>
+
+              <!-- Badge -->
+              <tr>
+                <td style="padding:0 40px 28px 40px;text-align:center">
+                  <div style="display:inline-block;background-color:#F5F5DC;padding:10px 20px;border-radius:6px;border-left:4px solid #6B8E23">
+                    <span style="color:#6B8E23;font-size:13px;font-weight:600;letter-spacing:0.5px">CONFIRMAR CORREO</span>
+                  </div>
+                  <p style="margin:12px 0 0 0;font-size:13px;color:#999999">Seguridad de cuenta</p>
+                </td>
+              </tr>
+
+              <!-- Content -->
+              <tr>
+                <td style="padding:0 40px 40px 40px;color:#4a4a4a;line-height:1.7">
+                  <p style="margin:0 0 18px 0;font-size:16px;color:#2d2d2d">
+                    Hola,
+                  </p>
+
+                  <p style="margin:0 0 24px 0;font-size:15px">
+                    Se solicitó actualizar el correo asociado a tu cuenta.
+                    Para confirmar que este correo te pertenece, haz clic en el botón:
+                  </p>
+
+                  <p style="margin:0 0 28px 0;text-align:center">
+                    <a href="${confirmLink}"
+                       style="display:inline-block;padding:12px 18px;background:#6B8E23;color:#fff;
+                              text-decoration:none;border-radius:8px;font-weight:700">
+                      Confirmar correo
+                    </a>
+                  </p>
+
+                  <div style="background-color:#fafafa;padding:18px;border-radius:8px;border-left:3px solid #6B8E23">
+                    <p style="margin:0;font-size:13px;color:#737373;line-height:1.6">
+                      Si no solicitaste este cambio, puedes ignorar este mensaje.
+                      El enlace expirará en <strong>24 horas</strong>.
+                    </p>
+                  </div>
+
+                  <p style="margin:24px 0 0 0;font-size:12px;color:#999999">
+                    Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+                    <span style="word-break:break-all;color:#6B8E23">${confirmLink}</span>
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding:24px 40px;background-color:#fafafa;border-top:1px solid #e5e5e5">
+                  <p style="margin:0 0 4px 0;font-size:13px;color:#2d2d2d;font-weight:600">
+                    Cámara de Ganaderos de Hojancha
+                  </p>
+                  <p style="margin:0 0 12px 0;font-size:13px;color:#737373">
+                    Seguridad y Configuración
+                  </p>
+                  <p style="margin:0;font-size:12px;color:#999999">
+                    Este es un correo automático, por favor no responda directamente.
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const email: Brevo.SendSmtpEmail = {
+    sender: this.sender,
+    to: [{ email: to }],
+    subject: 'Confirma tu nuevo correo',
+    htmlContent: html,
+  };
+
+  try {
+    await this.apiInstance.sendTransacEmail(email);
+    this.logger.log(`✅ Confirmación de correo enviada a ${to}`);
+  } catch (e) {
+    this.logger.error('❌ Error enviando confirmación de correo', e.response?.body || e);
+    throw e;
+  }
+}
+
+
  async sendApplicationApprovalEmailVolunteers(to: string, nombre: string, tipoSolicitante: string): Promise<void> {
     const from = process.env.SMTP_FROM || "no-reply@example.com"
 
