@@ -46,6 +46,10 @@ export class AuthService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    if (!user.isActive) {
+    throw new UnauthorizedException('Usuario desactivado');
+    }
+
     const isValid = await compare(password, user.password);
     if (!isValid) {
       throw new UnauthorizedException('Contraseña inválida');

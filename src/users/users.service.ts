@@ -1,95 +1,138 @@
-// src/users/users.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { hash } from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
 
-import { User } from './entities/user.entity';
-import { Role } from 'src/role/entities/role.entity';
-import { UserDto } from './dto/UserDto';
-import { hash } from 'bcrypt';
+import { User } from "./entities/user.entity";
+import { Role } from "src/role/entities/role.entity";
+import { EmailService } from "src/email/email.service";
+import { CreateUserDto } from "./dto/CreateUserDto";
+import { UpdateUserDto } from "./dto/UpdateUserDto";
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-
-    @InjectRepository(Role)
-    private roleRepository: Repository<Role>,
+    @InjectRepository(User) private usersRepository: Repository<User>,
+    @InjectRepository(Role) private roleRepository: Repository<Role>,
+    private readonly emailService: EmailService,
   ) {}
 
-  // 👉 Devuelve a todos los usuarios incluyendo 'password' (tal como esté en BD)
-  async findAllUsers(): Promise<User[]> {
-    return this.usersRepository.find({
-      relations: ['role'],
-    });
+  async findAllUsers() {
+    return this.usersRepository.find({ relations: ["role"] });
   }
 
-  // 👉 Devuelve un usuario por id incluyendo 'password'
-  async findOneUser(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-      relations: ['role'],
-    });
+  async findOneUser(id: number) {
+    const user = await this.usersRepository.findOne({ where: { id }, relations: ["role"] });
     if (!user) throw new NotFoundException(`Usuario ${id} no encontrado`);
     return user;
   }
 
-  // 👉 Crea usuario hasheando la contraseña, pero devuelve el registro incluyendo el hash
-async createUser(userDto: UserDto): Promise<User> {
-  if (userDto.password) {
-    userDto.password = await hash(userDto.password, 10);
-  }
+  async createUser(dto: CreateUserDto) {
+    const role = await this.roleRepository.findOne({ where: { id: dto.roleId } });
+    if (!role) throw new NotFoundException(`Rol con ID ${dto.roleId} no encontrado`);
 
-  const role = await this.roleRepository.findOne({
-    where: { id: userDto.roleId },
-  });
-  if (!role) {
-    throw new NotFoundException(`Rol con ID ${userDto.roleId} no encontrado`);
-  }
-
-  const newUser = this.usersRepository.create({
-    ...userDto,
-    role,
-  });
-
-  // Aquí sí devuelve un User completo con id y demás
-  const saved = await this.usersRepository.save(newUser);
-  return saved;
-}
-
-  // 👉 Actualiza usuario (si cambia password, se re-hashea)
-  async updateUser(id: number, userDto: Partial<UserDto>): Promise<User> {
-    const toUpdate: any = { ...userDto };
-
-    if (userDto.password) {
-      toUpdate.password = await hash(userDto.password, 10);
+    // validación simple (mejor con class-validator)
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException("Password muy corta (mínimo 8)");
     }
 
-    if ((userDto as any).roleId) {
-      const role = await this.roleRepository.findOne({
-        where: { id: (userDto as any).roleId },
-      });
-      if (!role) {
-        throw new NotFoundException(
-          `Rol con ID ${(userDto as any).roleId} no encontrado`,
-        );
-      }
-      toUpdate.role = role;
-      delete toUpdate.roleId;
-    }
-
-    await this.usersRepository.update(id, toUpdate);
-    // Devuelve el usuario actualizado incluyendo 'password'
-    const updated = await this.usersRepository.findOne({
-      where: { id },
-      relations: ['role'],
+    const newUser = this.usersRepository.create({
+      username: dto.username,
+      email: dto.email,
+      password: await hash(dto.password, 10),
+      role,
+      isActive: true,
     });
-    if (!updated) throw new NotFoundException(`Usuario ${id} no encontrado`);
-    return updated;
+
+    return this.usersRepository.save(newUser);
   }
 
-  deleteUser(id: number) {
-    return this.usersRepository.delete(id);
+  // ✅ NO rol, NO email aquí
+  async updateUser(id: number, dto: UpdateUserDto) {
+    const user = await this.usersRepository.findOne({ where: { id }, relations: ["role"] });
+    if (!user) throw new NotFoundException(`Usuario ${id} no encontrado`);
+
+    if (dto.username !== undefined) user.username = dto.username;
+
+    return this.usersRepository.save(user);
+  }
+
+  async adminSetPassword(id: number, password: string) {
+    if (!password || password.length < 8) {
+      throw new BadRequestException("Password muy corta (mínimo 8)");
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException(`Usuario ${id} no encontrado`);
+
+    user.password = await hash(password, 10);
+    await this.usersRepository.save(user);
+
+    return { ok: true };
+  }
+
+  async setActive(id: number, isActive: boolean) {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException(`Usuario ${id} no encontrado`);
+    user.isActive = isActive;
+    await this.usersRepository.save(user);
+    return { ok: true, isActive };
+  }
+
+  async requestEmailChange(userId: number, newEmail: string) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Usuario ${userId} no encontrado`);
+
+    // no permitir duplicados
+    const exists = await this.usersRepository.findOne({ where: { email: newEmail } });
+    if (exists) throw new BadRequestException("Ese email ya está en uso");
+
+    const token = uuidv4();
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+
+    user.pendingEmail = newEmail;
+    user.emailChangeToken = token;
+    user.emailChangeTokenExpiresAt = expires;
+    await this.usersRepository.save(user);
+
+    const confirmLink = `${process.env.APP_URL}/confirm-email-change?token=${token}`;
+
+    await this.emailService.sendConfirmEmailChange(newEmail, confirmLink);
+
+    return { ok: true };
+  }
+
+  async confirmEmailChange(token: string) {
+    const user = await this.usersRepository.findOne({ where: { emailChangeToken: token } });
+    if (!user) throw new UnauthorizedException("Token inválido");
+
+    if (!user.emailChangeTokenExpiresAt || user.emailChangeTokenExpiresAt.getTime() < Date.now()) {
+      user.emailChangeToken = null;
+      user.emailChangeTokenExpiresAt = null;
+      user.pendingEmail = null;
+      await this.usersRepository.save(user);
+      throw new UnauthorizedException("Token expirado");
+    }
+
+    if (!user.pendingEmail) throw new BadRequestException("No hay email pendiente");
+
+    // seguridad extra: que no haya colisión
+    const collision = await this.usersRepository.findOne({ where: { email: user.pendingEmail } });
+    if (collision) throw new BadRequestException("Ese email ya está en uso");
+
+    user.email = user.pendingEmail;
+    user.pendingEmail = null;
+    user.emailChangeToken = null;
+    user.emailChangeTokenExpiresAt = null;
+
+    await this.usersRepository.save(user);
+    return { ok: true };
   }
 }

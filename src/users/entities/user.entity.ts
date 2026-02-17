@@ -16,6 +16,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @ManyToOne(() => Role, (role) => role.users, { eager: false, nullable: false })
   role: Role;
 
@@ -25,5 +28,13 @@ export class User {
   @Column({ type: 'datetime', nullable: true })
   resetPasswordTokenExpiresAt: Date | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  pendingEmail: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  emailChangeToken: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  emailChangeTokenExpiresAt: Date | null;
 }
 
