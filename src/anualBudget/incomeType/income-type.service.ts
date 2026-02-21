@@ -5,7 +5,7 @@ import { IncomeType } from './entities/income-type.entity';
 import { CreateIncomeTypeDto } from './dto/createIncomeTypeDto';
 import { UpdateIncomeTypeDto } from './dto/updateIncomeTypeDto';
 import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
-import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity'; 
+import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
 
 @Injectable()
 export class IncomeTypeService {
@@ -15,10 +15,39 @@ export class IncomeTypeService {
     @InjectRepository(PIncomeType) private readonly pTypeRepo: Repository<PIncomeType>,
   ) {}
 
+  private normalizeKey(input: string) {
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, departmentId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.repo.find({
+      where: { department: { id: departmentId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un tipo con ese nombre.');
+  }
+
   async create(dto: CreateIncomeTypeDto) {
     if (!dto.departmentId) throw new BadRequestException('departmentId is required');
+
+    const cleanName = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(cleanName, dto.departmentId);
+
     const entity = this.repo.create({
-      name: dto.name,
+      name: cleanName,
       department: { id: dto.departmentId } as any,
     });
     return this.repo.save(entity);
@@ -36,7 +65,15 @@ export class IncomeTypeService {
 
   async update(id: number, dto: UpdateIncomeTypeDto) {
     const row = await this.findOne(id);
-    if (dto.name !== undefined) row.name = dto.name;
+
+    const nextDeptId = dto.departmentId !== undefined ? dto.departmentId : row.department?.id;
+
+    if (dto.name !== undefined) {
+      const cleanName = this.normalizeName(dto.name);
+      if (nextDeptId) await this.assertNoDuplicateName(cleanName, nextDeptId, id);
+      row.name = cleanName;
+    }
+
     if (dto.departmentId !== undefined) row.department = { id: dto.departmentId } as any;
     return this.repo.save(row);
   }
@@ -46,10 +83,6 @@ export class IncomeTypeService {
     return { deleted: true };
   }
 
-  /**
-   * Recalcula y persiste amountIncome del IncomeType
-   * = SUM(IncomeSubType.amountSubIncome) de todos sus subtypes
-   */
   async recalcAmount(incomeTypeId: number) {
     const totalRaw = await this.subRepo
       .createQueryBuilder('s')
@@ -61,10 +94,6 @@ export class IncomeTypeService {
     await this.repo.update(incomeTypeId, { amountIncome: total });
 
     return this.findOne(incomeTypeId);
-  }
-
-   private normalizeName(name: string) {
-    return name.trim().replace(/\s+/g, ' ');
   }
 
   async fromProjectionType(pIncomeTypeId: number) {
@@ -80,17 +109,16 @@ export class IncomeTypeService {
 
     if (!deptId) throw new BadRequestException('PIncomeType has no department');
 
-    // Buscar si ya existe en real
-    const existing = await this.repo
-      .createQueryBuilder('t')
-      .innerJoin('t.department', 'd')
-      .where('d.id = :deptId', { deptId })
-      .andWhere('LOWER(t.name) = LOWER(:name)', { name })
-      .getOne();
+    const key = this.normalizeKey(name);
 
-    if (existing) return existing;
+    const rows = await this.repo.find({
+      where: { department: { id: deptId } } as any,
+      select: { id: true, name: true } as any,
+    });
 
-    // Crear si no existe
+    const dup = rows.find((r) => this.normalizeKey(r.name) === key);
+    if (dup) return this.findOne(dup.id);
+
     const created = this.repo.create({
       name,
       department: { id: deptId } as any,

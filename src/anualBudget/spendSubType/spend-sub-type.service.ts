@@ -19,8 +19,29 @@ export class SpendSubTypeService {
     @InjectRepository(PSpendSubType) private readonly pSubRepo: Repository<PSpendSubType>,
   ) {}
 
+  private normalizeKey(input: string) {
+    return (input ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
   private normalizeName(name: string) {
     return (name ?? '').trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, spendTypeId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.repo.find({
+      where: { spendType: { id: spendTypeId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un subtipo con ese nombre.');
   }
 
   private async getType(id: number) {
@@ -29,31 +50,33 @@ export class SpendSubTypeService {
     return t;
   }
 
-  /** NUEVO: recalcula el subtotal del SubType y luego el total del Type */
   async recalcAmountSubSpend(subTypeId: number) {
-  const sub = await this.repo.findOne({ where: { id: subTypeId }, relations: ['spendType'] });
-  if (!sub) throw new NotFoundException('SpendSubType not found');
+    const sub = await this.repo.findOne({ where: { id: subTypeId }, relations: ['spendType'] });
+    if (!sub) throw new NotFoundException('SpendSubType not found');
 
-  const totalRaw = await this.spendRepo
-    .createQueryBuilder('sp')
-    .where('sp.spendSubTypeId = :id', { id: subTypeId }) // ajusta si tu FK tiene otro nombre
-    .select('COALESCE(SUM(sp.amount), 0)', 'total')
-    .getRawOne<{ total: string }>(); // <- puede ser undefined
+    const totalRaw = await this.spendRepo
+      .createQueryBuilder('sp')
+      .where('sp.spendSubTypeId = :id', { id: subTypeId })
+      .select('COALESCE(SUM(sp.amount), 0)', 'total')
+      .getRawOne<{ total: string }>();
 
-  const total = totalRaw?.total ?? '0'; // <- manejamos undefined
-  sub.amountSubSpend = total;
-  await this.repo.save(sub);
+    const total = totalRaw?.total ?? '0';
+    sub.amountSubSpend = total;
+    await this.repo.save(sub);
 
-  await this.typeService.recalcAmount(sub.spendType.id);
-  return sub.amountSubSpend;
-}
+    await this.typeService.recalcAmount(sub.spendType.id);
+    return sub.amountSubSpend;
+  }
 
   async create(dto: CreateSpendSubTypeDto) {
     await this.getType(dto.spendTypeId);
+
+    const name = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(name, dto.spendTypeId);
+
     const entity = this.repo.create({
-      name: dto.name,
+      name,
       spendType: { id: dto.spendTypeId } as any,
-      // amountSubSpend se queda en 0 por default
     });
     return this.repo.save(entity);
   }
@@ -73,7 +96,14 @@ export class SpendSubTypeService {
     const row = await this.findOne(id);
     const oldTypeId = row.spendType.id;
 
-    if (dto.name !== undefined) row.name = dto.name;
+    const nextTypeId = dto.spendTypeId !== undefined ? dto.spendTypeId : oldTypeId;
+
+    if (dto.name !== undefined) {
+      const name = this.normalizeName(dto.name);
+      await this.assertNoDuplicateName(name, nextTypeId, id);
+      row.name = name;
+    }
+
     if (dto.spendTypeId !== undefined) {
       await this.getType(dto.spendTypeId);
       row.spendType = { id: dto.spendTypeId } as any;
@@ -81,13 +111,9 @@ export class SpendSubTypeService {
 
     const saved = await this.repo.save(row);
 
-    // Si cambió de tipo, recalcular totales del tipo viejo y nuevo
     if (dto.spendTypeId !== undefined && dto.spendTypeId !== oldTypeId) {
       await this.typeService.recalcAmount(oldTypeId);
       await this.typeService.recalcAmount(dto.spendTypeId);
-    } else {
-      // Si no cambió de tipo, el subtotal de este SubType podría haber cambiado por otros procesos
-      // (no lo tocamos aquí porque no alteramos Spends en esta operación).
     }
 
     return saved;
@@ -99,12 +125,12 @@ export class SpendSubTypeService {
 
     await this.repo.delete(id);
 
-    // Al eliminar un SubType, recalcula el total del Type
     await this.typeService.recalcAmount(typeId);
 
     return { deleted: true };
   }
- async ensureFromProjection(pSpendSubTypeId: number) {
+
+  async ensureFromProjection(pSpendSubTypeId: number) {
     const pSub = await this.pSubRepo.findOne({
       where: { id: pSpendSubTypeId },
       relations: ['type', 'type.department'],
@@ -113,25 +139,22 @@ export class SpendSubTypeService {
     if (!pSub) throw new NotFoundException('PSpendSubType not found');
 
     const name = this.normalizeName(pSub.name);
+    const key = this.normalizeKey(name);
     const pTypeId = pSub.type?.id;
 
     if (!name) throw new BadRequestException('Projection subType name is empty');
     if (!pTypeId) throw new BadRequestException('Projection subType has no type');
 
-    // 1) asegurar type real (igual que Income)
     const realType = await this.typeService.ensureFromProjection(pTypeId);
 
-    // 2) buscar SubType real por (type + LOWER(name))
-    const existing = await this.repo
-      .createQueryBuilder('s')
-      .innerJoin('s.spendType', 't')
-      .where('t.id = :typeId', { typeId: realType.id })
-      .andWhere('LOWER(s.name) = LOWER(:name)', { name })
-      .getOne();
+    const subs = await this.repo.find({
+      where: { spendType: { id: realType.id } } as any,
+      select: { id: true, name: true } as any,
+    });
 
-    if (existing) return existing;
+    const dup = subs.find((s) => this.normalizeKey(s.name) === key);
+    if (dup) return this.findOne(dup.id);
 
-    // 3) crear si no existe
     const created = this.repo.create({
       name,
       spendType: { id: realType.id } as any,

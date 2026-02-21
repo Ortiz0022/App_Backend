@@ -30,6 +30,27 @@ export class ExtraordinaryService {
     private readonly fiscalYearService: FiscalYearService, // 🔸 NUEVO
   ) {}
 
+  private normalizeKey(input: string) {
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private sanitizeLabel(input: string) {
+    return input.trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+    const rows = await this.repo.find({ select: { id: true, name: true } as any });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un registro con ese nombre.');
+  }
+
   findAll(): Promise<Extraordinary[]> {
     return this.repo.find({ order: { createdAt: 'DESC' } });
   }
@@ -49,8 +70,11 @@ export class ExtraordinaryService {
     const dateStr =
       dto.date && dto.date.trim() !== '' ? dto.date : new Date().toISOString().slice(0, 10);
 
+    const cleanName = this.sanitizeLabel(dto.name);
+    await this.assertNoDuplicateName(cleanName);
+
     const e = this.repo.create({
-      name: dto.name.trim(),
+      name: cleanName,
       amount: amountNum.toFixed(2),
       used: '0.00',
       date: dateStr,
@@ -61,7 +85,11 @@ export class ExtraordinaryService {
   async update(id: number, dto: UpdateExtraordinaryDto): Promise<Extraordinary> {
     const e = await this.findOne(id);
 
-    if (dto.name !== undefined) e.name = dto.name.trim();
+    if (dto.name !== undefined) {
+      const cleanName = this.sanitizeLabel(dto.name);
+      await this.assertNoDuplicateName(cleanName, id);
+      e.name = cleanName;
+    }
 
     if (dto.amount !== undefined) {
       const amountNum = Number.parseFloat(String(dto.amount));
@@ -93,7 +121,6 @@ export class ExtraordinaryService {
 
   async assignToIncome(dto: AssignExtraordinaryDto) {
     return this.repo.manager.transaction(async (em: EntityManager) => {
-      // 1) Extraordinary
       const extra = await em.findOne(Extraordinary, { where: { id: dto.extraordinaryId } });
       if (!extra) throw new NotFoundException('Extraordinary not found');
 
@@ -107,7 +134,6 @@ export class ExtraordinaryService {
         throw new BadRequestException('Amount exceeds extraordinary balance');
       }
 
-      // 2) IncomeType fijo "MOVIMIENTO EXTRAORDINARIO" por departamento
       let type = await em.findOne(IncomeType, {
         where: { name: 'MOVIMIENTO EXTRAORDINARIO', department: { id: dto.departmentId } },
         relations: ['department'],
@@ -121,15 +147,22 @@ export class ExtraordinaryService {
         await em.save(type);
       }
 
-      // 3) IncomeSubType (razón). Si no existe bajo ese type, créalo.
-      const subName = dto.subTypeName.trim();
-      if (!subName) throw new BadRequestException('subTypeName is required');
+      const subNameRaw = dto.subTypeName.trim();
+      if (!subNameRaw) throw new BadRequestException('subTypeName is required');
 
-      let subType = await em.findOne(IncomeSubType, {
-        where: { name: subName, incomeType: { id: type.id } },
-        relations: ['incomeType'],
+      const subName = subNameRaw.replace(/\s+/g, ' ');
+      const subKey = this.normalizeKey(subName);
+
+      const subs = await em.find(IncomeSubType, {
+        where: { incomeType: { id: type.id } } as any,
+        select: { id: true, name: true } as any,
       });
-      if (!subType) {
+
+      let subType = subs.find((s) => this.normalizeKey(s.name) === subKey) as any;
+
+      if (subType?.id) {
+        subType = await em.findOne(IncomeSubType, { where: { id: subType.id }, relations: ['incomeType'] });
+      } else {
         subType = em.create(IncomeSubType, {
           name: subName,
           incomeType: { id: type.id } as any,
@@ -138,26 +171,20 @@ export class ExtraordinaryService {
         await em.save(subType);
       }
 
-      // 🔸 NUEVO: Resolver Fiscal Year basado en la fecha
       const dateStr = dto.date && dto.date.trim() !== '' ? dto.date : new Date().toISOString().slice(0, 10);
       const fy = await this.fiscalYearService.resolveByDateOrActive(dateStr);
 
-      // 4) Crear Income bajo ese SubType CON fiscalYear ✅
       const inc = em.create(Income, {
         incomeSubType: { id: subType.id } as any,
         amount: assignAmt.toFixed(2),
         date: dateStr,
-        fiscalYear: fy ? { id: fy.id } as any : undefined, // 🔸 CLAVE: Asignar FiscalYear
+        fiscalYear: fy ? ({ id: fy.id } as any) : undefined,
       });
       await em.save(inc);
 
-      // 5) Restar del extraordinario
       extra.used = (Number(extra.used) + assignAmt).toFixed(2);
       await em.save(extra);
 
-      // 6) Recalcular acumulados (en cadena)
-      //    - recalc del SubType suma todos sus incomes → actualiza amountSubIncome
-      //    - ese método al final llama recalc del Type → actualiza amountIncome
       await this.incomeSubTypeService.recalcAmountWithManager(em, subType.id);
 
       return { extraordinary: extra, income: inc, subType, incomeType: type };

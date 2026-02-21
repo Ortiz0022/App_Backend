@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PSpendSubType } from './entities/p-spend-sub-type.entity';
 import { PSpend } from '../pSpend/entities/p-spend.entity';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
@@ -13,13 +13,32 @@ export class PSpendSubTypeService {
     private readonly pSpendRepo: Repository<PSpend>,
   ) {}
 
- 
-  async findAll(
-    departmentId?: number,
-    typeId?: number,
-    fiscalYearId?: number,
-  ) {
-    // 1) Traer los subtipos con su type (filtrando por departmentId y/o typeId)
+  private normalizeKey(input: string) {
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, typeId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.subTypeRepo.find({
+      where: { type: { id: typeId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un subtipo con ese nombre.');
+  }
+
+  async findAll(departmentId?: number, typeId?: number, fiscalYearId?: number) {
     const where: any = {};
     if (typeId) where.type = { id: typeId } as any;
     if (departmentId) {
@@ -37,7 +56,6 @@ export class PSpendSubTypeService {
 
     if (subtypes.length === 0) return [];
 
-    // 2) Sumar PSpend por subTipo
     const subTypeIds = subtypes.map((s) => s.id);
 
     const qb = this.pSpendRepo
@@ -55,7 +73,6 @@ export class PSpendSubTypeService {
       total: string | number;
     }>();
 
-    // 3) Mapear SUM a cada subtipo
     const totals = new Map<number, number>();
     for (const r of rows) {
       const n = typeof r.total === 'string' ? Number(r.total) : (r.total ?? 0);
@@ -65,7 +82,6 @@ export class PSpendSubTypeService {
     return subtypes.map((s) => ({
       id: s.id,
       name: s.name,
-      // suma formateada como string con 2 decimales para consistencia
       amountPSpend: (totals.get(s.id) ?? 0).toFixed(2),
       type: s.type
         ? {
@@ -76,52 +92,55 @@ export class PSpendSubTypeService {
     }));
   }
 
-  // --- CRUD mínimos (si ya los tienes, deja los tuyos) ---
-
   async create(dto: { name: string; typeId: number }) {
+    const cleanName = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(cleanName, dto.typeId);
+
     const entity = this.subTypeRepo.create({
-      name: dto.name,
+      name: cleanName,
       type: { id: dto.typeId } as any,
     });
     return this.subTypeRepo.save(entity);
   }
 
-async remove(id: number) {
-  const row = await this.subTypeRepo.findOne({
-    where: { id },
-    relations: ['type', 'pSpends'],
-  });
+  async remove(id: number) {
+    const row = await this.subTypeRepo.findOne({
+      where: { id },
+      relations: ['type', 'pSpends'],
+    });
 
-  if (!row) throw new NotFoundException('PSpendSubType not found');
+    if (!row) throw new NotFoundException('PSpendSubType not found');
 
-  if (row.pSpends?.length) {
-    throw new BadRequestException(
-      'No se puede eliminar el subtipo porque tiene proyecciones registradas.',
-    );
+    if (row.pSpends?.length) {
+      throw new BadRequestException(
+        'No se puede eliminar el subtipo porque tiene proyecciones registradas.',
+      );
+    }
+
+    await this.subTypeRepo.delete(id);
+    return { ok: true };
   }
 
-  await this.subTypeRepo.delete(id);
-  return { ok: true };
-}
+  async update(id: number, dto: { name?: string; typeId?: number }) {
+    const row = await this.subTypeRepo.findOne({
+      where: { id },
+      relations: ['type'],
+    });
 
+    if (!row) throw new NotFoundException('PSpendSubType not found');
 
-async update(id: number, dto: { name?: string; typeId?: number }) {
-  const row = await this.subTypeRepo.findOne({
-    where: { id },
-    relations: ['type'],
-  });
+    const nextTypeId = dto.typeId !== undefined ? dto.typeId : row.type.id;
 
-  if (!row) throw new NotFoundException('PSpendSubType not found');
+    if (dto.name !== undefined) {
+      const cleanName = this.normalizeName(dto.name);
+      await this.assertNoDuplicateName(cleanName, nextTypeId, id);
+      row.name = cleanName;
+    }
 
-  if (dto.name !== undefined) row.name = dto.name;
+    if (dto.typeId !== undefined && dto.typeId !== row.type.id) {
+      row.type = { id: dto.typeId } as any;
+    }
 
-  if (dto.typeId !== undefined && dto.typeId !== row.type.id) {
-    row.type = { id: dto.typeId } as any;
+    return this.subTypeRepo.save(row);
   }
-
-  return this.subTypeRepo.save(row);
 }
-
-}
-
-
