@@ -15,6 +15,7 @@ import { VoluntarioIndividualService } from './voluntario-individual.service';
 import { CreateVoluntarioIndividualDto } from './dto/create-voluntario-individual.dto';
 import { UpdateVoluntarioIndividualDto } from './dto/update-voluntario-individual.dto';
 import { QueryVoluntarioIndividualDto } from './dto/query-voluntario-individual.dto';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('voluntarios-individuales')
 export class VoluntarioIndividualController {
@@ -22,26 +23,27 @@ export class VoluntarioIndividualController {
     private readonly voluntarioService: VoluntarioIndividualService,
   ) {}
 
-  // Listado con paginación y filtros
   @Get()
+  @Roles('ADMIN','JUNTA')
   findAll(@Query() query: QueryVoluntarioIndividualDto) {
     return this.voluntarioService.findAll(query);
   }
 
-  // Estadísticas
   @Get('stats')
+  @Roles('ADMIN','JUNTA')
   getStats() {
     return this.voluntarioService.getStats();
   }
 
-  // Detalle de un voluntario
   @Get(':id')
+  @Roles('ADMIN','JUNTA')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.voluntarioService.findOne(id);
   }
 
   // Actualizar voluntario
   @Patch(':id')
+  @Roles('ADMIN')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateVoluntarioDto: UpdateVoluntarioIndividualDto,
@@ -51,12 +53,14 @@ export class VoluntarioIndividualController {
 
   //Toggle estado (activar/desactivar)
   @Patch(':id/toggle-status')
+  @Roles('ADMIN')
   toggleStatus(@Param('id', ParseIntPipe) id: number) {
     return this.voluntarioService.toggleStatus(id);
   }
 
   //Eliminar voluntario
   @Delete(':id')
+  @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.voluntarioService.remove(id);

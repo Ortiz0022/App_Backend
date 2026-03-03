@@ -22,10 +22,39 @@ export class PIncomeSubTypeService {
     return t;
   }
 
+  private normalizeKey(input: string) {
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, pIncomeTypeId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.repo.find({
+      where: { pIncomeType: { id: pIncomeTypeId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un subtipo con ese nombre.');
+  }
+
   async create(dto: CreatePIncomeSubTypeDto) {
     await this.getType(dto.pIncomeTypeId);
+
+    const cleanName = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(cleanName, dto.pIncomeTypeId);
+
     const entity = this.repo.create({
-      name: dto.name,
+      name: cleanName,
       pIncomeType: { id: dto.pIncomeTypeId } as any,
     });
     return this.repo.save(entity);
@@ -46,14 +75,20 @@ export class PIncomeSubTypeService {
     const row = await this.findOne(id);
     const oldTypeId = row.pIncomeType.id;
 
-    if (dto.name !== undefined) row.name = dto.name;
+    const nextTypeId = dto.pIncomeTypeId !== undefined ? dto.pIncomeTypeId : oldTypeId;
+
+    if (dto.name !== undefined) {
+      const cleanName = this.normalizeName(dto.name);
+      await this.assertNoDuplicateName(cleanName, nextTypeId, id);
+      row.name = cleanName;
+    }
+
     if (dto.pIncomeTypeId !== undefined && dto.pIncomeTypeId !== oldTypeId) {
       row.pIncomeType = await this.getType(dto.pIncomeTypeId);
     }
 
     const saved = await this.repo.save(row);
 
-    // si cambió de tipo, recalcula el viejo y el nuevo (sumas basadas en income)
     if (dto.pIncomeTypeId !== undefined && dto.pIncomeTypeId !== oldTypeId) {
       await this.typeService.recalcAmount(oldTypeId);
       await this.typeService.recalcAmount(dto.pIncomeTypeId);
@@ -61,24 +96,21 @@ export class PIncomeSubTypeService {
     return saved;
   }
 
-async remove(id: number) {
-  const row = await this.repo.findOne({
-    where: { id },
-    relations: ['pIncomeType', 'pIncomes'],
-  });
-  if (!row) throw new NotFoundException('PIncomeSubType not found');
+  async remove(id: number) {
+    const row = await this.repo.findOne({
+      where: { id },
+      relations: ['pIncomeType', 'pIncomes'],
+    });
+    if (!row) throw new NotFoundException('PIncomeSubType not found');
 
-  if (row.pIncomes?.length) {
-    throw new BadRequestException(
-      'No se puede eliminar el subtipo porque tiene proyecciones registradas.'
-    );
+    if (row.pIncomes?.length) {
+      throw new BadRequestException('No se puede eliminar el subtipo porque tiene proyecciones registradas.');
+    }
+
+    const typeId = row.pIncomeType.id;
+    await this.repo.delete(id);
+    await this.typeService.recalcAmount(typeId);
+
+    return { deleted: true };
   }
-
-  const typeId = row.pIncomeType.id;
-  await this.repo.delete(id);
-  await this.typeService.recalcAmount(typeId);
-
-  return { deleted: true };
-}
-
 }

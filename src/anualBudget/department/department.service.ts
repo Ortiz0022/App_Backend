@@ -1,16 +1,42 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Department } from './entities/department.entity';
 import { CreateDepartmentDto } from './dto/createDepartmentDto';
 import { UpdateDepartmentDto } from './dto/updateDepartmentDto';
+import { normalizeName } from '../shared/normalizedName';
+
+
+function sanitizeLabel(input: string) {
+  return input.trim().replace(/\s+/g, ' ');
+}
 
 @Injectable()
 export class DepartmentService {
   constructor(@InjectRepository(Department) private repo: Repository<Department>) {}
 
-  create(dto: CreateDepartmentDto) {
-    const entity = this.repo.create({ name: dto.name });
+  private async assertNoDuplicateName(name: string, ignoreId?: number) {
+    const key = normalizeName(name);
+
+    // Traemos solo lo necesario
+    const all = await this.repo.find({ select: { id: true, name: true } as any });
+
+    const duplicated = all.find((d) => {
+      if (ignoreId && d.id === ignoreId) return false;
+      return normalizeName(d.name) === key;
+    });
+
+    if (duplicated) {
+      throw new BadRequestException('Ya existe un departamento con ese nombre.');
+    }
+  }
+
+  async create(dto: CreateDepartmentDto) {
+    const cleanName = sanitizeLabel(dto.name);
+
+    await this.assertNoDuplicateName(cleanName);
+
+    const entity = this.repo.create({ name: cleanName });
     return this.repo.save(entity);
   }
 
@@ -28,7 +54,12 @@ export class DepartmentService {
     const row = await this.repo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('Department not found');
 
-    Object.assign(row, dto);
+    if (dto.name !== undefined) {
+      const cleanName = sanitizeLabel(dto.name);
+      await this.assertNoDuplicateName(cleanName, id);
+      row.name = cleanName;
+    }
+
     return this.repo.save(row);
   }
 

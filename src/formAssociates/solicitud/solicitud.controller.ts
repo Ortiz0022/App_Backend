@@ -23,6 +23,8 @@ import { SolicitudStatus } from './dto/solicitud-status.enum';
 import { ValidateSolicitudDto } from './dto/validate-solicitud.dto';
 import { PdfService } from './reports/solicitudPdf.service';
 import { SolicitudesListPdfService } from './reports/solicitudesPdf.service';
+import { Public } from 'src/auth/public.decorator';
+import { Roles } from 'src/auth/roles.decorator';
 
 @Controller('solicitudes')
 export class SolicitudController {
@@ -33,12 +35,14 @@ export class SolicitudController {
   ) {}
 
   @Post()
+  @Public()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createSolicitudDto: CreateSolicitudDto) {
     return this.solicitudService.create(createSolicitudDto);
   }
 
   @Post(':id/upload-documents')
+  @Public()
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'cedula', maxCount: 1 },
@@ -54,11 +58,13 @@ export class SolicitudController {
   }
 
     @Post('validate')
+    @Public()
   validateBeforeCreate(@Body() dto: ValidateSolicitudDto) {
     return this.solicitudService.validateBeforeCreate(dto);
   }
 
   @Get()
+  @Roles('ADMIN','JUNTA')
   findAll(
     @Query('estado') estado?: SolicitudStatus,
     @Query('search') search?: string,
@@ -76,12 +82,13 @@ export class SolicitudController {
   }
 
   @Get('stats')
+  @Roles('ADMIN','JUNTA')
   getStats() {
     return this.solicitudService.getStats();
   }
 
-
 @Get('pdf-list')
+@Roles('ADMIN','JUNTA')
 async downloadSolicitudesListPDF(
   @Query('estado') estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO',
   @Query('search') search: string,
@@ -116,16 +123,19 @@ async downloadSolicitudesListPDF(
   }
 
   @Get(':id')
+  @Roles('ADMIN','JUNTA')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.findOne(id);
   }
 
   @Get(':id/complete')
+  @Roles('ADMIN','JUNTA')
   findOneComplete(@Param('id') id: string) {
     return this.solicitudService.findOneComplete(+id);
   }
 
   @Patch(':id/status')
+  @Roles('ADMIN')
   changeStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() changeStatusDto: ChangeSolicitudStatusDto,
@@ -134,12 +144,14 @@ async downloadSolicitudesListPDF(
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.remove(id);
   }
 
   @Get(':id/pdf')
+  @Roles('ADMIN','JUNTA')
   async downloadPDF(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,

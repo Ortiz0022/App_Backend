@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { EmailModule } from './email/email.module';
 import { AppController } from './app.controller';
@@ -79,9 +80,7 @@ import { RazonSocialModule } from './formVolunteers/razon-social/razon-social.mo
 import { RepresentanteModule } from './formVolunteers/representante/representante.module';
 import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
-
-
-
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -184,7 +183,9 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
   ],
   controllers: [AppController],
   providers: [
-    AppService
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

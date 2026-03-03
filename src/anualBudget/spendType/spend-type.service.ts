@@ -17,14 +17,39 @@ export class SpendTypeService {
     @InjectRepository(PSpendType)   private readonly pTypeRepo: Repository<PSpendType>,
   ) {}
 
+  private normalizeKey(input: string) {
+    return (input ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
   private normalizeName(name: string) {
     return (name ?? '').trim().replace(/\s+/g, ' ');
   }
 
+  private async assertNoDuplicateName(name: string, departmentId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.repo.find({
+      where: { department: { id: departmentId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un tipo con ese nombre.');
+  }
+
   async create(dto: CreateSpendTypeDto) {
     if (!dto.departmentId) throw new BadRequestException('departmentId is required');
+
+    const name = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(name, dto.departmentId);
+
     const entity = this.repo.create({
-      name: dto.name,
+      name,
       department: { id: dto.departmentId } as any,
     });
     return this.repo.save(entity);
@@ -42,7 +67,15 @@ export class SpendTypeService {
 
   async update(id: number, dto: UpdateSpendTypeDto) {
     const row = await this.findOne(id);
-    if (dto.name !== undefined) row.name = dto.name;
+
+    const nextDeptId = dto.departmentId !== undefined ? dto.departmentId : row.department?.id;
+
+    if (dto.name !== undefined) {
+      const name = this.normalizeName(dto.name);
+      if (nextDeptId) await this.assertNoDuplicateName(name, nextDeptId, id);
+      row.name = name;
+    }
+
     if (dto.departmentId !== undefined) row.department = { id: dto.departmentId } as any;
     return this.repo.save(row);
   }
@@ -52,9 +85,6 @@ export class SpendTypeService {
     return { deleted: true };
   }
 
-  /** NUEVA LÓGICA:
-   * Suma de amountSubSpend de los subtipos del tipo (no suma directa de Spend)
-   */
   async recalcAmount(spendTypeId: number) {
     const totalRaw = await this.subRepo
       .createQueryBuilder('s')
@@ -67,19 +97,17 @@ export class SpendTypeService {
     return this.findOne(spendTypeId);
   }
 
-    /** ✅ NUEVO: recálculo con el mismo EntityManager/tx */
-    async recalcAmountWithManager(em: EntityManager, spendTypeId: number) {
-      const totalRaw = await em
-        .createQueryBuilder(SpendSubType, 's')
-        .where('s.spendType = :id', { id: spendTypeId })
-        .select('COALESCE(SUM(s.amountSubSpend), 0)', 'total')
-        .getRawOne<{ total: string }>();
-  
-      const total = Number(totalRaw?.total ?? 0).toFixed(2);
-      await em.update(SpendType, spendTypeId, { amountSpend: total });
-      return total;
-    }
+  async recalcAmountWithManager(em: EntityManager, spendTypeId: number) {
+    const totalRaw = await em
+      .createQueryBuilder(SpendSubType, 's')
+      .where('s.spendType = :id', { id: spendTypeId })
+      .select('COALESCE(SUM(s.amountSubSpend), 0)', 'total')
+      .getRawOne<{ total: string }>();
 
+    const total = Number(totalRaw?.total ?? 0).toFixed(2);
+    await em.update(SpendType, spendTypeId, { amountSpend: total });
+    return total;
+  }
 
   async ensureFromProjection(pSpendTypeId: number) {
     const pType = await this.pTypeRepo.findOne({
@@ -95,15 +123,15 @@ export class SpendTypeService {
     if (!name) throw new BadRequestException('Projection type name is empty');
     if (!deptId) throw new BadRequestException('PSpendType has no department');
 
-    // ✅ igual que Income: buscar por dept + LOWER(name)
-    const existing = await this.repo
-      .createQueryBuilder('t')
-      .innerJoin('t.department', 'd')
-      .where('d.id = :deptId', { deptId })
-      .andWhere('LOWER(t.name) = LOWER(:name)', { name })
-      .getOne();
+    const key = this.normalizeKey(name);
 
-    if (existing) return existing;
+    const rows = await this.repo.find({
+      where: { department: { id: deptId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => this.normalizeKey(r.name) === key);
+    if (dup) return this.findOne(dup.id);
 
     const created = this.repo.create({
       name,
@@ -114,4 +142,3 @@ export class SpendTypeService {
     return this.findOne(saved.id);
   }
 }
-

@@ -14,14 +14,43 @@ export class PIncomeTypeService {
   constructor(
     @InjectRepository(PIncomeType)    private readonly typeRepo: Repository<PIncomeType>,
     @InjectRepository(PIncomeSubType) private readonly subRepo:  Repository<PIncomeSubType>,
-    @InjectRepository(PIncome)        private readonly pIncRepo:  Repository<PIncome>,      // 👈 aquí fallaba
-    @InjectRepository(Department)     private readonly deptRepo:  Repository<Department>,   // si lo usas
+    @InjectRepository(PIncome)        private readonly pIncRepo:  Repository<PIncome>,
+    @InjectRepository(Department)     private readonly deptRepo:  Repository<Department>,
   ) {}
+
+  private normalizeKey(input: string) {
+    return input
+      .trim()
+      .replace(/\s+/g, ' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private normalizeName(name: string) {
+    return name.trim().replace(/\s+/g, ' ');
+  }
+
+  private async assertNoDuplicateName(name: string, departmentId: number, ignoreId?: number) {
+    const key = this.normalizeKey(name);
+
+    const rows = await this.typeRepo.find({
+      where: { department: { id: departmentId } } as any,
+      select: { id: true, name: true } as any,
+    });
+
+    const dup = rows.find((r) => (ignoreId ? r.id !== ignoreId : true) && this.normalizeKey(r.name) === key);
+    if (dup) throw new BadRequestException('Ya existe un tipo con ese nombre.');
+  }
 
   async create(dto: CreatePIncomeTypeDto) {
     if (!dto.departmentId) throw new BadRequestException('departmentId is required');
+
+    const cleanName = this.normalizeName(dto.name);
+    await this.assertNoDuplicateName(cleanName, dto.departmentId);
+
     const entity = this.typeRepo.create({
-      name: dto.name,
+      name: cleanName,
       department: { id: dto.departmentId } as any,
     });
     return this.typeRepo.save(entity);
@@ -39,7 +68,15 @@ export class PIncomeTypeService {
 
   async update(id: number, dto: UpdatePIncomeTypeDto) {
     const row = await this.findOne(id);
-    if (dto.name !== undefined) row.name = dto.name;
+
+    const nextDeptId = dto.departmentId !== undefined ? dto.departmentId : row.department?.id;
+
+    if (dto.name !== undefined) {
+      const cleanName = this.normalizeName(dto.name);
+      if (nextDeptId) await this.assertNoDuplicateName(cleanName, nextDeptId, id);
+      row.name = cleanName;
+    }
+
     if (dto.departmentId !== undefined) row.department = { id: dto.departmentId } as any;
     return this.typeRepo.save(row);
   }
@@ -49,7 +86,6 @@ export class PIncomeTypeService {
     return { deleted: true };
   }
 
-  /** SUM(income.amount) filtrando por subtipos del tipo */
   async recalcAmount(PIncomeTypeId: number) {
     const totalRaw = await this.pIncRepo
       .createQueryBuilder('i')

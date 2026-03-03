@@ -7,22 +7,26 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { GetUser } from 'src/users/get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
 import { AuthGuard } from '@nestjs/passport';
+import { Public } from './public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   login(@Body() loginAuth: LoginAuthDto) {
     return this.authService.login(loginAuth);
   }
 
+  @Public()
   @Patch('request-reset-password')
   @HttpCode(204)
   requestResetPassword(@Body() requestResetPasswordDto: RequestResetPasswordDto): Promise<void> {
     return this.authService.requestResetPassword(requestResetPasswordDto);
   }
 
+  @Public()
   @Patch('reset-password')
   resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<void> {
     return this.authService.resetPassword(resetPasswordDto);
