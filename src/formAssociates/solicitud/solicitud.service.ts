@@ -821,5 +821,64 @@ async uploadDocuments(
     }
   }
 
-  
+  private buildNombreCarpetaFromPersona(persona: Persona) {
+    return `${persona.nombre}-${persona.apellido1}-${persona.cedula}`
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+  }
+
+  // ✅ 1) Lo que pediste: por asociado específico
+  async getDocumentsFolderLinkByAsociado(idAsociado: number) {
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { asociado: { idAsociado } as any },
+      relations: ["persona", "asociado"],
+      order: { createdAt: "DESC" },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException(`No existe solicitud para el asociado ID ${idAsociado}`);
+    }
+
+    // ✅ Verificar que haya documentos antes de retornar link
+    const hasDocs =
+      (solicitud.formData?.cedula?.length ?? 0) > 0 ||
+      (solicitud.formData?.planoFinca?.length ?? 0) > 0;
+
+    if (!hasDocs) {
+      throw new BadRequestException('Este asociado no tiene documentos adjuntos.');
+    }
+
+    const nombreCarpeta = this.buildNombreCarpetaFromPersona(solicitud.persona);
+    const folderPath = `/Solicitudes Asociados/${nombreCarpeta}`;
+
+    const url = await this.dropboxService.getOrCreateSharedLinkAssociates(folderPath);
+
+    return { url, path: folderPath };
+  }
+
+  // ✅ 2) por idSolicitud (para el modal de solicitud)
+  async getDocumentsFolderLinkBySolicitud(idSolicitud: number) {
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitud },
+      relations: ["persona", "asociado"],
+    });
+
+    if (!solicitud) throw new NotFoundException(`Solicitud con ID ${idSolicitud} no encontrada`);
+
+    // ✅ Verificar que haya documentos antes de retornar link
+    const hasDocs =
+      (solicitud.formData?.cedula?.length ?? 0) > 0 ||
+      (solicitud.formData?.planoFinca?.length ?? 0) > 0;
+
+    if (!hasDocs) {
+      throw new BadRequestException('Esta solicitud no tiene documentos adjuntos.');
+    }
+
+    const nombreCarpeta = this.buildNombreCarpetaFromPersona(solicitud.persona);
+    const folderPath = `/Solicitudes Asociados/${nombreCarpeta}`;
+
+    const url = await this.dropboxService.getOrCreateSharedLinkAssociates(folderPath);
+
+    return { url, path: folderPath };
+  }
 }

@@ -679,4 +679,111 @@ async generarPdfSolicitudVoluntarioIndividual(idSolicitud: number): Promise<Buff
 
   return this.voluntarioPdfService.generateVoluntarioIndividualPDF(voluntarioFull)
 }
+
+  private extractFolderFromAnyDropboxPath(p?: string | null): string | null {
+    if (!p) return null;
+
+    const cleaned = String(p).trim();
+    if (!cleaned.startsWith("/")) return null;
+
+    const parts = cleaned.split("/").filter(Boolean);
+
+    // ✅ Debe ser /Solicitudes Voluntarios/<nombre>/...
+    if (parts.length < 3) return null;
+    if (parts[0] !== "Solicitudes Voluntarios") return null;
+
+    return `/${parts[0]}/${parts[1]}`;
+  }
+
+  // =========================================================
+  // ✅ 1) LINK POR SOLICITUD (para VolunteerViewModal)
+  // GET /solicitud-voluntariado/:id/documents-link
+  // =========================================================
+async getDocumentsLinkBySolicitud(idSolicitud: number): Promise<{ url: string; path: string }> {
+  const solicitud = await this.solicitudRepository.findOne({
+    where: { idSolicitudVoluntariado: idSolicitud },
+    relations: ["voluntario", "voluntario.persona", "organizacion"],
+  });
+
+  if (!solicitud) throw new NotFoundException(`Solicitud ${idSolicitud} no encontrada`);
+
+  // ✅ 1) VALIDACIÓN DEFINITIVA: si no hay docs, NO devolver link (evita carpeta general)
+  const hasDocs =
+    (solicitud?.formData?.cv?.length ?? 0) > 0 ||
+    (solicitud?.formData?.cedula?.length ?? 0) > 0 ||
+    (solicitud?.formData?.carta?.length ?? 0) > 0 ||
+    !!solicitud?.cvUrlTemp ||
+    !!solicitud?.cedulaUrlTemp ||
+    !!solicitud?.cartaUrlTemp;
+
+  if (!hasDocs) {
+    throw new BadRequestException("Esta solicitud no tiene documentos adjuntos.");
+  }
+
+  // Tomamos cualquiera que exista (formData o temp)
+  const anyPath =
+    solicitud?.formData?.cv?.[0] ||
+    solicitud?.formData?.cedula?.[0] ||
+    solicitud?.formData?.carta?.[0] ||
+    solicitud?.cvUrlTemp ||
+    solicitud?.cedulaUrlTemp ||
+    solicitud?.cartaUrlTemp;
+
+  const folder = this.extractFolderFromAnyDropboxPath(anyPath);
+
+  if (!folder) {
+    throw new BadRequestException("No se pudo determinar la carpeta de documentos de esta solicitud.");
+  }
+
+  // ⚠️ Ideal: cambiar este método a uno "strict" (sin fallback).
+  const url = await this.dropboxService.getOrCreateSharedLinkVolunteers(folder);
+
+  return { url, path: folder };
+}
+
+  // =========================================================
+  // ✅ 2) LINK POR ENTIDAD APROBADA (para ApprovedVolunteerViewModal)
+  // GET /solicitud-voluntariado/approved/:tipo/:id/documents-link
+  // tipo = INDIVIDUAL | ORGANIZACION
+  // =========================================================
+  async getDocumentsLinkByApproved(
+    tipo: "INDIVIDUAL" | "ORGANIZACION",
+    id: number,
+  ): Promise<{ url: string; path: string }> {
+    if (tipo === "INDIVIDUAL") {
+      const v = await this.voluntarioRepository.findOne({
+        where: { idVoluntario: id },
+        relations: ["persona"],
+      });
+
+      if (!v) throw new NotFoundException(`Voluntario ${id} no encontrado`);
+
+      // en aprobado ya copiaste:
+      // v.cvUrl, v.cartaUrl y v.persona.cedulaUrl
+      const anyPath = v.cvUrl || v.cartaUrl || v.persona?.cedulaUrl;
+      const folder = this.extractFolderFromAnyDropboxPath(anyPath);
+
+      if (!folder) throw new BadRequestException("Este voluntario no tiene documentos asociados para mostrar.");
+
+      const url = await this.dropboxService.getOrCreateSharedLinkVolunteers(folder);
+      return { url, path: folder };
+    }
+
+    // ORGANIZACION
+    const org = await this.organizacionRepository.findOne({
+      where: { idOrganizacion: id },
+    });
+
+    if (!org) throw new NotFoundException(`Organización ${id} no encontrada`);
+
+    // en aprobado copiaste:
+    // org.documentoLegalUrl (lo estás usando con cedulaUrlTemp)
+    const anyPath = org.documentoLegalUrl;
+    const folder = this.extractFolderFromAnyDropboxPath(anyPath);
+
+    if (!folder) throw new BadRequestException("Esta organización no tiene documentos asociados para mostrar.");
+
+    const url = await this.dropboxService.getOrCreateSharedLinkVolunteers(folder);
+    return { url, path: folder };
+  }
 }
