@@ -73,12 +73,6 @@ import { FincaOtroEquipoModule } from './formFinca/otros-equipos/finca-equipo.mo
 import { InfraestructuraProduccionModule } from './formFinca/equipo/equipo.module';
 import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
 import { SolicitudVoluntariadoModule } from './formVolunteers/solicitud-voluntariado/solicitud-voluntariado.module';
-import { VoluntarioIndividualModule } from './formVolunteers/voluntario-individual/voluntario-individual.module';
-import { OrganizacionModule } from './formVolunteers/organizacion/organizacion.module';
-import { DisponibilidadModule } from './formVolunteers/disponibilidad/disponibilidad.module';
-import { RazonSocialModule } from './formVolunteers/razon-social/razon-social.module';
-import { RepresentanteModule } from './formVolunteers/representante/representante.module';
-import { AreasInteresModule } from './formVolunteers/areas-interes/areas-interes.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { APP_GUARD } from '@nestjs/core';
 

@@ -14,6 +14,8 @@ import { AssociateService } from './associate.service'
 import { UpdateAssociateDto } from './dto/update-associate.dto'
 import { QueryAssociateDto } from './dto/query-associate.dto'
 import { AssociatePdfService } from './pdf.service'
+import { Roles } from 'src/auth/roles.decorator'
+import { Public } from 'src/auth/public.decorator'
 
 @Controller('associates')
 export class AssociateController {
@@ -23,26 +25,31 @@ export class AssociateController {
   ) {}
 
   @Get()
+  @Roles('ADMIN', 'JUNTA')
   findAll(@Query() query: QueryAssociateDto) {
     return this.associateService.findAll(query)
   }
 
   @Get('active')
+  @Roles('ADMIN', 'JUNTA')
   findActive() {
     return this.associateService.findActive()
   }
 
   @Get('inactive')
+  @Roles('ADMIN', 'JUNTA')
   findInactive() {
     return this.associateService.findInactive()
   }
 
   @Get('stats')
+  @Roles('ADMIN', 'JUNTA')
   getStats() {
     return this.associateService.getStats()
   }
 
   @Get('cedula/:cedula')
+  @Public()
   findByCedula(@Param('cedula') cedula: string) {
     return this.associateService.findByCedula(cedula)
   }
@@ -52,6 +59,7 @@ export class AssociateController {
   // GET /associates/pdf-list?estado=&search=&sort=
   // ============================
   @Get('pdf-list')
+  @Roles('ADMIN', 'JUNTA')
   async pdfList(
     @Res() res: Response,
     @Query('estado') estado?: string,
@@ -90,36 +98,43 @@ export class AssociateController {
 
   // ✅ NUEVO: Endpoint básico (sin toda la info de fincas)
   @Get(':id/basic')
+  @Roles('ADMIN', 'JUNTA')
   findOneBasic(@Param('id') id: string) {
     return this.associateService.findOneBasic(+id)
   }
 
   @Get(':id')
+  @Roles('ADMIN', 'JUNTA')
   findOne(@Param('id') id: string) {
     return this.associateService.findOne(+id)
   }
 
   @Patch(':id')
+  @Roles('ADMIN', 'JUNTA')
   update(@Param('id') id: string, @Body() updateAssociateDto: UpdateAssociateDto) {
     return this.associateService.update(+id, updateAssociateDto)
   }
 
   @Patch(':id/activate')
+  @Roles('ADMIN')
   activate(@Param('id') id: string) {
     return this.associateService.activate(+id)
   }
 
   @Patch(':id/deactivate')
+  @Roles('ADMIN')
   deactivate(@Param('id') id: string) {
     return this.associateService.deactivate(+id)
   }
 
   @Patch(':id/toggle')
+  @Roles('ADMIN')
   toggleStatus(@Param('id') id: string) {
     return this.associateService.toggleStatus(+id)
   }
 
   @Delete(':id')
+  @Roles('ADMIN')
   remove(@Param('id') id: string) {
     return this.associateService.remove(+id)
   }
