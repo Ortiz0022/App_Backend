@@ -252,4 +252,76 @@ export class DropboxService {
       );
     }
   }
+
+  async getOrCreateSharedLinkAssociates(path: string): Promise<string> {
+    this.ensureInitialized();
+
+    try {
+      // Normalizar path
+      let p = path;
+      if (!p.startsWith('/')) p = `/${p}`;
+      p = p.replace(/\/+/g, '/');
+
+      // 1) Si ya existe un link, reutilizarlo
+      const existing = await this.dbx.sharingListSharedLinks({
+        path: p,
+        direct_only: true,
+      });
+
+      const existingUrl = existing.result?.links?.[0]?.url;
+      if (existingUrl) return existingUrl;
+
+      // 2) Si no existe, crearlo
+      const created = await this.dbx.sharingCreateSharedLinkWithSettings({
+        path: p,
+        settings: {
+          requested_visibility: { '.tag': 'public' },
+          audience: { '.tag': 'public' },
+          access: { '.tag': 'viewer' },
+        },
+      });
+
+      const createdUrl = created.result?.url;
+      if (!createdUrl) throw new Error('No se pudo crear el shared link');
+
+      return createdUrl;
+    } catch (error: any) {
+      console.error('[Dropbox] Error shared link:', error?.message);
+      throw new BadRequestException(
+        `Error al generar link de Dropbox: ${error?.message}`,
+      );
+    }
+  }
+
+  async getOrCreateSharedLinkVolunteers(path: string): Promise<string> {
+    this.ensureInitialized();
+
+    try {
+      let p = path;
+      if (!p.startsWith("/")) p = `/${p}`;
+      p = p.replace(/\/+/g, "/");
+
+      // 1) Intentar listar links existentes
+      const listed = await this.dbx.sharingListSharedLinks({
+        path: p,
+        direct_only: true,
+      });
+
+      const existing = listed.result.links?.[0]?.url;
+      if (existing) return existing;
+
+      // 2) Crear uno nuevo
+      const created = await this.dbx.sharingCreateSharedLinkWithSettings({
+        path: p,
+        settings: {
+          requested_visibility: { ".tag": "public" },
+        },
+      });
+
+      return created.result.url;
+    } catch (error: any) {
+      console.error("[Dropbox] Error getOrCreateSharedLink:", error?.message || error);
+      throw new BadRequestException(`Error al generar link de Dropbox: ${error?.message || "Desconocido"}`);
+    }
+  }
 }

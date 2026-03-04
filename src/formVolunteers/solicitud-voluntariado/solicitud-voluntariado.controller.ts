@@ -220,6 +220,23 @@ async pdfVoluntarios(): Promise<StreamableFile> {
   })
 }
 
+
+@Get('approved/:tipo/:id/documents-link')
+getApprovedDocsLink(
+  @Param('tipo') tipo: 'INDIVIDUAL' | 'ORGANIZACION',
+  @Param('id', ParseIntPipe) id: number,
+) {
+  return this.solicitudService.getDocumentsLinkByApproved(tipo, id);
+}
+
+@Get(':id/documents-link')
+getSolicitudDocsLink(@Param('id', ParseIntPipe) id: number) {
+  return this.solicitudService.getDocumentsLinkBySolicitud(id);
+}
+
+  // ==========================
+  // Detalle de una solicitud
+  // ==========================
   @Get(':id')
   @Roles('ADMIN','JUNTA')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -266,4 +283,5 @@ async pdfVoluntarios(): Promise<StreamableFile> {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.solicitudService.remove(id);
   }
+
 }

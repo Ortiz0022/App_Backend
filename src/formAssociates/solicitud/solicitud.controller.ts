@@ -167,4 +167,15 @@ async downloadSolicitudesListPDF(
 
     res.end(pdfBuffer);
   }
+
+  @Get("by-asociado/:idAsociado/documents-link")
+  getDocsLinkByAsociado(@Param("idAsociado", ParseIntPipe) idAsociado: number) {
+    return this.solicitudService.getDocumentsFolderLinkByAsociado(idAsociado);
+  }
+
+  // ✅ (opcional) por solicitud
+  @Get(":id/documents-link")
+  getDocsLinkBySolicitud(@Param("id", ParseIntPipe) id: number) {
+    return this.solicitudService.getDocumentsFolderLinkBySolicitud(id);
+  }
 }
