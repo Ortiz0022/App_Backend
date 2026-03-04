@@ -28,7 +28,7 @@ export class ExtraordinaryService {
     private readonly incomeTypeService: IncomeTypeService,
     private readonly incomeSubTypeService: IncomeSubTypeService,
     private readonly fiscalYearService: FiscalYearService, // 🔸 NUEVO
-  ) {}
+  ) { }
 
   private normalizeKey(input: string) {
     return input
@@ -51,14 +51,22 @@ export class ExtraordinaryService {
     if (dup) throw new BadRequestException('Ya existe un registro con ese nombre.');
   }
 
-  findAll(): Promise<Extraordinary[]> {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+  private withCanEditAmount(e: Extraordinary) {
+    return {
+      ...e,
+      canEditAmount: Number(e.used) === 0,
+    };
   }
 
-  async findOne(id: number): Promise<Extraordinary> {
+  async findAll() {
+    const rows = await this.repo.find({ order: { createdAt: 'DESC' } });
+    return rows.map((e) => this.withCanEditAmount(e));
+  }
+
+  async findOne(id: number) {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException('Extraordinary not found');
-    return e;
+    return this.withCanEditAmount(e);
   }
 
   async create(dto: CreateExtraordinaryDto): Promise<Extraordinary> {
@@ -91,29 +99,29 @@ export class ExtraordinaryService {
       e.name = cleanName;
     }
 
-    if (dto.amount !== undefined) {
-      const amountNum = Number.parseFloat(String(dto.amount));
-      if (!Number.isFinite(amountNum) || amountNum < 0) {
-        throw new BadRequestException('Invalid amount');
-      }
-      if (Number(e.used) > amountNum) {
-        throw new BadRequestException('Used exceeds total amount');
-      }
-      e.amount = amountNum.toFixed(2);
-    }
-
     if (dto.date !== undefined) {
       e.date = dto.date && dto.date.trim() !== '' ? dto.date : null;
     }
 
-    if (dto.used !== undefined) {
-      const total = Number(e.amount);
-      const newUsed = Number((+dto.used).toFixed(2));
-      if (!Number.isFinite(newUsed) || newUsed < 0) {
-        throw new BadRequestException('Invalid used value');
+    if (dto.amount !== undefined) {
+      const usedNum = Number(e.used);
+
+      if (!Number.isFinite(usedNum)) {
+        throw new BadRequestException('Invalid used value in database');
       }
-      if (newUsed > total) throw new BadRequestException('Used exceeds total amount');
-      e.used = newUsed.toFixed(2);
+
+      if (usedNum > 0) {
+        throw new BadRequestException(
+          'No se puede editar el monto porque ya existen asignaciones (used > 0).'
+        );
+      }
+
+      const amountNum = Number.parseFloat(String(dto.amount));
+      if (!Number.isFinite(amountNum) || amountNum < 0) {
+        throw new BadRequestException('Invalid amount');
+      }
+
+      e.amount = amountNum.toFixed(2);
     }
 
     return this.repo.save(e);
