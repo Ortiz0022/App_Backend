@@ -8,6 +8,7 @@ import {
   UploadedFile,
   Post,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { v2 as cloudinary } from 'cloudinary'
@@ -57,5 +58,47 @@ getGallery(@Query('maxResults') maxResults?: string, @Query('nextCursor') nextCu
   @Delete(':publicId')
   delete(@Param('publicId') publicId: string) {
     return this.cloudinaryService.delete(publicId)
+  }
+
+    @Get('health')
+  async health() {
+    return this.cloudinaryService.healthCheck()
+  }
+
+  @Post('inspect-file')
+  @UseInterceptors(FileInterceptor('file'))
+  inspectFile(@UploadedFile() file: Express.Multer.File) {
+    return this.cloudinaryService.inspectIncomingFile(file)
+  }
+
+  @Post('upload-safe')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadSafe(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('File is required')
+    }
+
+    try {
+      console.log('[Cloudinary] upload-safe received:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        hasBuffer: !!file.buffer,
+        bufferLength: file.buffer?.length ?? 0,
+      })
+
+      const result = await this.cloudinaryService.uploadBufferSafe(file)
+
+      console.log('[Cloudinary] upload-safe success:', result)
+
+      return result
+    } catch (error: any) {
+      console.error('[Cloudinary] upload-safe error:', error)
+
+      throw new InternalServerErrorException({
+        message: 'Cloudinary upload failed',
+        error: error?.message ?? 'Unknown error',
+      })
+    }
   }
 }

@@ -135,4 +135,73 @@ async getGallery(params?: { maxResults?: number; nextCursor?: string }) {
 
     return cloudinary.uploader.destroy(publicId, { resource_type: 'video' })
   }
+
+  async healthCheck() {
+  const usage = await cloudinary.api.usage();
+
+  return {
+    ok: true,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    plan: usage?.plan,
+    credits: usage?.credits,
+    storage: usage?.storage,
+    bandwidth: usage?.bandwidth,
+    transformations: usage?.transformations,
+  };
+}
+
+async uploadBufferSafe(file: Express.Multer.File) {
+  if (!file) {
+    throw new Error('No file received');
+  }
+
+  if (!file.buffer || file.buffer.length === 0) {
+    throw new Error('File buffer is empty or missing');
+  }
+
+  const mimetype = file.mimetype ?? '';
+  const isVideo = mimetype.startsWith('video/');
+  const resource_type: 'image' | 'video' = isVideo ? 'video' : 'image';
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          resource_type,
+          folder: 'gallery',
+          use_filename: true,
+          unique_filename: true,
+          overwrite: false,
+        },
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
+
+          resolve({
+            public_id: result?.public_id,
+            url: result?.secure_url ?? result?.url,
+            secure_url: result?.secure_url,
+            resource_type: result?.resource_type,
+            format: result?.format,
+            bytes: result?.bytes,
+            original_filename: file.originalname,
+            mimetype: file.mimetype,
+          });
+        },
+      )
+      .end(file.buffer);
+  });
+}
+
+async inspectIncomingFile(file: Express.Multer.File) {
+  return {
+    exists: !!file,
+    originalname: file?.originalname,
+    mimetype: file?.mimetype,
+    size: file?.size,
+    hasBuffer: !!file?.buffer,
+    bufferLength: file?.buffer?.length ?? 0,
+  };
+}
 }
