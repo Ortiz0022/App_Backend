@@ -1,5 +1,16 @@
+import { Type } from 'class-transformer';
+import { IsDateString, IsInt, IsNotEmpty, IsNumberString } from 'class-validator';
+
 export class CreateSpendDto {
+  @Type(() => Number)
+  @IsInt()
   spendSubTypeId: number;
-  amount: string;   // mantener string para consistencia con decimal
-  date: string;     // 'YYYY-MM-DD'
+
+  @IsNotEmpty()
+  @IsNumberString()
+  amount: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  date: string;
 }
