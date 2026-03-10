@@ -75,6 +75,7 @@ import { DropboxAuthModule } from './dropbox-auth/dropbox-auth-module';
 import { SolicitudVoluntariadoModule } from './formVolunteers/solicitud-voluntariado/solicitud-voluntariado.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { APP_GUARD } from '@nestjs/core';
+import { AuditBudgetModule } from './audit/auditBudget/audit-budget.module';
 
 @Module({
   imports: [
@@ -174,6 +175,7 @@ import { APP_GUARD } from '@nestjs/core';
     FincaOtroEquipoModule,
     InfraestructuraProduccionModule,    
     SolicitudVoluntariadoModule,
+    AuditBudgetModule,
   ],
   controllers: [AppController],
   providers: [

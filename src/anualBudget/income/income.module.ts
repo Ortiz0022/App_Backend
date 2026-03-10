@@ -10,13 +10,15 @@ import { IncomeService } from './income.service';
 import { IncomeTypeModule } from 'src/anualBudget/incomeType/income-type.module';
 import { IncomeSubTypeModule } from 'src/anualBudget/incomeSubType/income-sub-type.module';
 import { FiscalYearModule } from 'src/anualBudget/fiscalYear/fiscal-year.module';
+import { AuditBudgetModule } from 'src/audit/auditBudget/audit-budget.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Income, IncomeSubType]),
     forwardRef(() => IncomeTypeModule),
     forwardRef(() => IncomeSubTypeModule),
-    FiscalYearModule, // assertOpenByDate()
+    FiscalYearModule,
+    AuditBudgetModule,
   ],
   controllers: [IncomeController],
   providers: [IncomeService],

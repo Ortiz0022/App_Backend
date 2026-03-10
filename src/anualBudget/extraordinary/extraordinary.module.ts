@@ -12,6 +12,7 @@ import { IncomeTypeModule } from '../incomeType/income-type.module';
 import { IncomeSubTypeModule } from '../incomeSubType/income-sub-type.module';
 import { ExtraordinaryService } from './extraordinary.service';
 import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';
+import { AuditBudgetModule } from 'src/audit/auditBudget/audit-budget.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';
     IncomeTypeModule,
     IncomeSubTypeModule, 
     FiscalYearModule,
+    AuditBudgetModule,
   ],
   controllers: [ExtraordinaryController],
   providers: [ExtraordinaryService],
