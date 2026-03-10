@@ -11,7 +11,7 @@ import { ConfirmEmailChangeDto, RequestEmailChangeDto } from "./dto/EmailChange"
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // CONFIGURACIÓN (solo ADMIN)
+  // CONFIGURACIÓN (solo  ADMIN)
   @Get()
   @Roles("ADMIN")
   findAll() {
