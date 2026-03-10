@@ -76,6 +76,7 @@ import { SolicitudVoluntariadoModule } from './formVolunteers/solicitud-voluntar
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AuditBudgetModule } from './audit/auditBudget/audit-budget.module';
+import { AuditUsersModule } from './audit/auditUsers/audit-users.module';
 
 @Module({
   imports: [
@@ -176,6 +177,7 @@ import { AuditBudgetModule } from './audit/auditBudget/audit-budget.module';
     InfraestructuraProduccionModule,    
     SolicitudVoluntariadoModule,
     AuditBudgetModule,
+    AuditUsersModule
   ],
   controllers: [AppController],
   providers: [
