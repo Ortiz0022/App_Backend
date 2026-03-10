@@ -14,6 +14,6 @@ export class ServicesInformative {
   @Column()
   modalDescription: string;
 
-  @Column({ type: "json" })
-  images: string[];
+  @Column({ type: 'text', nullable: true })
+  images: string;
 }
