@@ -27,7 +27,6 @@ export class PSpendService {
   ) {}
 
   async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
-  console.log('[PSpend.create] DTO recibido:', dto);
 
   const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
   if (!subType) throw new NotFoundException('SubType no existe');
@@ -40,7 +39,6 @@ export class PSpendService {
 
   const amount = toNumberAmount(dto.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
-    console.log('[PSpend.create] Monto inválido calculado:', dto.amount, '->', amount);
     throw new BadRequestException('Monto inválido');
   }
 
@@ -53,14 +51,11 @@ export class PSpendService {
     if (inputDate >= fyStart && inputDate <= fyEnd) {
       date = dto.date;
     } else {
-      console.log('[PSpend.create] Fecha fuera del año fiscal, usando fecha actual');
       date = new Date().toISOString().split('T')[0];
     }
   } else {
     date = new Date().toISOString().split('T')[0];
   }
-
-  console.log('[PSpend.create] Fecha a guardar:', date);
 
   const row = this.repo.create({
     amount,
@@ -70,7 +65,6 @@ export class PSpendService {
   });
 
   const saved = await this.repo.save(row);
-  console.log('[PSpend.create] Guardado:', saved);
 
   const savedFull = await this.findOne(saved.id);
 
