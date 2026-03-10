@@ -8,6 +8,8 @@ import { FiscalState, FiscalYear } from '../fiscalYear/entities/fiscal-year.enti
 
 import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
+import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
+import { CurrentUserData } from 'src/auth/current-user.interface';
 
 function toNumberAmount(v: any): number {
   // Ej.: "₡10 125,00" | "10,125.50" | "10125.50" -> 10125.5
@@ -21,62 +23,64 @@ export class PSpendService {
     @InjectRepository(PSpend) private repo: Repository<PSpend>,
     @InjectRepository(PSpendSubType) private subRepo: Repository<PSpendSubType>,
     @InjectRepository(FiscalYear) private fyRepo: Repository<FiscalYear>,
+    private readonly auditBudgetService: AuditBudgetService,
   ) {}
 
-  async create(dto: CreatePSpendDto) {
-    console.log('[PSpend.create] DTO recibido:', dto);
+  async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
+  console.log('[PSpend.create] DTO recibido:', dto);
 
-    // 1) Subtipo obligatorio
-    const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
-    if (!subType) throw new NotFoundException('SubType no existe');
+  const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
+  if (!subType) throw new NotFoundException('SubType no existe');
 
-    // 2) Inferir FiscalYear (primero OPEN, si no existe toma el más reciente)
-    let fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
-    if (!fy) {
-      fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
-    }
-    if (!fy) throw new NotFoundException('No hay un FiscalYear válido (OPEN o reciente)');
-
-    // 3) Normalizar y validar monto
-    const amount = toNumberAmount(dto.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      console.log('[PSpend.create] Monto inválido calculado:', dto.amount, '->', amount);
-      throw new BadRequestException('Monto inválido');
-    }
-
-    // ✅ 4) Determinar fecha (usar la del DTO o fecha actual dentro del año fiscal)
-    let date: string;
-    if (dto.date) {
-      // Validar que la fecha esté dentro del año fiscal
-      const inputDate = new Date(dto.date);
-      const fyStart = new Date(fy.start_date);
-      const fyEnd = new Date(fy.end_date);
-      
-      if (inputDate >= fyStart && inputDate <= fyEnd) {
-        date = dto.date;
-      } else {
-        console.log('[PSpend.create] Fecha fuera del año fiscal, usando fecha actual');
-        date = new Date().toISOString().split('T')[0];
-      }
-    } else {
-      // Si no viene fecha, usar fecha actual
-      date = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
-    }
-
-    console.log('[PSpend.create] Fecha a guardar:', date);
-
-    // 5) Guardar con fecha
-    const row = this.repo.create({ 
-      amount, 
-      date,        // ✅ AGREGAR ESTO
-      subType, 
-      fiscalYear: fy 
-    });
-    
-    const saved = await this.repo.save(row);
-    console.log('[PSpend.create] Guardado:', saved);
-    return saved;
+  let fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
+  if (!fy) {
+    fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
   }
+  if (!fy) throw new NotFoundException('No hay un FiscalYear válido (OPEN o reciente)');
+
+  const amount = toNumberAmount(dto.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    console.log('[PSpend.create] Monto inválido calculado:', dto.amount, '->', amount);
+    throw new BadRequestException('Monto inválido');
+  }
+
+  let date: string;
+  if (dto.date) {
+    const inputDate = new Date(dto.date);
+    const fyStart = new Date(fy.start_date);
+    const fyEnd = new Date(fy.end_date);
+
+    if (inputDate >= fyStart && inputDate <= fyEnd) {
+      date = dto.date;
+    } else {
+      console.log('[PSpend.create] Fecha fuera del año fiscal, usando fecha actual');
+      date = new Date().toISOString().split('T')[0];
+    }
+  } else {
+    date = new Date().toISOString().split('T')[0];
+  }
+
+  console.log('[PSpend.create] Fecha a guardar:', date);
+
+  const row = this.repo.create({
+    amount,
+    date,
+    subType,
+    fiscalYear: fy,
+  });
+
+  const saved = await this.repo.save(row);
+  console.log('[PSpend.create] Guardado:', saved);
+
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logPSpendCreate({
+    actorUserId: currentUser.id,
+    pSpend: savedFull,
+  });
+
+  return saved;
+}
 
   // GET /p-spend?subTypeId=&fiscalYearId=
   async findAll(subTypeId?: number, fiscalYearId?: number) {
@@ -105,34 +109,54 @@ export class PSpendService {
     return item;
   }
 
-  async update(id: number, dto: UpdatePSpendDto) {
-    const item = await this.findOne(id);
+  async update(id: number, dto: UpdatePSpendDto, currentUser: CurrentUserData) {
+  const item = await this.findOne(id);
 
-    if (dto.subTypeId) {
-      const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
-      if (!subType) throw new NotFoundException('SubType no existe');
-      item.subType = subType;
-    }
-    
-    if (dto.amount !== undefined) {
-      const amount = toNumberAmount(dto.amount as any);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        throw new BadRequestException('Monto inválido');
-      }
-      item.amount = amount;
-    }
-    
-    // ✅ Permitir actualizar la fecha
-    if (dto.date !== undefined) {
-      item.date = new Date(dto.date);
-    }
-    
-    return this.repo.save(item);
+  const before = {
+    ...item,
+    subType: item.subType ? { ...item.subType } : null,
+    fiscalYear: item.fiscalYear ? { ...item.fiscalYear } : null,
+  };
+
+  if (dto.subTypeId) {
+    const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
+    if (!subType) throw new NotFoundException('SubType no existe');
+    item.subType = subType;
   }
 
-  async remove(id: number) {
-    const item = await this.findOne(id);
-    await this.repo.remove(item);
-    return { ok: true };
+  if (dto.amount !== undefined) {
+    const amount = toNumberAmount(dto.amount as any);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Monto inválido');
+    }
+    item.amount = amount;
   }
+
+  if (dto.date !== undefined) {
+    item.date = new Date(dto.date);
+  }
+
+  const saved = await this.repo.save(item);
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logPSpendUpdate({
+    actorUserId: currentUser.id,
+    before: before as PSpend,
+    after: savedFull,
+  });
+
+  return saved;
+}
+
+  async remove(id: number, currentUser: CurrentUserData) {
+  const item = await this.findOne(id);
+
+  await this.auditBudgetService.logPSpendDelete({
+    actorUserId: currentUser.id,
+    pSpend: item,
+  });
+
+  await this.repo.remove(item);
+  return { ok: true };
+}
 }

@@ -10,6 +10,7 @@ import { Extraordinary } from 'src/anualBudget/extraordinary/entities/extraordin
 import { Income } from 'src/anualBudget/income/entities/income.entity';
 import { Spend } from 'src/anualBudget/spend/entities/spend.entity';
 import { PIncome } from 'src/anualBudget/pIncome/entities/pIncome.entity';
+import { PSpend } from 'src/anualBudget/pSpend/entities/p-spend.entity';
 
 export interface CreateAuditBudgetLogParams {
   actorUserId?: number | null;
@@ -118,7 +119,23 @@ export interface LogPIncomeDeleteParams {
 }
 //close pincome interfaces
 
+//methods for pspend interfaces
+export interface LogPSpendCreateParams {
+  actorUserId: number;
+  pSpend: PSpend;
+}
 
+export interface LogPSpendUpdateParams {
+  actorUserId: number;
+  before: PSpend;
+  after: PSpend;
+}
+
+export interface LogPSpendDeleteParams {
+  actorUserId: number;
+  pSpend: PSpend;
+}
+//close methods for pspend interfaces
 @Injectable()
 export class AuditBudgetService {
   constructor(
@@ -844,6 +861,156 @@ async logPIncomeDelete(
     manager,
   );
 }
+
+//open methods for pspend logs
+async logPSpendCreate(
+  params: LogPSpendCreateParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, pSpend } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_SPEND,
+      entityId: pSpend.id,
+      actionType: AuditBudgetAction.CREATE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: null,
+      newAmount: String(pSpend.amount),
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: null,
+      newDate: pSpend.date ? new Date(pSpend.date).toISOString().slice(0, 10) : null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: pSpend.fiscalYear?.id ?? null,
+      subTypeTable: 'p_spend_sub_type',
+      subTypeId: pSpend.subType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Creación de egreso proyectado',
+
+      snapshotBefore: null,
+
+      snapshotAfter: {
+        id: pSpend.id,
+        amount: pSpend.amount,
+        date: pSpend.date,
+        fiscalYearId: pSpend.fiscalYear?.id ?? null,
+        pSpendSubTypeId: pSpend.subType?.id ?? null,
+      },
+    },
+    manager,
+  );
+}
+
+async logPSpendUpdate(
+  params: LogPSpendUpdateParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, before, after } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_SPEND,
+      entityId: after.id,
+      actionType: AuditBudgetAction.UPDATE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: String(before.amount),
+      newAmount: String(after.amount),
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: before.date ? new Date(before.date).toISOString().slice(0, 10) : null,
+      newDate: after.date ? new Date(after.date).toISOString().slice(0, 10) : null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: after.fiscalYear?.id ?? null,
+      subTypeTable: 'p_spend_sub_type',
+      subTypeId: after.subType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Actualización de egreso proyectado',
+
+      snapshotBefore: {
+        id: before.id,
+        amount: before.amount,
+        date: before.date,
+        fiscalYearId: before.fiscalYear?.id ?? null,
+        pSpendSubTypeId: before.subType?.id ?? null,
+      },
+
+      snapshotAfter: {
+        id: after.id,
+        amount: after.amount,
+        date: after.date,
+        fiscalYearId: after.fiscalYear?.id ?? null,
+        pSpendSubTypeId: after.subType?.id ?? null,
+      },
+    },
+    manager,
+  );
+}
+
+async logPSpendDelete(
+  params: LogPSpendDeleteParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, pSpend } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_SPEND,
+      entityId: pSpend.id,
+      actionType: AuditBudgetAction.DELETE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: String(pSpend.amount),
+      newAmount: null,
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: pSpend.date ? new Date(pSpend.date).toISOString().slice(0, 10) : null,
+      newDate: null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: pSpend.fiscalYear?.id ?? null,
+      subTypeTable: 'p_spend_sub_type',
+      subTypeId: pSpend.subType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Eliminación de egreso proyectado',
+
+      snapshotBefore: {
+        id: pSpend.id,
+        amount: pSpend.amount,
+        date: pSpend.date,
+        fiscalYearId: pSpend.fiscalYear?.id ?? null,
+        pSpendSubTypeId: pSpend.subType?.id ?? null,
+      },
+
+      snapshotAfter: null,
+    },
+    manager,
+  );
+}
+
+//close general methods for pincome logs
 
 //close methods for pincome logs
   async findAll(filters: FindAuditBudgetDto): Promise<AuditBudget[]> {
