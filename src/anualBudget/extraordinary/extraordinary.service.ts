@@ -12,6 +12,8 @@ import { AssignExtraordinaryDto } from './dto/assignExtraordinaryDto';
 import { IncomeTypeService } from '../incomeType/income-type.service';
 import { IncomeSubTypeService } from 'src/anualBudget/incomeSubType/income-sub-type.service';
 import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
+import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
+import { CurrentUserData } from 'src/auth/current-user.interface';
 
 function toNumber(dec: string | number | null | undefined): number {
   if (dec === null || dec === undefined) return 0;
@@ -27,7 +29,8 @@ export class ExtraordinaryService {
     @InjectRepository(Income) private readonly incRepo: Repository<Income>,
     private readonly incomeTypeService: IncomeTypeService,
     private readonly incomeSubTypeService: IncomeSubTypeService,
-    private readonly fiscalYearService: FiscalYearService, // 🔸 NUEVO
+    private readonly fiscalYearService: FiscalYearService,
+    private readonly auditBudgetService: AuditBudgetService,
   ) { }
 
   private normalizeKey(input: string) {
@@ -69,7 +72,7 @@ export class ExtraordinaryService {
     return this.withCanEditAmount(e);
   }
 
-  async create(dto: CreateExtraordinaryDto): Promise<Extraordinary> {
+  async create(dto: CreateExtraordinaryDto, currentUser: CurrentUserData): Promise<Extraordinary> {
     const amountNum = Number.parseFloat(String(dto.amount));
     if (!Number.isFinite(amountNum) || amountNum < 0) {
       throw new BadRequestException('Invalid amount');
@@ -87,11 +90,20 @@ export class ExtraordinaryService {
       used: '0.00',
       date: dateStr,
     });
-    return this.repo.save(e);
+
+    const saved = await this.repo.save(e);
+
+    await this.auditBudgetService.logExtraordinaryCreate({
+      actorUserId: currentUser.id,
+      extraordinary: saved,
+    });
+
+    return saved;
   }
 
-  async update(id: number, dto: UpdateExtraordinaryDto): Promise<Extraordinary> {
+  async update(id: number, dto: UpdateExtraordinaryDto, currentUser: CurrentUserData): Promise<Extraordinary> {
     const e = await this.findOne(id);
+    const before = { ...e };
 
     if (dto.name !== undefined) {
       const cleanName = this.sanitizeLabel(dto.name);
@@ -124,13 +136,22 @@ export class ExtraordinaryService {
       e.amount = amountNum.toFixed(2);
     }
 
-    return this.repo.save(e);
+    const saved = await this.repo.save(e);
+
+    await this.auditBudgetService.logExtraordinaryUpdate({
+      actorUserId: currentUser.id,
+      before,
+      after: saved,
+    });
+
+    return saved;
   }
 
-  async assignToIncome(dto: AssignExtraordinaryDto) {
+  async assignToIncome(dto: AssignExtraordinaryDto, currentUser: CurrentUserData) {
     return this.repo.manager.transaction(async (em: EntityManager) => {
       const extra = await em.findOne(Extraordinary, { where: { id: dto.extraordinaryId } });
       if (!extra) throw new NotFoundException('Extraordinary not found');
+      const beforeExtra = { ...extra };
 
       const assignAmt = Number(dto.amount);
       if (!Number.isFinite(assignAmt) || assignAmt <= 0) {
@@ -193,14 +214,40 @@ export class ExtraordinaryService {
       extra.used = (Number(extra.used) + assignAmt).toFixed(2);
       await em.save(extra);
 
+      await this.auditBudgetService.logExtraordinaryAssignToIncome(
+        {
+          actorUserId: currentUser.id,
+          before: beforeExtra,
+          after: extra,
+          assignedAmount: dto.amount,
+        },
+        em,
+      );
+
+      await this.auditBudgetService.logIncomeCreate(
+        {
+          actorUserId: currentUser.id,
+          income: inc,
+          relatedExtraordinaryId: extra.id,
+        },
+        em,
+      );
+
       await this.incomeSubTypeService.recalcAmountWithManager(em, subType.id);
 
       return { extraordinary: extra, income: inc, subType, incomeType: type };
     });
   }
 
-  async allocate(id: number, dto: AllocateExtraordinaryDto): Promise<Extraordinary> {
+  async allocate(
+    id: number,
+    dto: AllocateExtraordinaryDto,
+    currentUser: CurrentUserData,
+  ): Promise<Extraordinary> {
     const e = await this.findOne(id);
+
+    const before = { ...e };
+
     const total = Number(e.amount);
     const used = Number(e.used);
     const toAllocate = Math.round(Number(dto.amount) * 100) / 100;
@@ -208,16 +255,45 @@ export class ExtraordinaryService {
     if (!Number.isFinite(toAllocate) || toAllocate <= 0) {
       throw new BadRequestException('Amount must be positive');
     }
+
     if (used + toAllocate > total) {
       throw new BadRequestException('Allocation exceeds available balance');
     }
 
     e.used = (used + toAllocate).toFixed(2);
-    return this.repo.save(e);
+
+    const saved = await this.repo.save(e);
+
+    await this.auditBudgetService.logExtraordinaryAllocate({
+      actorUserId: currentUser.id,
+      before,
+      after: saved,
+      allocatedAmount: dto.amount,
+    });
+
+    return saved;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, currentUser: CurrentUserData): Promise<void> {
     const e = await this.findOne(id);
+
+    const usedNum = Number(e.used);
+
+    if (!Number.isFinite(usedNum)) {
+      throw new BadRequestException('Invalid used value in database');
+    }
+
+    if (usedNum > 0) {
+      throw new BadRequestException(
+        'No se puede eliminar el registro porque ya tiene monto usado/asignado.'
+      );
+    }
+
+    await this.auditBudgetService.logExtraordinaryDelete({
+      actorUserId: currentUser.id,
+      extraordinary: e,
+    });
+
     await this.repo.remove(e);
   }
 

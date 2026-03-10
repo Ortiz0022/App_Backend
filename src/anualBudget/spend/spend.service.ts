@@ -8,6 +8,8 @@ import { SpendSubType } from '../spendSubType/entities/spend-sub-type.entity';
 import { SpendTypeService } from '../spendType/spend-type.service';
 import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 import { SpendSubTypeService } from '../spendSubType/spend-sub-type.service'; // NUEVO
+import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
+import { CurrentUserData } from 'src/auth/current-user.interface';
 
 @Injectable()
 export class SpendService {
@@ -16,7 +18,8 @@ export class SpendService {
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
     private readonly typeService: SpendTypeService,
     private readonly fyService: FiscalYearService,
-    private readonly subTypeService: SpendSubTypeService, // NUEVO
+    private readonly subTypeService: SpendSubTypeService,
+    private readonly auditBudgetService: AuditBudgetService,
   ) {}
 
   private async getSubType(id: number) {
@@ -25,26 +28,32 @@ export class SpendService {
     return s;
   }
 
-  async create(dto: CreateSpendDto) {
-    // validar año fiscal abierto para la fecha del movimiento
-    await this.fyService.assertOpenByDate(dto.date);
-    const s = await this.getSubType(dto.spendSubTypeId);
-    const fy = await this.fyService.resolveByDateOrActive(dto.date);
+  async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
+  await this.fyService.assertOpenByDate(dto.date);
+  const s = await this.getSubType(dto.spendSubTypeId);
+  const fy = await this.fyService.resolveByDateOrActive(dto.date);
 
-    const entity = this.repo.create({
-      spendSubType: { id: s.id } as any,
-      amount: dto.amount,
-      date: dto.date,
-      fiscalYear: fy ?? undefined,
-    });
-    const saved = await this.repo.save(entity);
+  const entity = this.repo.create({
+    spendSubType: { id: s.id } as any,
+    amount: dto.amount,
+    date: dto.date,
+    fiscalYear: fy ?? undefined,
+  });
 
-    // Recalcular subtotal del SubType y total del Type
-    await this.subTypeService.recalcAmountSubSpend(s.id);
-    await this.typeService.recalcAmount(s.spendType.id);
+  const saved = await this.repo.save(entity);
 
-    return saved;
-  }
+  await this.subTypeService.recalcAmountSubSpend(s.id);
+  await this.typeService.recalcAmount(s.spendType.id);
+
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logSpendCreate({
+    actorUserId: currentUser.id,
+    spend: savedFull,
+  });
+
+  return saved;
+}
 
   findAll(spendSubTypeId?: number) {
     const where = spendSubTypeId ? { spendSubType: { id: spendSubTypeId } } : {};
@@ -58,62 +67,78 @@ export class SpendService {
   async findOne(id: number) {
     const row = await this.repo.findOne({
       where: { id },
-      relations: ['spendSubType', 'spendSubType.spendType'],
+      relations: ['spendSubType', 'spendSubType.spendType', 'fiscalYear'],
     });
     if (!row) throw new NotFoundException('Spend not found');
     return row;
   }
 
-  async update(id: number, dto: UpdateSpendDto) {
-    const row = await this.findOne(id);
+  async update(id: number, dto: UpdateSpendDto, currentUser: CurrentUserData) {
+  const row = await this.findOne(id);
 
-    const oldSubTypeId = row.spendSubType.id;
-    const oldTypeId = row.spendSubType.spendType.id;
+  const before = {
+    ...row,
+    spendSubType: row.spendSubType ? { ...row.spendSubType } : null,
+    fiscalYear: row.fiscalYear ? { ...row.fiscalYear } : null,
+  };
 
-    const newDate = dto.date ?? row.date;
-    await this.fyService.assertOpenByDate(newDate);
+  const oldSubTypeId = row.spendSubType.id;
+  const oldTypeId = row.spendSubType.spendType.id;
 
-    if (dto.spendSubTypeId !== undefined) {
-      const s = await this.getSubType(dto.spendSubTypeId);
-      row.spendSubType = { id: s.id } as any;
-    }
-    if (dto.amount !== undefined) row.amount = dto.amount;
-    if (dto.date !== undefined) row.date = dto.date;
+  const newDate = dto.date ?? row.date;
+  await this.fyService.assertOpenByDate(newDate);
 
-    row.fiscalYear = (await this.fyService.resolveByDateOrActive(row.date)) ?? undefined;
-
-    const saved = await this.repo.save(row);
-
-    // Recalcular: subtipo viejo (si cambió o igual, sigue correcto) y subtipo nuevo
-    await this.subTypeService.recalcAmountSubSpend(oldSubTypeId);
-    const newSubTypeId = row.spendSubType.id;
-    if (newSubTypeId !== oldSubTypeId) {
-      await this.subTypeService.recalcAmountSubSpend(newSubTypeId);
-    }
-
-    // Recalcular tipo viejo y (si cambió) tipo nuevo
-    await this.typeService.recalcAmount(oldTypeId);
-    const newTypeId = (await this.getSubType(newSubTypeId)).spendType.id;
-    if (newTypeId !== oldTypeId) {
-      await this.typeService.recalcAmount(newTypeId);
-    }
-
-    return saved;
+  if (dto.spendSubTypeId !== undefined) {
+    const s = await this.getSubType(dto.spendSubTypeId);
+    row.spendSubType = { id: s.id } as any;
   }
 
-  async remove(id: number) {
-    const row = await this.findOne(id);
-    await this.fyService.assertOpenByDate(row.date);
+  if (dto.amount !== undefined) row.amount = dto.amount;
+  if (dto.date !== undefined) row.date = dto.date;
 
-    const subTypeId = row.spendSubType.id;
-    const typeId = row.spendSubType.spendType.id;
+  row.fiscalYear = (await this.fyService.resolveByDateOrActive(row.date)) ?? undefined;
 
-    await this.repo.delete(id);
+  const saved = await this.repo.save(row);
 
-    // Recalcular subtotal y total
-    await this.subTypeService.recalcAmountSubSpend(subTypeId);
-    await this.typeService.recalcAmount(typeId);
-
-    return { deleted: true };
+  await this.subTypeService.recalcAmountSubSpend(oldSubTypeId);
+  const newSubTypeId = row.spendSubType.id;
+  if (newSubTypeId !== oldSubTypeId) {
+    await this.subTypeService.recalcAmountSubSpend(newSubTypeId);
   }
+
+  await this.typeService.recalcAmount(oldTypeId);
+  const newTypeId = (await this.getSubType(newSubTypeId)).spendType.id;
+  if (newTypeId !== oldTypeId) {
+    await this.typeService.recalcAmount(newTypeId);
+  }
+
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logSpendUpdate({
+    actorUserId: currentUser.id,
+    before: before as Spend,
+    after: savedFull,
+  });
+
+  return saved;
+}
+  async remove(id: number, currentUser: CurrentUserData) {
+  const row = await this.findOne(id);
+  await this.fyService.assertOpenByDate(row.date);
+
+  const subTypeId = row.spendSubType.id;
+  const typeId = row.spendSubType.spendType.id;
+
+  await this.auditBudgetService.logSpendDelete({
+    actorUserId: currentUser.id,
+    spend: row,
+  });
+
+  await this.repo.delete(id);
+
+  await this.subTypeService.recalcAmountSubSpend(subTypeId);
+  await this.typeService.recalcAmount(typeId);
+
+  return { deleted: true };
+}
 }

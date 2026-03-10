@@ -1,0 +1,7 @@
+export enum AuditBudgetAction {
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  ALLOCATE = 'ALLOCATE',
+  ASSIGN_TO_INCOME = 'ASSIGN_TO_INCOME',
+}

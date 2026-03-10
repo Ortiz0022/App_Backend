@@ -4,12 +4,12 @@ import {
 
 import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
-
-
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { PSpendService } from './p-spend.services';
+import { CurrentUser } from 'src/auth/current-user.decorator';
+import type { CurrentUserData } from 'src/auth/current-user.interface';
 
 @Controller('p-spend')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,11 +18,13 @@ export class PSpendController {
 
   @Post()
   @Roles('ADMIN')
-  create(@Body() dto: CreatePSpendDto) {
-    return this.svc.create(dto);
+  create(
+    @Body() dto: CreatePSpendDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.svc.create(dto, currentUser);
   }
 
-  // GET /p-spend?subTypeId=&fiscalYearId=
   @Get()
   list(
     @Query('subTypeId') subTypeId?: string,
@@ -41,13 +43,20 @@ export class PSpendController {
 
   @Patch(':id')
   @Roles('ADMIN')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePSpendDto) {
-    return this.svc.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePSpendDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.svc.update(id, dto, currentUser);
   }
 
   @Delete(':id')
   @Roles('ADMIN')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.svc.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.svc.remove(id, currentUser);
   }
 }
