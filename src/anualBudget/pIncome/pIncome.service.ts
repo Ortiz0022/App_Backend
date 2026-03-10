@@ -6,6 +6,8 @@ import { PIncome } from '../pIncome/entities/pIncome.entity';
 import { PIncomeSubType } from '../pIncomeSubType/entities/pincome-sub-type.entity';
 import { PIncomeTypeService } from '../pIncomeType/pincome-type.service';   // <-- nuevo
 import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
+import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
+import { CurrentUserData } from 'src/auth/current-user.interface';
 
 @Injectable()
 export class PIncomeService {
@@ -14,6 +16,8 @@ export class PIncomeService {
     @InjectRepository(PIncomeSubType) private readonly subRepo: Repository<PIncomeSubType>,
     private readonly pIncomeTypeService: PIncomeTypeService,
     private readonly fyService: FiscalYearService, 
+    private readonly auditBudgetService: AuditBudgetService,
+    
   ) {}
 
 
@@ -23,31 +27,38 @@ export class PIncomeService {
     return s;
   }
 
-  async create(dto: { pIncomeSubTypeId: number; amount: string }) {
-    const s = await this.getSubType(dto.pIncomeSubTypeId);
-    const fy = await this.fyService.getActiveOrCurrent();
+  async create(dto: { pIncomeSubTypeId: number; amount: string }, currentUser: CurrentUserData) {
+  const s = await this.getSubType(dto.pIncomeSubTypeId);
+  const fy = await this.fyService.getActiveOrCurrent();
 
-    const entity = this.repo.create({
-      // propiedad correcta en tu entidad PIncome
-      pIncomeSubType: { id: s.id } as any,
-      amount: dto.amount,
-      fiscalYear: fy ?? undefined,
-    });
-    const saved = await this.repo.save(entity);
+  const entity = this.repo.create({
+    pIncomeSubType: { id: s.id } as any,
+    amount: dto.amount,
+    fiscalYear: fy ?? undefined,
+  });
 
-    // ✅ Recalcula con el servicio de PROYECCIÓN
-    await this.pIncomeTypeService.recalcAmount(s.pIncomeType.id);
-    return saved;
-  }
+  const saved = await this.repo.save(entity);
+
+  await this.pIncomeTypeService.recalcAmount(s.pIncomeType.id);
+
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logPIncomeCreate({
+    actorUserId: currentUser.id,
+    pIncome: savedFull,
+  });
+
+  return saved;
+}
 
   async findOne(id: number) {
-    const row = await this.repo.findOne({
-      where: { id },
-      relations: ['pIncomeSubType', 'pIncomeSubType.pIncomeType'],
-    });
-    if (!row) throw new NotFoundException('PIncome not found');
-    return row;
-  }
+  const row = await this.repo.findOne({
+    where: { id },
+    relations: ['pIncomeSubType', 'pIncomeSubType.pIncomeType', 'fiscalYear'],
+  });
+  if (!row) throw new NotFoundException('PIncome not found');
+  return row;
+}
 
   findAll(pIncomeSubTypeId?: number) {
     const where = pIncomeSubTypeId
@@ -64,8 +75,19 @@ export class PIncomeService {
     });
   }
 
-async update(id: number, dto: { pIncomeSubTypeId?: number; amount?: string }) {
+async update(
+  id: number,
+  dto: { pIncomeSubTypeId?: number; amount?: string },
+  currentUser: CurrentUserData,
+) {
   const row = await this.findOne(id);
+
+  const before = {
+    ...row,
+    pIncomeSubType: row.pIncomeSubType ? { ...row.pIncomeSubType } : null,
+    fiscalYear: row.fiscalYear ? { ...row.fiscalYear } : null,
+  };
+
   const oldTypeId = row.pIncomeSubType.pIncomeType.id;
 
   if (dto.pIncomeSubTypeId !== undefined) {
@@ -84,19 +106,33 @@ async update(id: number, dto: { pIncomeSubTypeId?: number; amount?: string }) {
 
   const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
   await this.pIncomeTypeService.recalcAmount(oldTypeId);
-  if (newTypeId !== oldTypeId) await this.pIncomeTypeService.recalcAmount(newTypeId);
+  if (newTypeId !== oldTypeId) {
+    await this.pIncomeTypeService.recalcAmount(newTypeId);
+  }
+
+  const savedFull = await this.findOne(saved.id);
+
+  await this.auditBudgetService.logPIncomeUpdate({
+    actorUserId: currentUser.id,
+    before: before as PIncome,
+    after: savedFull,
+  });
 
   return saved;
 }
 
+  async remove(id: number, currentUser: CurrentUserData) {
+  const row = await this.findOne(id);
+  const typeId = row.pIncomeSubType.pIncomeType.id;
 
-  async remove(id: number) {
-    const row = await this.findOne(id);
-    const typeId = row.pIncomeSubType.pIncomeType.id;
+  await this.auditBudgetService.logPIncomeDelete({
+    actorUserId: currentUser.id,
+    pIncome: row,
+  });
 
-    await this.repo.delete(id);
-    await this.pIncomeTypeService.recalcAmount(typeId);
+  await this.repo.delete(id);
+  await this.pIncomeTypeService.recalcAmount(typeId);
 
-    return { deleted: true };
-  }
+  return { deleted: true };
+}
 }

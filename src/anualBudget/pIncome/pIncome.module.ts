@@ -7,12 +7,14 @@ import { PIncomeService } from './pIncome.service';
 import { PIncomeController } from './pIncome.controller';
 import { PIncomeTypeModule } from '../pIncomeType/pincome-type.module'; // 👈 para traer el service
 import { FiscalYearModule } from '../fiscalYear/fiscal-year.module';
+import { AuditBudgetModule } from 'src/audit/auditBudget/audit-budget.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PIncome, PIncomeSubType, PIncomeType]),
     PIncomeTypeModule,
     FiscalYearModule,
+    AuditBudgetModule,
   ],
   controllers: [PIncomeController],
   providers: [PIncomeService],

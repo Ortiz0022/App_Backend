@@ -9,6 +9,7 @@ import { AuditBudgetScope } from './dto/audit-budget-scope.enum';
 import { Extraordinary } from 'src/anualBudget/extraordinary/entities/extraordinary.entity';
 import { Income } from 'src/anualBudget/income/entities/income.entity';
 import { Spend } from 'src/anualBudget/spend/entities/spend.entity';
+import { PIncome } from 'src/anualBudget/pIncome/entities/pIncome.entity';
 
 export interface CreateAuditBudgetLogParams {
   actorUserId?: number | null;
@@ -98,6 +99,25 @@ export interface LogSpendDeleteParams {
   spend: Spend;
 }
 //close spend interfaces
+
+//open pincome interfaces
+export interface LogPIncomeCreateParams {
+  actorUserId: number;
+  pIncome: PIncome;
+}
+
+export interface LogPIncomeUpdateParams {
+  actorUserId: number;
+  before: PIncome;
+  after: PIncome;
+}
+
+export interface LogPIncomeDeleteParams {
+  actorUserId: number;
+  pIncome: PIncome;
+}
+//close pincome interfaces
+
 
 @Injectable()
 export class AuditBudgetService {
@@ -680,6 +700,152 @@ async logSpendDelete(
 }
 
 //close general methods for spend logs
+
+//methods for pincome logs
+async logPIncomeCreate(
+  params: LogPIncomeCreateParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, pIncome } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_INCOME,
+      entityId: pIncome.id,
+      actionType: AuditBudgetAction.CREATE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: null,
+      newAmount: pIncome.amount,
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: null,
+      newDate: null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: pIncome.fiscalYear?.id ?? null,
+      subTypeTable: 'p_income_sub_type',
+      subTypeId: pIncome.pIncomeSubType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Creación de ingreso proyectado',
+
+      snapshotBefore: null,
+
+      snapshotAfter: {
+        id: pIncome.id,
+        amount: pIncome.amount,
+        fiscalYearId: pIncome.fiscalYear?.id ?? null,
+        pIncomeSubTypeId: pIncome.pIncomeSubType?.id ?? null,
+      },
+    },
+    manager,
+  );
+}
+
+async logPIncomeUpdate(
+  params: LogPIncomeUpdateParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, before, after } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_INCOME,
+      entityId: after.id,
+      actionType: AuditBudgetAction.UPDATE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: before.amount,
+      newAmount: after.amount,
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: null,
+      newDate: null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: after.fiscalYear?.id ?? null,
+      subTypeTable: 'p_income_sub_type',
+      subTypeId: after.pIncomeSubType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Actualización de ingreso proyectado',
+
+      snapshotBefore: {
+        id: before.id,
+        amount: before.amount,
+        fiscalYearId: before.fiscalYear?.id ?? null,
+        pIncomeSubTypeId: before.pIncomeSubType?.id ?? null,
+      },
+
+      snapshotAfter: {
+        id: after.id,
+        amount: after.amount,
+        fiscalYearId: after.fiscalYear?.id ?? null,
+        pIncomeSubTypeId: after.pIncomeSubType?.id ?? null,
+      },
+    },
+    manager,
+  );
+}
+
+async logPIncomeDelete(
+  params: LogPIncomeDeleteParams,
+  manager?: EntityManager,
+): Promise<AuditBudget> {
+  const { actorUserId, pIncome } = params;
+
+  return this.createLog(
+    {
+      actorUserId,
+      entityType: AuditBudgetEntity.P_INCOME,
+      entityId: pIncome.id,
+      actionType: AuditBudgetAction.DELETE,
+      budgetScope: AuditBudgetScope.PROJECTED,
+
+      oldAmount: pIncome.amount,
+      newAmount: null,
+
+      oldUsed: null,
+      newUsed: null,
+
+      oldDate: null,
+      newDate: null,
+
+      oldName: null,
+      newName: null,
+
+      fiscalYearId: pIncome.fiscalYear?.id ?? null,
+      subTypeTable: 'p_income_sub_type',
+      subTypeId: pIncome.pIncomeSubType?.id ?? null,
+      relatedExtraordinaryId: null,
+
+      description: 'Eliminación de ingreso proyectado',
+
+      snapshotBefore: {
+        id: pIncome.id,
+        amount: pIncome.amount,
+        fiscalYearId: pIncome.fiscalYear?.id ?? null,
+        pIncomeSubTypeId: pIncome.pIncomeSubType?.id ?? null,
+      },
+
+      snapshotAfter: null,
+    },
+    manager,
+  );
+}
+
+//close methods for pincome logs
   async findAll(filters: FindAuditBudgetDto): Promise<AuditBudget[]> {
     const qb = this.auditBudgetRepository
       .createQueryBuilder('audit')
