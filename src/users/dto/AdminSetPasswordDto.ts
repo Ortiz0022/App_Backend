@@ -1,7 +1,10 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MinLength } from "class-validator";
+import { Type } from "class-transformer";
 
 export class AdminSetPasswordDto {
+
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password: string;
+
 }
