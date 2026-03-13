@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsNumberString } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsNumberString, IsOptional } from 'class-validator';
 
 export class CreateIncomeDto {
   @IsInt()
@@ -9,5 +9,6 @@ export class CreateIncomeDto {
   amount: string;
 
   @IsDateString()
+  @IsOptional()
   date: string;
 }

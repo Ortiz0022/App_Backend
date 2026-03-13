@@ -1,4 +1,7 @@
+import { IsBoolean } from "class-validator";
+
 export class PersonaFormLookupDto {
+  @IsBoolean()
   found: boolean;
 
   persona?: {

@@ -1,5 +1,5 @@
 // src/anualBudget/extraordinary/dto/assign-extraordinary.dto.ts
-import { IsInt, IsNotEmpty, IsPositive, IsString } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class AssignExtraordinaryDto {
   @IsInt()
@@ -15,5 +15,7 @@ export class AssignExtraordinaryDto {
   @IsNotEmpty()
   subTypeName: string;       // Ej: "Donación Anónima"
 
+  @IsOptional()
+  @IsDateString()
   date?: string;             // Fecha opcional (si no, hoy)
 }

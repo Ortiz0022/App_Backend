@@ -1,4 +1,3 @@
-// src/anualBudget/spendTypeByDepartment/dto/create-spend-type-by-department.dto.ts
 import { IsNumber } from 'class-validator';
 
 export class CreateSpendTypeByDepartmentDto {
