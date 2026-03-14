@@ -1,6 +1,8 @@
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreatePIncomeSubTypeDto {
   @IsInt() pIncomeTypeId: number;
-  @IsNotEmpty() name: string;
+  @IsNotEmpty() 
+  @IsString()
+  name: string;
 }
