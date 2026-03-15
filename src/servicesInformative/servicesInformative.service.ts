@@ -31,23 +31,28 @@ export class ServicesInformativeService {
   }
 
 async findAll() {
-  return await this.servicesInformativeRepository.find({
-    loadEagerRelations: false,
+  const services = await this.servicesInformativeRepository.find({
+    relations: {
+      serviceImages: true,
+    },
   });
+
+  return services.map((service) => this.mapResponse(service));
 }
 
-  async findOne(id: number) {
-    const service = await this.servicesInformativeRepository.findOne({
-      where: { id },
-    });
+async findOne(id: number) {
+  const service = await this.servicesInformativeRepository.findOne({
+    where: { id },
+    relations: {
+      serviceImages: true,
+    },
+  });
 
-    return this.mapResponse(service);
-  }
+  return this.mapResponse(service);
+}
 
 async create(dto: ServicesInformativeDto) {
   try {
-    console.log("DTO recibido:", dto);
-
     const service = this.servicesInformativeRepository.create({
       title: dto.title,
       cardDescription: dto.cardDescription,
@@ -55,9 +60,6 @@ async create(dto: ServicesInformativeDto) {
     });
 
     const savedService = await this.servicesInformativeRepository.save(service);
-    console.log("Servicio guardado:", savedService);
-
-    console.log("Images:", dto.images);
 
     const imagesToSave = (dto.images ?? []).map((imageUrl) =>
       this.servicesImageRepository.create({
@@ -66,18 +68,16 @@ async create(dto: ServicesInformativeDto) {
       })
     );
 
-    console.log("Images a guardar:", imagesToSave);
-
     if (imagesToSave.length > 0) {
       await this.servicesImageRepository.save(imagesToSave);
-      console.log("Imágenes guardadas");
     }
 
     const created = await this.servicesInformativeRepository.findOne({
       where: { id: savedService.id },
+      relations: {
+        serviceImages: true,
+      },
     });
-
-    console.log("Servicio final:", created);
 
     const response = this.mapResponse(created);
     this.rt.emitServiceUpdated({ action: "created", data: response });
@@ -88,45 +88,49 @@ async create(dto: ServicesInformativeDto) {
     throw error;
   }
 }
+async update(id: number, dto: ServicesInformativeDto) {
+  const existing = await this.servicesInformativeRepository.findOne({
+    where: { id },
+    relations: {
+      serviceImages: true,
+    },
+  });
 
-  async update(id: number, dto: ServicesInformativeDto) {
-    const existing = await this.servicesInformativeRepository.findOne({
-      where: { id },
-    });
+  if (!existing) return null;
 
-    if (!existing) return null;
+  existing.title = dto.title;
+  existing.cardDescription = dto.cardDescription;
+  existing.modalDescription = dto.modalDescription;
 
-    existing.title = dto.title;
-    existing.cardDescription = dto.cardDescription;
-    existing.modalDescription = dto.modalDescription;
+  await this.servicesInformativeRepository.save(existing);
 
-    await this.servicesInformativeRepository.save(existing);
+  await this.servicesImageRepository.delete({
+    serviceInformativeId: id,
+  });
 
-    await this.servicesImageRepository.delete({
+  const newImages = (dto.images ?? []).map((imageUrl) =>
+    this.servicesImageRepository.create({
+      imageUrl,
       serviceInformativeId: id,
-    });
+    })
+  );
 
-    const newImages = (dto.images ?? []).map((imageUrl) =>
-      this.servicesImageRepository.create({
-        imageUrl,
-        serviceInformativeId: id,
-      })
-    );
-
-    if (newImages.length > 0) {
-      await this.servicesImageRepository.save(newImages);
-    }
-
-    const updated = await this.servicesInformativeRepository.findOne({
-      where: { id },
-    });
-
-    const response = this.mapResponse(updated);
-    this.rt.emitServiceUpdated({ action: "updated", data: response });
-
-    return response;
+  if (newImages.length > 0) {
+    await this.servicesImageRepository.save(newImages);
   }
 
+  const updated = await this.servicesInformativeRepository.findOne({
+    where: { id },
+    relations: {
+      serviceImages: true,
+    },
+  });
+
+  const response = this.mapResponse(updated);
+  this.rt.emitServiceUpdated({ action: "updated", data: response });
+
+  return response;
+}
   async delete(id: number) {
     const idNum = Number(id);
 

@@ -15,9 +15,9 @@ export class ServicesInformative {
   @Column()
   modalDescription: string;
 
- @OneToMany(
-  () => ServicesImage,
-  (serviceImage: ServicesImage) => serviceImage.serviceInformative
-)
-serviceImages: ServicesImage[];
+  @OneToMany(
+    () => ServicesImage,
+    (serviceImage: ServicesImage) => serviceImage.serviceInformative
+  )
+  serviceImages: ServicesImage[];
 }
