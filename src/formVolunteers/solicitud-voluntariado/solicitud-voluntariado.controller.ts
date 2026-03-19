@@ -255,9 +255,22 @@ getSolicitudDocsLink(@Param('id', ParseIntPipe) id: number) {
       pdfBuffer = await this.voluntarioPdfService.generateVoluntarioIndividualPDF(solicitud.voluntario);
       filename = `voluntario-individual-${solicitud.voluntario?.persona?.cedula ?? id}.pdf`;
     } else if (String(solicitud?.tipoSolicitante).toUpperCase() === 'ORGANIZACION' && solicitud?.organizacion) {
-      pdfBuffer = await this.voluntarioPdfService.generateOrganizacionPDF(solicitud.organizacion);
-      filename = `organizacion-${solicitud.organizacion?.cedulaJuridica ?? id}.pdf`;
-    } else {
+        const organizacionConSolicitud = {
+          ...solicitud.organizacion,
+          solicitud: {
+            estado: solicitud?.estado,
+            fechaSolicitud: solicitud?.fechaSolicitud,
+            fechaResolucion: solicitud?.fechaResolucion,
+            motivo: solicitud?.motivo,
+          },
+        };
+
+        pdfBuffer = await this.voluntarioPdfService.generateOrganizacionPDF(
+          organizacionConSolicitud as any,
+        );
+
+        filename = `organizacion-${solicitud.organizacion?.cedulaJuridica ?? id}.pdf`;
+      } else {
       // si está mal relacionada la solicitud
       pdfBuffer = Buffer.from('');
     }

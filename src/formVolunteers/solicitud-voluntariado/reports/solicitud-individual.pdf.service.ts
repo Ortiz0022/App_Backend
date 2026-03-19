@@ -34,7 +34,7 @@ export class VoluntarioPdfService {
   }
 
   private readonly LOGO_URL =
-    'https://res.cloudinary.com/dyigmavwq/image/upload/v1760638578/logo-camara_fw64kt.png'
+    'https://res.cloudinary.com/dyigmavwq/image/upload/v1772546487/jty2ciomldqixzoeh7h0.jpg'
 
   private readonly FOOTER_SPACE = 22
 
@@ -118,8 +118,8 @@ export class VoluntarioPdfService {
     const right = doc.page.width - 50
 
     const headerTop = 32
-    const logoW = 38
-    const gap = 10
+    const logoW = 62
+    const gap = 2
 
     const rightBlockW = 150
     const rightBlockX = right - rightBlockW
@@ -129,7 +129,7 @@ export class VoluntarioPdfService {
     const textBlockH = 10 + 18
 
     const logoX = left
-    const logoY = headerTop + (textBlockH - logoW) / 2 + 10
+    const logoY = headerTop + (textBlockH - logoW) / 8 + 10
     const textX = logoBuffer ? logoX + logoW + gap : left
 
     if (logoBuffer) {
@@ -484,6 +484,57 @@ export class VoluntarioPdfService {
     doc.y = y + 10
   }
 
+  private normalizeRepresentantes(input: any): Array<{
+  nombre: string
+  cargo: string
+  email: string
+  telefono: string
+}> {
+  const arr =
+    (Array.isArray(input) && input) ||
+    (Array.isArray(input?.representantes) && input.representantes) ||
+    (Array.isArray(input?.representante) && input.representante) ||
+    []
+
+  return arr.map((r: any) => {
+    const persona = r?.persona || r?.contacto || r || {}
+
+    const nombre = [
+      persona?.nombre,
+      persona?.apellido1,
+      persona?.apellido2,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+
+    return {
+      nombre: this.asText(nombre || persona?.nombreCompleto || r?.nombreCompleto),
+      cargo: this.asText(r?.cargo || persona?.cargo),
+      email: this.asText(persona?.email || persona?.correo || r?.email || r?.correo),
+      telefono: this.asText(persona?.telefono || r?.telefono),
+    }
+  })
+}
+
+  private normalizeRazonesSociales(input: any): string[] {
+    const arr =
+      (Array.isArray(input) && input) ||
+      (Array.isArray(input?.razonesSociales) && input.razonesSociales) ||
+      (Array.isArray(input?.razonSocial) && input.razonSocial) ||
+      []
+
+    const values = arr
+      .map((r: any) => {
+        if (typeof r === 'string') return r
+        return r?.nombre || r?.razonSocial || r?.descripcion || null
+      })
+      .filter((x: any) => typeof x === 'string' && x.trim().length > 0)
+      .map((x: string) => x.trim())
+
+    return Array.from(new Set(values))
+  }
+
   async generateVoluntarioIndividualPDF(voluntario: VoluntarioIndividual): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       let logoBuffer: Buffer | undefined
@@ -620,7 +671,6 @@ doc.y = this.drawFieldRow(doc, 'Experiencia', this.asText(voluntario.experiencia
   }
 
   async generateOrganizacionPDF(organizacion: Organizacion): Promise<Buffer> {
-    // Si querés, te lo dejo igual que el tuyo; no lo toco acá porque tu problema es INDIVIDUAL.
     return new Promise(async (resolve, reject) => {
       let logoBuffer: Buffer | undefined
       try {
@@ -645,7 +695,399 @@ doc.y = this.drawFieldRow(doc, 'Experiencia', this.asText(voluntario.experiencia
         logoBuffer,
       )
 
-      // (tu contenido original de organización va aquí)
+      const left = 50
+      const right = doc.page.width - 50
+      const avail = right - left
+
+      // helpers locales para no romper si algún campo cambia de nombre
+      const pick = (...values: any[]) => {
+        for (const v of values) {
+          if (v !== null && v !== undefined && String(v).trim() !== '') return String(v)
+        }
+        return '—'
+      }
+
+      const contacto =
+        (organizacion as any).contactoPrincipal ||
+        (organizacion as any).contacto ||
+        (organizacion as any).representante ||
+        (organizacion as any).persona ||
+        null
+
+      const nombreContacto = contacto
+        ? [contacto.nombre, contacto.apellido1, contacto.apellido2].filter(Boolean).join(' ').trim()
+        : ''
+
+      // INFORMACIÓN GENERAL
+      this.addSectionTitle(doc, 'INFORMACIÓN GENERAL')
+
+      doc.y = this.drawFieldRow(
+        doc,
+        'Nombre de la organización',
+        this.asText(
+          pick(
+            (organizacion as any).nombreOrganizacion,
+            (organizacion as any).nombre,
+            (organizacion as any).razonSocial,
+          ),
+        ),
+        left,
+        doc.y,
+        avail,
+      )
+
+      doc.y = this.drawFieldRowMultiple(
+        doc,
+        [
+          {
+            label: 'Cédula jurídica',
+            value: this.asText(
+              pick(
+                (organizacion as any).cedulaJuridica,
+                (organizacion as any).cedula,
+                (organizacion as any).identificacion,
+              ),
+            ),
+          },
+          {
+            label: 'Tipo de organización',
+            value: this.asText(
+              pick(
+                (organizacion as any).tipoOrganizacion,
+                (organizacion as any).tipo,
+                (organizacion as any).categoria,
+              ),
+            ),
+          },
+        ],
+        doc.y,
+      )
+
+      doc.y = this.drawFieldRowMultiple(
+        doc,
+        [
+          {
+            label: 'Teléfono',
+            value: this.asText(
+              pick(
+                (organizacion as any).telefono,
+                contacto?.telefono,
+              ),
+            ),
+          },
+          {
+            label: 'Correo electrónico',
+            value: this.asText(
+              pick(
+                (organizacion as any).email,
+                (organizacion as any).correo,
+                contacto?.email,
+                contacto?.correo,
+              ),
+            ),
+          },
+        ],
+        doc.y,
+      )
+
+      doc.y = this.drawFieldRow(
+        doc,
+        'Dirección',
+        this.asText(
+          pick(
+            (organizacion as any).direccion,
+            (organizacion as any).ubicacion,
+          ),
+        ),
+        left,
+        doc.y,
+        avail,
+      )
+
+      const sitioWeb = pick(
+        (organizacion as any).sitioWeb,
+        (organizacion as any).paginaWeb,
+        (organizacion as any).web,
+        (organizacion as any).redesSociales,
+      )
+      if (sitioWeb !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Sitio web / redes', this.asText(sitioWeb), left, doc.y, avail)
+      }
+
+      doc.moveDown(0.2)
+
+      // CONTACTO / REPRESENTANTE
+      if (contacto || nombreContacto) {
+        this.addSectionTitle(doc, 'CONTACTO PRINCIPAL')
+
+        doc.y = this.drawFieldRowMultiple(
+          doc,
+          [
+            {
+              label: 'Nombre completo',
+              value: this.asText(nombreContacto || pick(contacto?.nombreCompleto)),
+            },
+            {
+              label: 'Cargo',
+              value: this.asText(
+                pick(
+                  contacto?.cargo,
+                  (organizacion as any).cargoContacto,
+                  (organizacion as any).puestoContacto,
+                ),
+              ),
+            },
+          ],
+          doc.y,
+        )
+
+        const cedulaContacto = pick(contacto?.cedula, contacto?.identificacion)
+        const telefonoContacto = pick(contacto?.telefono)
+        const correoContacto = pick(contacto?.email, contacto?.correo)
+
+        if (cedulaContacto !== '—' || telefonoContacto !== '—') {
+          doc.y = this.drawFieldRowMultiple(
+            doc,
+            [
+              { label: 'Cédula', value: this.asText(cedulaContacto) },
+              { label: 'Teléfono del contacto', value: this.asText(telefonoContacto) },
+            ],
+            doc.y,
+          )
+        }
+
+        if (correoContacto !== '—') {
+          doc.y = this.drawFieldRow(
+            doc,
+            'Correo del contacto',
+            this.asText(correoContacto),
+            left,
+            doc.y,
+            avail,
+          )
+        }
+
+        doc.moveDown(0.2)
+      }
+
+      // PERFIL DE LA ORGANIZACIÓN
+      this.addSectionTitle(doc, 'PERFIL DE LA ORGANIZACIÓN')
+
+      const descripcion = pick(
+        (organizacion as any).descripcion,
+        (organizacion as any).descripcionOrganizacion,
+        (organizacion as any).resena,
+      )
+      if (descripcion !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Descripción', this.asText(descripcion), left, doc.y, avail)
+      }
+
+      const mision = pick(
+        (organizacion as any).mision,
+        (organizacion as any).objetivo,
+        (organizacion as any).proposito,
+      )
+      if (mision !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Misión / propósito', this.asText(mision), left, doc.y, avail)
+      }
+
+      const experiencia = pick(
+        (organizacion as any).experiencia,
+        (organizacion as any).trayectoria,
+        (organizacion as any).experienciaVoluntariado,
+      )
+      if (experiencia !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Experiencia', this.asText(experiencia), left, doc.y, avail)
+      }
+
+      const poblacion = pick(
+        (organizacion as any).poblacionBeneficiada,
+        (organizacion as any).poblacionMeta,
+        (organizacion as any).beneficiarios,
+      )
+      if (poblacion !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Población beneficiada', this.asText(poblacion), left, doc.y, avail)
+      }
+
+      const motivacion = pick(
+        (organizacion as any).motivacion,
+        (organizacion as any).interes,
+        (organizacion as any).razonParticipacion,
+      )
+      if (motivacion !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Motivación', this.asText(motivacion), left, doc.y, avail)
+      }
+
+      const apoyo = pick(
+        (organizacion as any).tipoApoyo,
+        (organizacion as any).aporte,
+        (organizacion as any).recursos,
+        (organizacion as any).colaboracion,
+      )
+      if (apoyo !== '—') {
+        doc.y = this.drawFieldRow(doc, 'Tipo de apoyo / aporte', this.asText(apoyo), left, doc.y, avail)
+      }
+
+      doc.moveDown(0.2)
+
+      // REPRESENTANTES
+      const representantes = this.normalizeRepresentantes(
+        (organizacion as any).representantes,
+      )
+
+      if (representantes.length > 0) {
+        this.addSectionTitle(doc, 'REPRESENTANTES')
+
+        representantes.forEach((rep) => {
+          doc.y = this.drawFieldRow(
+            doc,
+            'Nombre completo',
+            this.asText(rep.nombre),
+            left,
+            doc.y,
+            avail,
+          )
+
+          doc.y = this.drawFieldRowMultiple(
+            doc,
+            [
+              { label: 'Cargo', value: this.asText(rep.cargo) },
+              { label: 'Correo electrónico', value: this.asText(rep.email) },
+              { label: 'Teléfono', value: this.asText(rep.telefono) },
+            ],
+            doc.y,
+          )
+        })
+
+        doc.moveDown(0.2)
+      }
+
+      // RAZONES SOCIALES
+      const razonesSociales = this.normalizeRazonesSociales(
+        (organizacion as any).razonesSociales,
+      )
+
+      if (razonesSociales.length > 0) {
+        this.addSectionTitle(doc, 'RAZONES SOCIALES')
+
+        this.addStyledTable(
+          doc,
+          [{ title: 'RAZÓN SOCIAL', w: 510 }],
+          razonesSociales.map((r) => [r]),
+        )
+
+        doc.moveDown(0.2)
+      }
+
+      // ÁREAS DE INTERÉS
+      const areas = this.normalizeAreasInteres(
+        (organizacion as any).areasInteres ??
+        (organizacion as any).areasDeInteres ??
+        (organizacion as any).areas
+      )
+
+      if (areas.length > 0) {
+        this.addSectionTitle(doc, 'ÁREAS DE INTERÉS')
+        this.addStyledTable(
+          doc,
+          [{ title: 'ÁREA DE INTERÉS', w: 510 }],
+          areas.map((n) => [n]),
+        )
+      }
+
+      // DISPONIBILIDAD
+      const disponibilidades =
+        (organizacion as any).disponibilidades ||
+        (organizacion as any).disponibilidad ||
+        []
+
+      if (Array.isArray(disponibilidades) && disponibilidades.length > 0) {
+        this.addSectionTitle(doc, 'HORARIOS DE DISPONIBILIDAD')
+
+        disponibilidades.forEach((disp: any) => {
+          const dias = Array.isArray(disp.dias) ? disp.dias.join(', ') : pick(disp.dias)
+          const horarios = Array.isArray(disp.horarios) ? disp.horarios.join(', ') : pick(disp.horarios)
+
+          this.addStyledTable(
+            doc,
+            [
+              { title: 'DÍAS', w: 170 },
+              { title: 'HORARIO', w: 170 },
+              { title: 'PERÍODO', w: 170 },
+            ],
+            [[
+              this.asText(dias),
+              this.asText(horarios),
+              `${this.safeDate(disp.fechaInicio)} - ${this.safeDate(disp.fechaFin)}`,
+            ]],
+          )
+        })
+      }
+
+      // ESTADO DE LA SOLICITUD
+      const solicitud = (organizacion as any).solicitud ?? {}
+
+      const estadoSolicitud =
+        solicitud?.estado ??
+        (organizacion as any).estado ??
+        (organizacion as any).estadoSolicitud ??
+        null
+
+      const fechaSolicitudRaw =
+        solicitud?.fechaSolicitud ??
+        (organizacion as any).fechaSolicitud ??
+        (organizacion as any).fecha_solicitud ??
+        null
+
+      const fechaResolucionRaw =
+        solicitud?.fechaResolucion ??
+        (organizacion as any).fechaResolucion ??
+        (organizacion as any).fecha_resolucion ??
+        null
+
+      const motivoRechazo =
+        solicitud?.motivo ??
+        (organizacion as any).motivo ??
+        (organizacion as any).motivoRechazo ??
+        null
+
+      // 👇 siempre dibuja la sección
+      this.addSectionTitle(doc, 'ESTADO DE LA SOLICITUD')
+
+      doc.y = this.drawFieldRowMultiple(
+        doc,
+        [
+          { label: 'Estado', value: this.asText(solicitud?.estado ?? estadoSolicitud) },
+          {
+            label: 'Fecha de solicitud',
+            value: this.asText(this.safeDate(solicitud?.fechaSolicitud ?? fechaSolicitudRaw)),
+          },
+        ],
+        doc.y,
+      )
+
+      if (solicitud?.fechaResolucion || fechaResolucionRaw) {
+        doc.y = this.drawFieldRow(
+          doc,
+          'Fecha de resolución',
+          this.asText(this.safeDate(solicitud?.fechaResolucion ?? fechaResolucionRaw)),
+          left,
+          doc.y,
+          avail,
+        )
+      }
+
+      if (String(solicitud?.estado ?? estadoSolicitud).toUpperCase() === 'RECHAZADO' && motivoRechazo) {
+        doc.y = this.drawFieldRow(
+          doc,
+          'Motivo de rechazo',
+          this.asText(motivoRechazo),
+          left,
+          doc.y,
+          avail,
+        )
+      }
+
       this.addFooter(doc)
       doc.end()
     })

@@ -21,7 +21,7 @@ export class SolicitudesListPdfService {
   };
 
   private readonly LOGO_URL =
-    'https://res.cloudinary.com/dyigmavwq/image/upload/v1760638578/logo-camara_fw64kt.png';
+    'https://res.cloudinary.com/dyigmavwq/image/upload/v1772546487/jty2ciomldqixzoeh7h0.jpg';
 
   private safeDate(d?: any) {
     if (!d) return '—';
@@ -49,15 +49,15 @@ export class SolicitudesListPdfService {
 
     const headerTop = 32;
 
-    const logoW = 38;
-    const gap = 10;
+    const logoW = 62;
+    const gap = 2;
 
     const titleY = headerTop + 6;
     const subY = titleY + 18;
     const textBlockH = 10 + 18;
 
     const logoX = left;
-    const logoY = headerTop + (textBlockH - logoW) / 2 + 10;
+    const logoY = headerTop + (textBlockH - logoW) / 8 + 10;
     const textX = logo ? logoX + logoW + gap : left;
 
     if (logo) {

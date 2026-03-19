@@ -161,7 +161,7 @@ async downloadSolicitudesListPDF(
     const pdfBuffer = await this.pdfService.generateSolicitudPDF(solicitud);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="solicitud-${id}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="solicitud-${solicitud.persona.nombre}-${solicitud.persona.apellido1}.pdf"`);
     res.setHeader('Content-Length', String(pdfBuffer.length));
     res.setHeader('Cache-Control', 'no-store');
 

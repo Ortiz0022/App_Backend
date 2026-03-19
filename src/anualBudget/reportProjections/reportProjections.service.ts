@@ -115,53 +115,56 @@ export class ReportProjectionsService {
   }
 
   // ======= BLOQUES VISUALES =======
-private addWatermark(doc: PDFDoc) {
-  try {
-    const logoBuffer = LogoHelper.getLogoSync();
-    if (!logoBuffer || logoBuffer.length === 0) return;
-
-    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
-    const img: any = (doc as any).openImage?.(logoBuffer);
-    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
-
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-
-    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
-    const maxW = pageW * 0.55;
-    const maxH = pageH * 0.55;
-
-    const scale = Math.min(maxW / img.width, maxH / img.height);
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
-
-    // 3) Coordenadas exactamente centradas
-    const x = (pageW - drawW) / 2;
-    const y = (pageH - drawH) / 2 + 90;
-
-    doc.save();
-    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
-    doc.image(img, x, y, { width: drawW });
-    doc.restore();
-  } catch {
-    // ignorar
-  }
-}
-
   private addHeader(doc: PDFDoc, title: string) {
-    this.addWatermark(doc);
+    const logoBuffer = LogoHelper.getLogoSync();
+
+    const left = 50;
+    const right = doc.page.width - 50;
+
+    const topY = 32;
+    const logoW = 54;
+    const logoH = 34;
+    const gap = 12;
+
+    let textX = left;
+
+    if (logoBuffer?.length) {
+      try {
+        doc.image(logoBuffer, left, topY + 2, {
+          fit: [logoW, logoH],
+          valign: 'center',
+        });
+        textX = left + logoW + gap;
+      } catch (error) {
+        console.error('Error dibujando logo en header:', error);
+      }
+    }
 
     this.fontBold(doc);
-    doc.fontSize(16).fillColor(this.UI.ink).text(`Reportes — ${title}`, 50, 40, { align: 'left' });
+    doc.fontSize(16).fillColor(this.UI.ink).text(`Reportes — ${title}`, textX, topY, {
+      align: 'left',
+      width: right - textX,
+    });
 
     this.fontRegular(doc);
-    doc.fontSize(9).fillColor(this.UI.gray)
-      .text(
-        `Generado: ${new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'numeric'})} ${new Date().toLocaleTimeString('es-CR')}`,
-        50, 58, { align: 'right', width: (doc.page.width - 100) }
-      );
-    doc.moveTo(50, 70).lineTo(doc.page.width - 50, 70).strokeColor(this.UI.line).lineWidth(1).stroke();
-    doc.y = 86;
+    doc.fontSize(9).fillColor(this.UI.gray).text(
+      `Generado: ${new Date().toLocaleDateString('es-CR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })} ${new Date().toLocaleTimeString('es-CR')}`,
+      textX,
+      topY + 22,
+      {
+        align: 'left',
+        width: right - textX,
+      },
+    );
+
+    const lineY = topY + 44;
+    doc.moveTo(left, lineY).lineTo(right, lineY).strokeColor(this.UI.line).lineWidth(1).stroke();
+
+    doc.y = lineY + 14;
   }
 
   private addFiltersBlock(doc: PDFDoc, filters?: any) {
@@ -401,8 +404,6 @@ addSummaryCardsCompare(
   doc.fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
   doc.moveDown(0.5);
 
-  this.addWatermark(doc);
-
   const left = 50, right = doc.page.width - 50, avail = right - left;
 
   const sumW = columns.reduce((s,c)=>s + c.w, 0);
@@ -435,7 +436,7 @@ addSummaryCardsCompare(
   );
   y += 34;
 
-  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const bottom = () => doc.page.height - doc.page.margins.bottom - 28;
   const ensure = (rowH=22) => {
     if (y + rowH > bottom()) {
       doc.addPage();
@@ -524,10 +525,21 @@ addSummaryCardsCompare(
 
 
   private addFooter(doc: PDFDoc, caption = 'Sistema de Presupuesto — Reporte') {
-    const y = doc.page.height - 32;
-    doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8).strokeColor(this.UI.line).lineWidth(1).stroke();
+    const left = 50;
+    const right = doc.page.width - 50;
+    const y = doc.page.height - doc.page.margins.bottom - 14;
+
+    doc.moveTo(left, y - 8)
+      .lineTo(right, y - 8)
+      .strokeColor(this.UI.line)
+      .lineWidth(1)
+      .stroke();
+
     this.fontRegular(doc);
-    doc.fontSize(8).fillColor(this.UI.gray).text(caption, 50, y, { width: doc.page.width - 100, align: 'center' });
+    doc.fontSize(8).fillColor(this.UI.gray).text(caption, left, y, {
+      width: right - left,
+      align: 'center',
+    });
   }
 
   // -------------- INCOME AGG --------------
