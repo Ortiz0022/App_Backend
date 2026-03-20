@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Query } from '@nestjs/common';
 import { ExtraordinaryService } from './extraordinary.service';
 import { CreateExtraordinaryDto } from './dto/createExtraordinaryDto';
 import { UpdateExtraordinaryDto } from './dto/updateExtraordinaryDto';
@@ -27,9 +27,11 @@ export class ExtraordinaryController {
     return this.service.assignToIncome(dto, currentUser);
   }
 
-  @Get()
-  findAll() {
-    return this.service.findAll();
+ @Get()
+  findAll(@Query('fiscalYearId') fiscalYearId?: string) {
+    return this.service.findAll(
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')

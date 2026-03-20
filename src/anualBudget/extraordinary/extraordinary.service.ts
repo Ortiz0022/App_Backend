@@ -61,8 +61,14 @@ export class ExtraordinaryService {
     };
   }
 
-  async findAll() {
-    const rows = await this.repo.find({ order: { createdAt: 'DESC' } });
+  async findAll(fiscalYearId?: number) {
+    const where = fiscalYearId ? { fiscalYear: { id: fiscalYearId } } : {};
+
+    const rows = await this.repo.find({
+      where: where as any,
+      order: { createdAt: 'DESC' },
+    });
+
     return rows.map((e) => this.withCanEditAmount(e));
   }
 
@@ -84,11 +90,26 @@ export class ExtraordinaryService {
     const cleanName = this.sanitizeLabel(dto.name);
     await this.assertNoDuplicateName(cleanName);
 
+    const activeFy = await this.fiscalYearService.getActiveOrCurrent();
+    if (!activeFy) {
+      throw new BadRequestException('No hay un año fiscal activo.');
+    }
+
+    const fyStart = String(activeFy.start_date).slice(0, 10);
+    const fyEnd = String(activeFy.end_date).slice(0, 10);
+
+    if (dateStr < fyStart || dateStr > fyEnd) {
+      throw new BadRequestException(
+        `La fecha debe pertenecer al año fiscal activo (${fyStart} a ${fyEnd}).`
+      );
+    }
+
     const e = this.repo.create({
       name: cleanName,
       amount: amountNum.toFixed(2),
       used: '0.00',
       date: dateStr,
+      fiscalYear: activeFy,
     });
 
     const saved = await this.repo.save(e);
@@ -112,7 +133,14 @@ export class ExtraordinaryService {
     }
 
     if (dto.date !== undefined) {
-      e.date = dto.date && dto.date.trim() !== '' ? dto.date : null;
+      const nextDate = dto.date && dto.date.trim() !== '' ? dto.date : null;
+      e.date = nextDate;
+
+      if (nextDate) {
+        const fy = await this.fiscalYearService.resolveByDateOrActive(nextDate);
+        if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+        e.fiscalYear = fy;
+      }
     }
 
     if (dto.amount !== undefined) {
@@ -202,13 +230,14 @@ export class ExtraordinaryService {
 
       const dateStr = dto.date && dto.date.trim() !== '' ? dto.date : new Date().toISOString().slice(0, 10);
       const fy = await this.fiscalYearService.resolveByDateOrActive(dateStr);
+        if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
 
-      const inc = em.create(Income, {
-        incomeSubType: { id: subType.id } as any,
-        amount: assignAmt.toFixed(2),
-        date: dateStr,
-        fiscalYear: fy ? ({ id: fy.id } as any) : undefined,
-      });
+        const inc = em.create(Income, {
+          incomeSubType: { id: subType.id } as any,
+          amount: assignAmt.toFixed(2),
+          date: dateStr,
+          fiscalYear: { id: fy.id } as any,
+        });
       await em.save(inc);
 
       extra.used = (Number(extra.used) + assignAmt).toFixed(2);
