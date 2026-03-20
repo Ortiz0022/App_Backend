@@ -4,4 +4,5 @@ export type IncomeFilters = {
     departmentId?: number;
     incomeTypeId?: number;
     incomeSubTypeId?: number;
+    fiscalYearId?: number;
   };

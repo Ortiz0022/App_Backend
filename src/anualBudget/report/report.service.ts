@@ -103,7 +103,7 @@ export class ReportService {
       .leftJoin('t.department', 'd');
 
     this.applyDateFiltersIncome(qb, filters);
-
+    if (filters.fiscalYearId) qb.andWhere('i.fiscalYearId = :fyId', { fyId: filters.fiscalYearId });
     if (filters.departmentId) qb.andWhere('t.departmentId = :dep', { dep: filters.departmentId });
     if (filters.incomeTypeId) qb.andWhere('t.id = :t', { t: filters.incomeTypeId });
     if (filters.incomeSubTypeId) qb.andWhere('st.id = :st', { st: filters.incomeSubTypeId });
@@ -144,6 +144,7 @@ export class ReportService {
 
     this.applyDateFiltersIncome(base, filters);
 
+    if (filters.fiscalYearId) base.andWhere('i.fiscalYearId = :fyId', { fyId: filters.fiscalYearId });
     if (filters.departmentId) base.andWhere('t.departmentId = :dep', { dep: filters.departmentId });
     if (filters.incomeSubTypeId) base.andWhere('i.incomeSubTypeId = :st', { st: filters.incomeSubTypeId });
     if (filters.incomeTypeId) base.andWhere('t.id = :t', { t: filters.incomeTypeId });
@@ -179,6 +180,7 @@ export class ReportService {
 
     this.applyDateFiltersSpend(qb, filters);
 
+    if (filters.fiscalYearId) qb.andWhere('s.fiscalYearId = :fyId', { fyId: filters.fiscalYearId });
     if (filters.departmentId) qb.andWhere('st.departmentId = :dep', { dep: filters.departmentId });
     if (filters.spendTypeId) qb.andWhere('st.id = :t', { t: filters.spendTypeId });
     if (filters.spendSubTypeId) qb.andWhere('sst.id = :sst', { sst: filters.spendSubTypeId });
@@ -219,6 +221,7 @@ export class ReportService {
 
     this.applyDateFiltersSpend(base, filters);
 
+    if (filters.fiscalYearId) base.andWhere('s.fiscalYearId = :fyId', { fyId: filters.fiscalYearId });
     if (filters.departmentId) base.andWhere('st.departmentId = :dep', { dep: filters.departmentId });
     if (filters.spendSubTypeId) base.andWhere('s.spendSubTypeId = :sst', { sst: filters.spendSubTypeId });
     if (filters.spendTypeId) base.andWhere('st.id = :t', { t: filters.spendTypeId });

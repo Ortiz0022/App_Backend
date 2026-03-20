@@ -4,4 +4,5 @@ export type SpendFilters = {
     departmentId?: number;
     spendTypeId?: number;
     spendSubTypeId?: number;
+    fiscalYearId?: number;
   };

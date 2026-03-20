@@ -17,6 +17,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('incomeTypeId') incomeTypeId?: string,
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     return this.svc.getIncomeTable({
       start,
@@ -24,6 +25,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
       incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     });
   }
 
@@ -34,6 +36,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('incomeTypeId') incomeTypeId?: string,
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     return this.svc.getIncomeSummary({
       start,
@@ -41,6 +44,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
       incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     });
   }
 
@@ -51,6 +55,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('incomeTypeId') incomeTypeId?: string,
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     const filters = {
       start,
@@ -58,6 +63,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
       incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     };
     const [rows, totals] = await Promise.all([
       this.svc.getIncomeTable(filters),
@@ -76,6 +82,7 @@ export class ReportController {
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
     @Query('preview') preview?: string,
     @Res() res?: Response,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     const filters = {
       start,
@@ -83,6 +90,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
       incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     };
     const pdfBuffer = await this.svc.generateIncomePDF(filters);
     const filename = `reporte-ingresos-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -102,6 +110,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('incomeTypeId') incomeTypeId?: string,
     @Query('incomeSubTypeId') incomeSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
     @Res() res?: Response,
   ) {
     try {
@@ -111,6 +120,7 @@ export class ReportController {
         departmentId: departmentId ? Number(departmentId) : undefined,
         incomeTypeId: incomeTypeId ? Number(incomeTypeId) : undefined,
         incomeSubTypeId: incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+        fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
       };
       const excel = await this.svc.generateIncomeExcel(filters);
       const filename = `reporte-ingresos-${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -133,6 +143,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     return this.svc.getSpendTable({
       start,
@@ -140,6 +151,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
       spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     });
   }
 
@@ -150,6 +162,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     return this.svc.getSpendSummary({
       start,
@@ -157,6 +170,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
       spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     });
   }
 
@@ -167,6 +181,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
   ) {
     const filters = {
       start,
@@ -174,6 +189,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
       spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     };
     const [rows, totals] = await Promise.all([
       this.svc.getSpendTable(filters),
@@ -191,6 +207,7 @@ export class ReportController {
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
     @Query('preview') preview?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
     @Res() res?: Response,
   ) {
     const filters = {
@@ -199,6 +216,7 @@ export class ReportController {
       departmentId: departmentId ? Number(departmentId) : undefined,
       spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
       spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
     };
     const pdfBuffer = await this.svc.generateSpendPDF(filters);
     const filename = `reporte-egresos-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -218,6 +236,7 @@ export class ReportController {
     @Query('departmentId') departmentId?: string,
     @Query('spendTypeId') spendTypeId?: string,
     @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
     @Res() res?: Response,
   ) {
     try {
@@ -227,6 +246,7 @@ export class ReportController {
         departmentId: departmentId ? Number(departmentId) : undefined,
         spendTypeId: spendTypeId ? Number(spendTypeId) : undefined,
         spendSubTypeId: spendSubTypeId ? Number(spendSubTypeId) : undefined,
+        fiscalYearId: fiscalYearId ? Number(fiscalYearId) : undefined,
       };
       const excel = await this.svc.generateSpendExcel(filters);
       const filename = `reporte-egresos-${new Date().toISOString().slice(0, 10)}.xlsx`;
