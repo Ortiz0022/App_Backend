@@ -1,7 +1,6 @@
-// src/anualBudget/fiscalYear/fiscal-year.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { FiscalYear, FiscalState } from './entities/fiscal-year.entity';
 import { CreateFiscalYearDto } from './dto/createFiscalYearDto';
 import { UpdateFiscalYearDto } from './dto/updateFiscalYearDto';
@@ -45,10 +44,11 @@ export class FiscalYearService {
   }
 
   async findByDate(date: string): Promise<FiscalYear | null> {
-    return this.repo.findOne({
-      where: { start_date: Between('0000-01-01', date), end_date: Between(date, '9999-12-31') } as any,
-    });
-  }
+  return this.repo
+    .createQueryBuilder('fy')
+    .where(':date BETWEEN fy.start_date AND fy.end_date', { date })
+    .getOne();
+}
 
   async assertOpenByDate(date: string) {
     const fy = await this.findByDate(date);

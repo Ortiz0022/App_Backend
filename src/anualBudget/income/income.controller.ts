@@ -22,10 +22,16 @@ export class IncomeController {
     return this.svc.create(dto, currentUser);
   }
 
-  @Get()
-  list(@Query('incomeSubTypeId') incomeSubTypeId?: string) {
-    return this.svc.findAll(incomeSubTypeId ? Number(incomeSubTypeId) : undefined);
-  }
+ @Get()
+list(
+  @Query('incomeSubTypeId') incomeSubTypeId?: string,
+  @Query('fiscalYearId') fiscalYearId?: string,
+) {
+  return this.svc.findAll(
+    incomeSubTypeId ? Number(incomeSubTypeId) : undefined,
+    fiscalYearId ? Number(fiscalYearId) : undefined,
+  );
+}
 
   @Get(':id')
   get(@Param('id', ParseIntPipe) id: number) {

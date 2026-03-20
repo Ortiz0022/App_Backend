@@ -53,15 +53,57 @@ export class IncomeTypeService {
     return this.repo.save(entity);
   }
 
-  findAll() {
-    return this.repo.find({ relations: ['department'], order: { name: 'ASC' } });
+  async findAll(fiscalYearId?: number) {
+  const rows = await this.repo.find({
+    relations: ['department'],
+    order: { name: 'ASC' },
+  });
+
+  if (!fiscalYearId) return rows;
+
+  const totals = await this.subRepo
+    .createQueryBuilder('s')
+    .innerJoin('s.incomeType', 't')
+    .innerJoin('s.incomes', 'i')
+    .innerJoin('i.fiscalYear', 'fy')
+    .select('t.id', 'typeId')
+    .addSelect('COALESCE(SUM(i.amount), 0)', 'total')
+    .where('fy.id = :fiscalYearId', { fiscalYearId })
+    .groupBy('t.id')
+    .getRawMany<{ typeId: string; total: string }>();
+
+  const totalsMap = new Map<number, string>();
+  for (const row of totals) {
+    totalsMap.set(Number(row.typeId), Number(row.total ?? 0).toFixed(2));
   }
 
-  async findOne(id: number) {
-    const row = await this.repo.findOne({ where: { id }, relations: ['department'] });
-    if (!row) throw new NotFoundException('IncomeType not found');
-    return row;
-  }
+  return rows.map((row) => ({
+    ...row,
+    amountIncome: totalsMap.get(row.id) ?? '0.00',
+  }));
+}
+
+  async findOne(id: number, fiscalYearId?: number) {
+  const row = await this.repo.findOne({ where: { id }, relations: ['department'] });
+  if (!row) throw new NotFoundException('IncomeType not found');
+
+  if (!fiscalYearId) return row;
+
+  const totalRaw = await this.subRepo
+    .createQueryBuilder('s')
+    .innerJoin('s.incomeType', 't')
+    .innerJoin('s.incomes', 'i')
+    .innerJoin('i.fiscalYear', 'fy')
+    .where('t.id = :id', { id })
+    .andWhere('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('COALESCE(SUM(i.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  return {
+    ...row,
+    amountIncome: Number(totalRaw?.total ?? 0).toFixed(2),
+  };
+}
 
   async update(id: number, dto: UpdateIncomeTypeDto) {
     const row = await this.findOne(id);

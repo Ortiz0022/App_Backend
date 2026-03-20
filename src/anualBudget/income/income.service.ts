@@ -31,14 +31,17 @@ export class IncomeService {
   async create(dto: CreateIncomeDto, currentUser: CurrentUserData) {
     await this.fyService.assertOpenByDate(dto.date);
     const s = await this.getSubType(dto.incomeSubTypeId);
+    
     const fy = await this.fyService.resolveByDateOrActive(dto.date);
 
-    const entity = this.repo.create({
-      incomeSubType: { id: s.id } as any,
-      amount: dto.amount,
-      date: dto.date,
-      fiscalYear: fy ?? undefined,
-    });
+      if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+
+      const entity = this.repo.create({
+        incomeSubType: { id: s.id } as any,
+        amount: dto.amount,
+        date: dto.date,
+        fiscalYear: fy,
+      });
 
     const saved = await this.repo.save(entity);
 
@@ -54,14 +57,23 @@ export class IncomeService {
     return saved;
   }
 
-  findAll(incomeSubTypeId?: number) {
-    const where = incomeSubTypeId ? { incomeSubType: { id: incomeSubTypeId } } : {};
-    return this.repo.find({
-      where: where as any,
-      relations: ['incomeSubType'],
-      order: { date: 'DESC', id: 'DESC' },
-    });
+  async findAll(incomeSubTypeId?: number, fiscalYearId?: number) {
+  const where: any = {};
+
+  if (incomeSubTypeId) {
+    where.incomeSubType = { id: incomeSubTypeId };
   }
+
+  if (fiscalYearId) {
+    where.fiscalYear = { id: fiscalYearId };
+  }
+
+  return this.repo.find({
+    where,
+    relations: ['incomeSubType', 'incomeSubType.incomeType', 'fiscalYear'],
+    order: { date: 'DESC', id: 'DESC' },
+  });
+}
 
  async findOne(id: number) {
   const row = await this.repo.findOne({
@@ -95,7 +107,10 @@ export class IncomeService {
     if (dto.amount !== undefined) row.amount = dto.amount;
     if (dto.date !== undefined) row.date = dto.date;
 
-    row.fiscalYear = (await this.fyService.resolveByDateOrActive(row.date)) ?? undefined;
+    const fy = await this.fyService.resolveByDateOrActive(row.date);
+      if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+
+      row.fiscalYear = fy;
 
     const saved = await this.repo.save(row);
 

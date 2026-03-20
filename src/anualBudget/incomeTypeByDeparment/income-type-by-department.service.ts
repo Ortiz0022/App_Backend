@@ -27,15 +27,16 @@ constructor(
   if (!fy) throw new NotFoundException('FiscalYear not found');
 
   const rows = await this.incRepo
-    .createQueryBuilder('i')
-    .innerJoin('i.incomeSubType', 's')
-    .innerJoin('s.incomeType', 't')
-    .innerJoin('t.department', 'd')
-    .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
-    .select('d.id', 'departmentId')
-    .addSelect('COALESCE(SUM(i.amount),0)', 'total')
-    .groupBy('d.id')
-    .getRawMany<{ departmentId: number; total: string }>();
+  .createQueryBuilder('i')
+  .innerJoin('i.fiscalYear', 'fy')
+  .innerJoin('i.incomeSubType', 's')
+  .innerJoin('s.incomeType', 't')
+  .innerJoin('t.department', 'd')
+  .where('fy.id = :fiscalYearId', { fiscalYearId })
+  .select('d.id', 'departmentId')
+  .addSelect('COALESCE(SUM(i.amount),0)', 'total')
+  .groupBy('d.id')
+  .getRawMany<{ departmentId: number; total: string }>();
 
   // Upsert de departamentos con movimientos
   for (const r of rows) {
