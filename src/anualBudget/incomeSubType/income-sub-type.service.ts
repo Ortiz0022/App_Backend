@@ -63,7 +63,7 @@ export class IncomeSubTypeService {
     return this.repo.save(entity);
   }
 
-  async findAll(incomeTypeId?: number, fiscalYearId?: number) {
+async findAll(incomeTypeId?: number, fiscalYearId?: number) {
   const where = incomeTypeId ? { incomeType: { id: incomeTypeId } } : {};
 
   const rows = await this.repo.find({

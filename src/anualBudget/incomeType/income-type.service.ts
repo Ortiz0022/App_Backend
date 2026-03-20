@@ -6,6 +6,7 @@ import { CreateIncomeTypeDto } from './dto/createIncomeTypeDto';
 import { UpdateIncomeTypeDto } from './dto/updateIncomeTypeDto';
 import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub-type.entity';
 import { PIncomeType } from 'src/anualBudget/pIncomeType/entities/pincome-type.entity';
+import { Income } from '../income/entities/income.entity';
 
 @Injectable()
 export class IncomeTypeService {
@@ -13,6 +14,7 @@ export class IncomeTypeService {
     @InjectRepository(IncomeType) private readonly repo: Repository<IncomeType>,
     @InjectRepository(IncomeSubType) private readonly subRepo: Repository<IncomeSubType>,
     @InjectRepository(PIncomeType) private readonly pTypeRepo: Repository<PIncomeType>,
+    @InjectRepository(Income) private readonly incRepo: Repository<Income>,
   ) {}
 
   private normalizeKey(input: string) {
@@ -53,19 +55,22 @@ export class IncomeTypeService {
     return this.repo.save(entity);
   }
 
-  async findAll(fiscalYearId?: number) {
+async findAll(departmentId?: number, fiscalYearId?: number) {
+  const where = departmentId ? { department: { id: departmentId } } : {};
+
   const rows = await this.repo.find({
+    where: where as any,
     relations: ['department'],
     order: { name: 'ASC' },
   });
 
   if (!fiscalYearId) return rows;
 
-  const totals = await this.subRepo
-    .createQueryBuilder('s')
-    .innerJoin('s.incomeType', 't')
-    .innerJoin('s.incomes', 'i')
+  const totals = await this.incRepo
+    .createQueryBuilder('i')
     .innerJoin('i.fiscalYear', 'fy')
+    .innerJoin('i.incomeSubType', 's')
+    .innerJoin('s.incomeType', 't')
     .select('t.id', 'typeId')
     .addSelect('COALESCE(SUM(i.amount), 0)', 'total')
     .where('fy.id = :fiscalYearId', { fiscalYearId })

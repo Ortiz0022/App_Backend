@@ -7,10 +7,11 @@ import { IncomeSubType } from 'src/anualBudget/incomeSubType/entities/income-sub
 import { IncomeTypeController } from './income-type.controller';
 import { IncomeTypeService } from './income-type.service';
 import { PIncomeType } from '../pIncomeType/entities/pincome-type.entity';
+import { Income } from '../income/entities/income.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([IncomeType, IncomeSubType, PIncomeType]),
+    TypeOrmModule.forFeature([IncomeType, IncomeSubType, PIncomeType, Income]),
   ],
   controllers: [IncomeTypeController],
   providers: [IncomeTypeService],

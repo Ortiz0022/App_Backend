@@ -15,9 +15,15 @@ export class IncomeSubTypeController {
 
   // GET /income-sub-type?incomeTypeId=5
   @Get()
-  list(@Query('incomeTypeId') incomeTypeId?: string) {
-    return this.svc.findAll(incomeTypeId ? Number(incomeTypeId) : undefined);
-  }
+    list(
+      @Query('incomeTypeId') incomeTypeId?: string,
+      @Query('fiscalYearId') fiscalYearId?: string,
+    ) {
+      return this.svc.findAll(
+        incomeTypeId ? Number(incomeTypeId) : undefined,
+        fiscalYearId ? Number(fiscalYearId) : undefined,
+      );
+    }
 
   @Get(':id')
   get(@Param('id', ParseIntPipe) id: number) {
