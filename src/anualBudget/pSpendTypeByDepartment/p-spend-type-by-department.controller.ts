@@ -7,13 +7,37 @@ import { UpdatePSpendTypeByDepartmentDto } from './dto/update.dto';
 export class PSpendTypeByDepartmentController {
   constructor(private readonly svc: PSpendTypeByDepartmentService) {}
 
-  @Post() create(@Body() dto: CreatePSpendTypeByDepartmentDto) { return this.svc.create(dto); }
-  @Get() list(@Query('departmentId') departmentId?: number) {
-    return this.svc.findAll(departmentId ? Number(departmentId) : undefined);
+  @Post()
+  create(@Body() dto: CreatePSpendTypeByDepartmentDto) {
+    return this.svc.create(dto);
   }
-  @Get(':id') one(@Param('id', ParseIntPipe) id: number) { return this.svc.findOne(id); }
-  @Patch(':id') update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePSpendTypeByDepartmentDto) {
+
+  @Get()
+  list(
+    @Query('departmentId') departmentId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      departmentId ? Number(departmentId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
+  }
+
+  @Get(':id')
+  one(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePSpendTypeByDepartmentDto,
+  ) {
     return this.svc.update(id, dto);
   }
-  @Delete(':id') remove(@Param('id', ParseIntPipe) id: number) { return this.svc.remove(id); }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.remove(id);
+  }
 }

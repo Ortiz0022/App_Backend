@@ -4,12 +4,13 @@ import { Repository } from 'typeorm';
 
 import { PSpend } from './entities/p-spend.entity';
 import { PSpendSubType } from '../pSpendSubType/entities/p-spend-sub-type.entity';
-import { FiscalState, FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 
 import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
+import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 
 function toNumberAmount(v: any): number {
   // Ej.: "₡10 125,00" | "10,125.50" | "10125.50" -> 10125.5
@@ -22,8 +23,8 @@ export class PSpendService {
   constructor(
     @InjectRepository(PSpend) private repo: Repository<PSpend>,
     @InjectRepository(PSpendSubType) private subRepo: Repository<PSpendSubType>,
-    @InjectRepository(FiscalYear) private fyRepo: Repository<FiscalYear>,
     private readonly auditBudgetService: AuditBudgetService,
+    private readonly fyService: FiscalYearService,
   ) {}
 
   async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
@@ -31,11 +32,8 @@ export class PSpendService {
   const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
   if (!subType) throw new NotFoundException('SubType no existe');
 
-  let fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
-  if (!fy) {
-    fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
-  }
-  if (!fy) throw new NotFoundException('No hay un FiscalYear válido (OPEN o reciente)');
+ const fy = await this.fyService.getActiveOrCurrent();
+if (!fy) throw new NotFoundException('No hay un FiscalYear válido');
 
   const amount = toNumberAmount(dto.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -43,19 +41,19 @@ export class PSpendService {
   }
 
   let date: string;
-  if (dto.date) {
-    const inputDate = new Date(dto.date);
-    const fyStart = new Date(fy.start_date);
-    const fyEnd = new Date(fy.end_date);
+ if (dto.date) {
+  const inputDate = new Date(dto.date);
+  const fyStart = new Date(fy.start_date);
+  const fyEnd = new Date(fy.end_date);
 
-    if (inputDate >= fyStart && inputDate <= fyEnd) {
-      date = dto.date;
-    } else {
-      date = new Date().toISOString().split('T')[0];
-    }
-  } else {
-    date = new Date().toISOString().split('T')[0];
+  if (!(inputDate >= fyStart && inputDate <= fyEnd)) {
+    throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
   }
+
+  date = dto.date;
+} else {
+  date = new Date().toISOString().split('T')[0];
+}
 
   const row = this.repo.create({
     amount,
@@ -87,19 +85,12 @@ export class PSpendService {
       // relaciones ya vienen eager desde las entidades
     });
 
-    // Inyectar amountPSpend en el type para mantener el shape esperado
-    for (const it of items) {
-      const type = (it as any)?.subType?.type as any;
-      if (type) type.amountPSpend = Number(it.amount).toFixed(2);
-    }
     return items;
   }
 
   async findOne(id: number) {
     const item = await this.repo.findOne({ where: { id } });
     if (!item) throw new NotFoundException();
-    const type = (item as any)?.subType?.type as any;
-    if (type) type.amountPSpend = Number(item.amount).toFixed(2);
     return item;
   }
 
@@ -127,8 +118,16 @@ export class PSpendService {
   }
 
   if (dto.date !== undefined) {
-    item.date = new Date(dto.date);
+  const nextDate = new Date(dto.date);
+  const fyStart = new Date(item.fiscalYear.start_date);
+  const fyEnd = new Date(item.fiscalYear.end_date);
+
+  if (!(nextDate >= fyStart && nextDate <= fyEnd)) {
+    throw new BadRequestException('La fecha no pertenece al año fiscal del registro');
   }
+
+  item.date = nextDate;
+}
 
   const saved = await this.repo.save(item);
   const savedFull = await this.findOne(saved.id);
