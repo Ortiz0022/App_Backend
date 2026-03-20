@@ -32,12 +32,13 @@ export class SpendService {
   await this.fyService.assertOpenByDate(dto.date);
   const s = await this.getSubType(dto.spendSubTypeId);
   const fy = await this.fyService.resolveByDateOrActive(dto.date);
+  if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
 
   const entity = this.repo.create({
     spendSubType: { id: s.id } as any,
     amount: dto.amount,
     date: dto.date,
-    fiscalYear: fy ?? undefined,
+    fiscalYear: fy,
   });
 
   const saved = await this.repo.save(entity);
@@ -55,14 +56,23 @@ export class SpendService {
   return saved;
 }
 
-  findAll(spendSubTypeId?: number) {
-    const where = spendSubTypeId ? { spendSubType: { id: spendSubTypeId } } : {};
-    return this.repo.find({
-      where: where as any,
-      relations: ['spendSubType'],
-      order: { date: 'DESC', id: 'DESC' },
-    });
+ async findAll(spendSubTypeId?: number, fiscalYearId?: number) {
+  const where: any = {};
+
+  if (spendSubTypeId) {
+    where.spendSubType = { id: spendSubTypeId };
   }
+
+  if (fiscalYearId) {
+    where.fiscalYear = { id: fiscalYearId };
+  }
+
+  return this.repo.find({
+    where,
+    relations: ['spendSubType', 'spendSubType.spendType', 'fiscalYear'],
+    order: { date: 'DESC', id: 'DESC' },
+  });
+}
 
   async findOne(id: number) {
     const row = await this.repo.findOne({
@@ -96,7 +106,10 @@ export class SpendService {
   if (dto.amount !== undefined) row.amount = dto.amount;
   if (dto.date !== undefined) row.date = dto.date;
 
-  row.fiscalYear = (await this.fyService.resolveByDateOrActive(row.date)) ?? undefined;
+  const fy = await this.fyService.resolveByDateOrActive(row.date);
+  if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+
+  row.fiscalYear = fy;
 
   const saved = await this.repo.save(row);
 

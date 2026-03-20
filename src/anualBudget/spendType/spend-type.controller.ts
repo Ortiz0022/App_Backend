@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { SpendTypeService } from './spend-type.service';
 import { CreateSpendTypeDto } from './dto/createSpendTypeDto';
 import { UpdateSpendTypeDto } from './dto/updateSpendTypeDto';
@@ -19,8 +19,14 @@ export class SpendTypeController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  list(
+    @Query('departmentId') departmentId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.service.findAll(
+      departmentId ? Number(departmentId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')

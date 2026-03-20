@@ -23,8 +23,14 @@ export class SpendController {
   }
 
   @Get()
-  list(@Query('spendSubTypeId') spendSubTypeId?: number) {
-    return this.svc.findAll(spendSubTypeId ? Number(spendSubTypeId) : undefined);
+  list(
+    @Query('spendSubTypeId') spendSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      spendSubTypeId ? Number(spendSubTypeId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')

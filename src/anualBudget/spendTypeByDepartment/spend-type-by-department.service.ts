@@ -26,15 +26,16 @@ export class SpendTypeByDepartmentService {
 
     // Sumatoria por Department usando spend -> spendSubType -> spendType -> department
     const rows = await this.spendRepo
-      .createQueryBuilder('sp')
-      .innerJoin('sp.spendSubType', 'sst')
-      .innerJoin('sst.spendType', 'st')
-      .innerJoin('st.department', 'd')
-      .where('sp.date >= :start AND sp.date <= :end', { start: fy.start_date, end: fy.end_date })
-      .select('d.id', 'departmentId')
-      .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
-      .groupBy('d.id')
-      .getRawMany<{ departmentId: number; total: string }>();
+    .createQueryBuilder('sp')
+    .innerJoin('sp.fiscalYear', 'fy')
+    .innerJoin('sp.spendSubType', 'sst')
+    .innerJoin('sst.spendType', 'st')
+    .innerJoin('st.department', 'd')
+    .where('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('d.id', 'departmentId')
+    .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
+    .groupBy('d.id')
+    .getRawMany<{ departmentId: number; total: string }>();
 
     // Upsert de departamentos con movimientos
     for (const r of rows) {

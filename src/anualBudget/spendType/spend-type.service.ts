@@ -13,7 +13,7 @@ export class SpendTypeService {
   constructor(
     @InjectRepository(SpendType)    private readonly repo: Repository<SpendType>,
     @InjectRepository(SpendSubType) private readonly subRepo: Repository<SpendSubType>,
-    @InjectRepository(Spend)        private readonly _spendRepo: Repository<Spend>,
+    @InjectRepository(Spend)        private readonly spendRepo: Repository<Spend>,
     @InjectRepository(PSpendType)   private readonly pTypeRepo: Repository<PSpendType>,
   ) {}
 
@@ -55,15 +55,60 @@ export class SpendTypeService {
     return this.repo.save(entity);
   }
 
-  findAll() {
-    return this.repo.find({ relations: ['department'], order: { name: 'ASC' } });
+  async findAll(departmentId?: number, fiscalYearId?: number) {
+  const where = departmentId ? { department: { id: departmentId } } : {};
+
+  const rows = await this.repo.find({
+    where: where as any,
+    relations: ['department'],
+    order: { name: 'ASC' },
+  });
+
+  if (!fiscalYearId) return rows;
+
+  const totals = await this.spendRepo
+    .createQueryBuilder('sp')
+    .innerJoin('sp.fiscalYear', 'fy')
+    .innerJoin('sp.spendSubType', 's')
+    .innerJoin('s.spendType', 't')
+    .select('t.id', 'typeId')
+    .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
+    .where('fy.id = :fiscalYearId', { fiscalYearId })
+    .groupBy('t.id')
+    .getRawMany<{ typeId: string; total: string }>();
+
+  const totalsMap = new Map<number, string>();
+  for (const row of totals) {
+    totalsMap.set(Number(row.typeId), Number(row.total ?? 0).toFixed(2));
   }
 
-  async findOne(id: number) {
-    const row = await this.repo.findOne({ where: { id }, relations: ['department'] });
-    if (!row) throw new NotFoundException('SpendType not found');
-    return row;
-  }
+  return rows.map((row) => ({
+    ...row,
+    amountSpend: totalsMap.get(row.id) ?? '0.00',
+  }));
+}
+
+  async findOne(id: number, fiscalYearId?: number) {
+  const row = await this.repo.findOne({ where: { id }, relations: ['department'] });
+  if (!row) throw new NotFoundException('SpendType not found');
+
+  if (!fiscalYearId) return row;
+
+  const totalRaw = await this.spendRepo
+    .createQueryBuilder('sp')
+    .innerJoin('sp.fiscalYear', 'fy')
+    .innerJoin('sp.spendSubType', 's')
+    .innerJoin('s.spendType', 't')
+    .where('t.id = :id', { id })
+    .andWhere('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('COALESCE(SUM(sp.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  return {
+    ...row,
+    amountSpend: Number(totalRaw?.total ?? 0).toFixed(2),
+  };
+}
 
   async update(id: number, dto: UpdateSpendTypeDto) {
     const row = await this.findOne(id);

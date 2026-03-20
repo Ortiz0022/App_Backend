@@ -81,16 +81,58 @@ export class SpendSubTypeService {
     return this.repo.save(entity);
   }
 
-  findAll(spendTypeId?: number) {
-    const where = spendTypeId ? { spendType: { id: spendTypeId } } : {};
-    return this.repo.find({ where: where as any, relations: ['spendType'], order: { id: 'DESC' } });
+  async findAll(spendTypeId?: number, fiscalYearId?: number) {
+  const where = spendTypeId ? { spendType: { id: spendTypeId } } : {};
+
+  const rows = await this.repo.find({
+    where: where as any,
+    relations: ['spendType'],
+    order: { id: 'DESC' },
+  });
+
+  if (!fiscalYearId) return rows;
+
+  const totals = await this.spendRepo
+    .createQueryBuilder('sp')
+    .innerJoin('sp.fiscalYear', 'fy')
+    .innerJoin('sp.spendSubType', 's')
+    .select('s.id', 'subTypeId')
+    .addSelect('COALESCE(SUM(sp.amount), 0)', 'total')
+    .where('fy.id = :fiscalYearId', { fiscalYearId })
+    .groupBy('s.id')
+    .getRawMany<{ subTypeId: string; total: string }>();
+
+  const totalsMap = new Map<number, string>();
+  for (const row of totals) {
+    totalsMap.set(Number(row.subTypeId), Number(row.total ?? 0).toFixed(2));
   }
 
-  async findOne(id: number) {
-    const row = await this.repo.findOne({ where: { id }, relations: ['spendType'] });
-    if (!row) throw new NotFoundException('SpendSubType not found');
-    return row;
-  }
+  return rows.map((row) => ({
+    ...row,
+    amountSubSpend: totalsMap.get(row.id) ?? '0.00',
+  }));
+}
+
+  async findOne(id: number, fiscalYearId?: number) {
+  const row = await this.repo.findOne({ where: { id }, relations: ['spendType'] });
+  if (!row) throw new NotFoundException('SpendSubType not found');
+
+  if (!fiscalYearId) return row;
+
+  const totalRaw = await this.spendRepo
+    .createQueryBuilder('sp')
+    .innerJoin('sp.fiscalYear', 'fy')
+    .innerJoin('sp.spendSubType', 's')
+    .where('s.id = :id', { id })
+    .andWhere('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('COALESCE(SUM(sp.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  return {
+    ...row,
+    amountSubSpend: Number(totalRaw?.total ?? 0).toFixed(2),
+  };
+}
 
   async update(id: number, dto: UpdateSpendSubTypeDto) {
     const row = await this.findOne(id);
