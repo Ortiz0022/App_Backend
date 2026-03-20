@@ -10,6 +10,7 @@ import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 import { SpendSubTypeService } from '../spendSubType/spend-sub-type.service'; // NUEVO
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
+import { FiscalState } from '../fiscalYear/entities/fiscal-year.entity';
 
 @Injectable()
 export class SpendService {
@@ -28,16 +29,34 @@ export class SpendService {
     return s;
   }
 
-  async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
-  await this.fyService.assertOpenByDate(dto.date);
+async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
   const s = await this.getSubType(dto.spendSubTypeId);
-  const fy = await this.fyService.resolveByDateOrActive(dto.date);
+
+  const fy = dto.fiscalYearId
+    ? await this.fyService.findByIdSafe(dto.fiscalYearId)
+    : await this.fyService.resolveByDateOrActive(dto.date);
+
+  if (!fy) throw new BadRequestException('FiscalYear not found');
+
+  if (fy.state === FiscalState.CLOSED) {
+    throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+  }
+
+  if (dto.fiscalYearId && dto.date) {
+    const inputDate = new Date(dto.date);
+    const fyStart = new Date(fy.start_date);
+    const fyEnd = new Date(fy.end_date);
+
+    if (inputDate < fyStart || inputDate > fyEnd) {
+      throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
+    }
+  }
 
   const entity = this.repo.create({
     spendSubType: { id: s.id } as any,
     amount: dto.amount,
     date: dto.date,
-    fiscalYear: fy ?? undefined,
+    fiscalYear: fy,
   });
 
   const saved = await this.repo.save(entity);

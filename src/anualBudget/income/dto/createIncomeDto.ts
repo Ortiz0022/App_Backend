@@ -11,4 +11,8 @@ export class CreateIncomeDto {
   @IsDateString()
   @IsOptional()
   date: string;
+
+  @IsOptional()
+  @IsInt()
+  fiscalYearId?: number;
 }

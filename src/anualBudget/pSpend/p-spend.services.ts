@@ -31,11 +31,22 @@ export class PSpendService {
   const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
   if (!subType) throw new NotFoundException('SubType no existe');
 
-  let fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
+let fy: FiscalYear | null = null;
+
+if (dto.fiscalYearId) {
+  fy = await this.fyRepo.findOne({ where: { id: dto.fiscalYearId } });
+} else {
+  fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
   if (!fy) {
     fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
   }
-  if (!fy) throw new NotFoundException('No hay un FiscalYear válido (OPEN o reciente)');
+}
+
+if (!fy) throw new NotFoundException('No hay un FiscalYear válido');
+
+if (fy.state === FiscalState.CLOSED) {
+  throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+}
 
   const amount = toNumberAmount(dto.amount);
   if (!Number.isFinite(amount) || amount <= 0) {

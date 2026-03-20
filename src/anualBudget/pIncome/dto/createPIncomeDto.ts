@@ -1,8 +1,14 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreatePIncomeDto {
-  @IsInt() pIncomeSubTypeId: number;
-  @IsNotEmpty() 
+  @IsInt()
+  pIncomeSubTypeId: number;
+
+  @IsNotEmpty()
   @IsString()
-  amount: string; 
+  amount: string;
+
+  @IsOptional()
+  @IsInt()
+  fiscalYearId?: number;
 }

@@ -8,6 +8,7 @@ import { PIncomeTypeService } from '../pIncomeType/pincome-type.service';   // <
 import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
+import { FiscalState } from '../fiscalYear/entities/fiscal-year.entity';
 
 @Injectable()
 export class PIncomeService {
@@ -27,14 +28,26 @@ export class PIncomeService {
     return s;
   }
 
-  async create(dto: { pIncomeSubTypeId: number; amount: string }, currentUser: CurrentUserData) {
+async create(
+  dto: { pIncomeSubTypeId: number; amount: string; fiscalYearId?: number },
+  currentUser: CurrentUserData,
+) {
   const s = await this.getSubType(dto.pIncomeSubTypeId);
-  const fy = await this.fyService.getActiveOrCurrent();
+
+  const fy = dto.fiscalYearId
+    ? await this.fyService.findByIdSafe(dto.fiscalYearId)
+    : await this.fyService.getActiveOrCurrent();
+
+  if (!fy) throw new BadRequestException('FiscalYear not found');
+
+  if (fy.state === FiscalState.CLOSED) {
+    throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+  }
 
   const entity = this.repo.create({
     pIncomeSubType: { id: s.id } as any,
     amount: dto.amount,
-    fiscalYear: fy ?? undefined,
+    fiscalYear: fy,
   });
 
   const saved = await this.repo.save(entity);
