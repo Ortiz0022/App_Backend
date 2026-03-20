@@ -19,9 +19,15 @@ export class PIncomeSubTypeController {
     return this.svc.create(dto);
   }
 
-  @Get()
-  list(@Query('pIncomeTypeId') pIncomeTypeId?: number) {
-    return this.svc.findAll(pIncomeTypeId ? Number(pIncomeTypeId) : undefined);
+ @Get()
+  list(
+    @Query('pIncomeTypeId') pIncomeTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      pIncomeTypeId ? Number(pIncomeTypeId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')

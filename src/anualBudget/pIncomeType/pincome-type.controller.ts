@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { PIncomeTypeService } from './pincome-type.service';
 import { CreatePIncomeTypeDto } from './dto/createPIncomeTypeDto';
 import { UpdatePIncomeTypeDto } from './dto/updatePIncomeTypeDto';
@@ -19,8 +19,14 @@ export class PIncomeTypeController {
   }
 
   @Get()
-  list() {
-    return this.svc.findAll();
+  list(
+    @Query('departmentId') departmentId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      departmentId ? Number(departmentId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')

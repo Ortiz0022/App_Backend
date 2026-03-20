@@ -1,4 +1,3 @@
-// src/anualBudget/incomeSubType/income-sub-type.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,12 +6,14 @@ import { CreatePIncomeSubTypeDto } from './dto/createPIncomeSubTypeDto';
 import { UpdatePIncomeSubTypeDto } from './dto/updatePIncomeSubTypeDto';
 import { PIncomeSubType } from './entities/pincome-sub-type.entity';
 import { PIncomeType } from '../pIncomeType/entities/pincome-type.entity';
+import { PIncome } from '../pIncome/entities/pIncome.entity';
 
 @Injectable()
 export class PIncomeSubTypeService {
   constructor(
     @InjectRepository(PIncomeSubType) private readonly repo: Repository<PIncomeSubType>,
     @InjectRepository(PIncomeType) private readonly typeRepo: Repository<PIncomeType>,
+    @InjectRepository(PIncome) private readonly pIncRepo: Repository<PIncome>,
     private readonly typeService: PIncomeTypeService,
   ) {}
 
@@ -60,16 +61,58 @@ export class PIncomeSubTypeService {
     return this.repo.save(entity);
   }
 
-  findAll(pIncomeTypeId?: number) {
+  async findAll(pIncomeTypeId?: number, fiscalYearId?: number) {
     const where = pIncomeTypeId ? { pIncomeType: { id: pIncomeTypeId } } : {};
-    return this.repo.find({ where: where as any, relations: ['pIncomeType'], order: { id: 'DESC' } });
+
+    const rows = await this.repo.find({
+      where: where as any,
+      relations: ['pIncomeType'],
+      order: { id: 'DESC' },
+    });
+
+    if (!fiscalYearId) return rows;
+
+    const totals = await this.pIncRepo
+      .createQueryBuilder('i')
+      .innerJoin('i.fiscalYear', 'fy')
+      .innerJoin('i.pIncomeSubType', 's')
+      .select('s.id', 'subTypeId')
+      .addSelect('COALESCE(SUM(i.amount), 0)', 'total')
+      .where('fy.id = :fiscalYearId', { fiscalYearId })
+      .groupBy('s.id')
+      .getRawMany<{ subTypeId: string; total: string }>();
+
+    const totalsMap = new Map<number, string>();
+    for (const row of totals) {
+      totalsMap.set(Number(row.subTypeId), Number(row.total ?? 0).toFixed(2));
+    }
+
+    return rows.map((row: any) => ({
+      ...row,
+      amountSubPIncome: totalsMap.get(row.id) ?? '0.00',
+    }));
   }
 
-  async findOne(id: number) {
-    const row = await this.repo.findOne({ where: { id }, relations: ['pIncomeType'] });
-    if (!row) throw new NotFoundException('PIncomeSubType not found');
-    return row;
-  }
+  async findOne(id: number, fiscalYearId?: number) {
+  const row = await this.repo.findOne({ where: { id }, relations: ['pIncomeType'] });
+  if (!row) throw new NotFoundException('PIncomeSubType not found');
+
+  if (!fiscalYearId) return row;
+
+  const totalRaw = await this.pIncRepo
+    .createQueryBuilder('i')
+    .innerJoin('i.fiscalYear', 'fy')
+    .innerJoin('i.pIncomeSubType', 's')
+    .where('s.id = :id', { id })
+    .andWhere('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('COALESCE(SUM(i.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  return {
+    ...row,
+    amountSubPIncome: Number(totalRaw?.total ?? 0).toFixed(2),
+  };
+}
 
   async update(id: number, dto: UpdatePIncomeSubTypeDto) {
     const row = await this.findOne(id);

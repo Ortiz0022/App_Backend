@@ -1,4 +1,3 @@
-// src/anualBudget/incomeType/income-type.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -56,15 +55,60 @@ export class PIncomeTypeService {
     return this.typeRepo.save(entity);
   }
 
-  findAll() {
-    return this.typeRepo.find({ relations: ['department'], order: { name: 'ASC' } });
+  async findAll(departmentId?: number, fiscalYearId?: number) {
+  const where = departmentId ? { department: { id: departmentId } } : {};
+
+  const rows = await this.typeRepo.find({
+    where: where as any,
+    relations: ['department'],
+    order: { name: 'ASC' },
+  });
+
+  if (!fiscalYearId) return rows;
+
+  const totals = await this.pIncRepo
+    .createQueryBuilder('i')
+    .innerJoin('i.fiscalYear', 'fy')
+    .innerJoin('i.pIncomeSubType', 's')
+    .innerJoin('s.pIncomeType', 't')
+    .select('t.id', 'typeId')
+    .addSelect('COALESCE(SUM(i.amount), 0)', 'total')
+    .where('fy.id = :fiscalYearId', { fiscalYearId })
+    .groupBy('t.id')
+    .getRawMany<{ typeId: string; total: string }>();
+
+  const totalsMap = new Map<number, string>();
+  for (const row of totals) {
+    totalsMap.set(Number(row.typeId), Number(row.total ?? 0).toFixed(2));
   }
 
-  async findOne(id: number) {
-    const row = await this.typeRepo.findOne({ where: { id }, relations: ['department'] });
-    if (!row) throw new NotFoundException('PIncomeType not found');
-    return row;
-  }
+  return rows.map((row) => ({
+    ...row,
+    amountPIncome: totalsMap.get(row.id) ?? '0.00',
+  }));
+}
+
+  async findOne(id: number, fiscalYearId?: number) {
+  const row = await this.typeRepo.findOne({ where: { id }, relations: ['department'] });
+  if (!row) throw new NotFoundException('PIncomeType not found');
+
+  if (!fiscalYearId) return row;
+
+  const totalRaw = await this.pIncRepo
+    .createQueryBuilder('i')
+    .innerJoin('i.fiscalYear', 'fy')
+    .innerJoin('i.pIncomeSubType', 's')
+    .innerJoin('s.pIncomeType', 't')
+    .where('t.id = :id', { id })
+    .andWhere('fy.id = :fiscalYearId', { fiscalYearId })
+    .select('COALESCE(SUM(i.amount), 0)', 'total')
+    .getRawOne<{ total: string }>();
+
+  return {
+    ...row,
+    amountPIncome: Number(totalRaw?.total ?? 0).toFixed(2),
+  };
+}
 
   async update(id: number, dto: UpdatePIncomeTypeDto) {
     const row = await this.findOne(id);

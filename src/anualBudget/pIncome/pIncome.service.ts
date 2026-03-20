@@ -1,4 +1,3 @@
-// ✅ IMPORTS: cambia IncomeTypeService -> PIncomeTypeService
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -30,11 +29,12 @@ export class PIncomeService {
   async create(dto: { pIncomeSubTypeId: number; amount: string }, currentUser: CurrentUserData) {
   const s = await this.getSubType(dto.pIncomeSubTypeId);
   const fy = await this.fyService.getActiveOrCurrent();
+  if (!fy) throw new BadRequestException('No hay año fiscal activo o disponible');
 
   const entity = this.repo.create({
     pIncomeSubType: { id: s.id } as any,
     amount: dto.amount,
-    fiscalYear: fy ?? undefined,
+    fiscalYear: fy,
   });
 
   const saved = await this.repo.save(entity);
@@ -60,20 +60,27 @@ export class PIncomeService {
   return row;
 }
 
-  findAll(pIncomeSubTypeId?: number) {
-    const where = pIncomeSubTypeId
-      ? { pIncomeSubType: { id: pIncomeSubTypeId } }
-      : {};
+async findAll(pIncomeSubTypeId?: number, fiscalYearId?: number) {
+  const where: any = {};
 
-    return this.repo.find({
-      where: where as any, // si TS molesta con tipos, deja este 'as any'
-      relations: [
-        'pIncomeSubType',
-        'pIncomeSubType.pIncomeType', // relación anidada correcta
-      ],
-      order: { id: 'DESC' },
-    });
+  if (pIncomeSubTypeId) {
+    where.pIncomeSubType = { id: pIncomeSubTypeId };
   }
+
+  if (fiscalYearId) {
+    where.fiscalYear = { id: fiscalYearId };
+  }
+
+  return this.repo.find({
+    where,
+    relations: [
+      'pIncomeSubType',
+      'pIncomeSubType.pIncomeType',
+      'fiscalYear',
+    ],
+    order: { id: 'DESC' },
+  });
+}
 
 async update(
   id: number,
@@ -98,9 +105,10 @@ async update(
   if (dto.amount !== undefined) row.amount = dto.amount;
 
   if (!row.fiscalYear) {
-    const fy = await this.fyService.getActiveOrCurrent();
-    row.fiscalYear = fy ?? undefined;
-  }
+  const fy = await this.fyService.getActiveOrCurrent();
+  if (!fy) throw new BadRequestException('No hay año fiscal activo o disponible');
+  row.fiscalYear = fy;
+}
 
   const saved = await this.repo.save(row);
 

@@ -1,4 +1,3 @@
-// src/anualBudget/incomeTypeByDeparment/income-type-by-department.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,15 +23,16 @@ constructor(
   if (!fy) throw new NotFoundException('FiscalYear not found');
 
   const rows = await this.incRepo
-    .createQueryBuilder('i')
-    .innerJoin('i.pIncomeSubType', 's')
-    .innerJoin('s.pIncomeType', 't')
-    .innerJoin('t.department', 'd')
-    .where('i.date >= :start AND i.date <= :end', { start: fy.start_date, end: fy.end_date })
-    .select('d.id', 'departmentId')
-    .addSelect('COALESCE(SUM(i.amount),0)', 'total')
-    .groupBy('d.id')
-    .getRawMany<{ departmentId: number; total: string }>();
+  .createQueryBuilder('i')
+  .innerJoin('i.fiscalYear', 'fy')
+  .innerJoin('i.pIncomeSubType', 's')
+  .innerJoin('s.pIncomeType', 't')
+  .innerJoin('t.department', 'd')
+  .where('fy.id = :fiscalYearId', { fiscalYearId })
+  .select('d.id', 'departmentId')
+  .addSelect('COALESCE(SUM(i.amount),0)', 'total')
+  .groupBy('d.id')
+  .getRawMany<{ departmentId: number; total: string }>();
 
   // Upsert de departamentos con movimientos
   for (const r of rows) {
@@ -52,7 +52,7 @@ constructor(
       });
     }
 
-    snap.amountDepPIncome = r.total ?? '0';
+    snap.amountDepPIncome = Number(r.total ?? 0).toFixed(2);
     await this.repo.save(snap);
   }
 

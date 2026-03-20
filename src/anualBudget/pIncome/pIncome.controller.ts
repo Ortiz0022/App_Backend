@@ -23,8 +23,14 @@ export class PIncomeController {
   }
 
   @Get()
-  list(@Query('pIncomeSubTypeId') pIncomeSubTypeId?: number) {
-    return this.svc.findAll(pIncomeSubTypeId ? Number(pIncomeSubTypeId) : undefined);
+  list(
+    @Query('pIncomeSubTypeId') pIncomeSubTypeId?: string,
+    @Query('fiscalYearId') fiscalYearId?: string,
+  ) {
+    return this.svc.findAll(
+      pIncomeSubTypeId ? Number(pIncomeSubTypeId) : undefined,
+      fiscalYearId ? Number(fiscalYearId) : undefined,
+    );
   }
 
   @Get(':id')
