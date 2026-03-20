@@ -10,6 +10,7 @@ import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 import { IncomeSubTypeService } from '../incomeSubType/income-sub-type.service';
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
+import { FiscalState } from '../fiscalYear/entities/fiscal-year.entity';
 
 @Injectable()
 export class IncomeService {
@@ -28,34 +29,49 @@ export class IncomeService {
     return s;
   }
 
-  async create(dto: CreateIncomeDto, currentUser: CurrentUserData) {
-    await this.fyService.assertOpenByDate(dto.date);
-    const s = await this.getSubType(dto.incomeSubTypeId);
-    
-    const fy = await this.fyService.resolveByDateOrActive(dto.date);
+async create(dto: CreateIncomeDto, currentUser: CurrentUserData) {
+  const s = await this.getSubType(dto.incomeSubTypeId);
 
-      if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
+  const fy = dto.fiscalYearId
+    ? await this.fyService.findByIdSafe(dto.fiscalYearId)
+    : await this.fyService.resolveByDateOrActive(dto.date);
 
-      const entity = this.repo.create({
-        incomeSubType: { id: s.id } as any,
-        amount: dto.amount,
-        date: dto.date,
-        fiscalYear: fy,
-      });
+  if (!fy) throw new BadRequestException('FiscalYear not found');
 
-    const saved = await this.repo.save(entity);
-
-    await this.subTypeService.recalcAmount(s.id);
-    await this.typeService.recalcAmount(s.incomeType.id);
-
-    await this.auditBudgetService.logIncomeCreate({
-      actorUserId: currentUser.id,
-      income: saved,
-      relatedExtraordinaryId: null,
-    });
-
-    return saved;
+  if (fy.state === FiscalState.CLOSED) {
+    throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
   }
+
+  if (dto.fiscalYearId && dto.date) {
+    const inputDate = new Date(dto.date);
+    const fyStart = new Date(fy.start_date);
+    const fyEnd = new Date(fy.end_date);
+
+    if (inputDate < fyStart || inputDate > fyEnd) {
+      throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
+    }
+  }
+
+  const entity = this.repo.create({
+    incomeSubType: { id: s.id } as any,
+    amount: dto.amount,
+    date: dto.date,
+    fiscalYear: fy,
+  });
+
+  const saved = await this.repo.save(entity);
+
+  await this.subTypeService.recalcAmount(s.id);
+  await this.typeService.recalcAmount(s.incomeType.id);
+
+  await this.auditBudgetService.logIncomeCreate({
+    actorUserId: currentUser.id,
+    income: saved,
+    relatedExtraordinaryId: null,
+  });
+
+  return saved;
+}
 
   async findAll(incomeSubTypeId?: number, fiscalYearId?: number) {
   const where: any = {};

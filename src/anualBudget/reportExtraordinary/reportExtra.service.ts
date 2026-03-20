@@ -242,71 +242,68 @@ export class ReportExtraService {
     });
   }
 
-private addWatermark(doc: PDFDoc) {
-  try {
+  private addHeader(doc: PDFDoc) {
+    doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
+    doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
+
     const logoBuffer = LogoHelper.getLogoSync();
-    if (!logoBuffer || logoBuffer.length === 0) return;
 
-    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
-    const img: any = (doc as any).openImage?.(logoBuffer);
-    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
+    const left = 50;
+    const right = doc.page.width - 50;
 
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
+    const topY = 32;
+    const logoW = 54;
+    const logoH = 34;
+    const gap = 12;
 
-    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
-    const maxW = pageW * 0.55;
-    const maxH = pageH * 0.55;
+    let textX = left;
 
-    const scale = Math.min(maxW / img.width, maxH / img.height);
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
+    if (logoBuffer?.length) {
+      try {
+        doc.image(logoBuffer, left, topY + 2, {
+          fit: [logoW, logoH],
+          valign: 'center',
+        });
+        textX = left + logoW + gap;
+      } catch (error) {
+        console.error('Error dibujando logo en header:', error);
+      }
+    }
 
-    // 3) Coordenadas exactamente centradas
-    const x = (pageW - drawW) / 2;
-    const y = (pageH - drawH) / 2 + 90;
+    doc.font('NotoSansBold');
+    doc.fontSize(16);
+    doc.fillColor(this.UI.ink);
+    doc.text('Reportes - Extraordinarios', textX, topY, {
+      align: 'left',
+      width: right - textX,
+    });
 
-    doc.save();
-    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
-    doc.image(img, x, y, { width: drawW });
-    doc.restore();
-  } catch {
-    // ignorar
+    doc.font('NotoSans');
+    doc.fontSize(9);
+    doc.fillColor(this.UI.gray);
+    doc.text(
+      `Generado: ${new Date().toLocaleDateString('es-CR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })} ${new Date().toLocaleTimeString('es-CR')}`,
+      textX,
+      topY + 22,
+      {
+        align: 'left',
+        width: right - textX,
+      },
+    );
+
+    const lineY = topY + 44;
+    doc.moveTo(left, lineY);
+    doc.lineTo(right, lineY);
+    doc.strokeColor(this.UI.line);
+    doc.lineWidth(1);
+    doc.stroke();
+
+    doc.y = lineY + 14;
   }
-}
-
-  // ================== MÉTODOS PRIVADOS PARA PDF (solo estilo visual) ==================
-private addHeader(doc: PDFDoc) {
-  doc.registerFont('NotoSans', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Regular.ttf');
-  doc.registerFont('NotoSansBold', __dirname + '/../../../src/fonts/Noto_Sans/NotoSans-Bold.ttf');
-
-   // ✅ Agregar marca de agua en cada página
-  this.addWatermark(doc);
-
-  // ✅ TÍTULO (SIN logo, empieza en x=50)
-  doc.font('NotoSansBold');
-  doc.fontSize(16);
-  doc.fillColor(this.UI.ink);
-  doc.text('Reportes - Extraordinarios', 50, 40, { align: 'left' });
-
-  // ✅ FECHA
-  doc.font('NotoSans');
-  doc.fontSize(9);
-  doc.fillColor(this.UI.gray);
-  doc.text(
-    `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
-    50, 58, { align: 'right', width: doc.page.width - 100 }
-  );
-
-  // ✅ LÍNEA
-  doc.moveTo(50, 70);
-  doc.lineTo(doc.page.width - 50, 70);
-  doc.strokeColor(this.UI.line);
-  doc.lineWidth(1);
-  doc.stroke();
-
-  doc.y = 86;
-}
 
   private addFilters(doc: PDFDoc, filters: ExtraFilters) {
     const y = doc.y, W = doc.page.width - 100, H = 84;
@@ -428,128 +425,143 @@ private addSummary(doc: PDFDoc, summary: any) {
 
   
   private addTable(doc: PDFDoc, table: ExtraRow[]) {
-  doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
-  doc.moveDown(0.5);
+    doc.font('NotoSansBold').fontSize(12).fillColor(this.UI.ink).text('Detalle', 50, doc.y);
+    doc.moveDown(0.5);
 
-  const left = 50, right = doc.page.width - 50;
-  const totalW = right - left;
+    const left = 50, right = doc.page.width - 50;
+    const totalW = right - left;
 
-  const cols = [
-    { key: 'name',    title: 'CONCEPTO',  w: Math.floor(totalW * 0.40), align: 'left' as const },
-    { key: 'date',    title: 'FECHA',     w: Math.floor(totalW * 0.15), align: 'left' as const },
-    { key: 'amount',  title: 'MONTO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
-    { key: 'used',    title: 'USADO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
-    { key: 'rem',     title: 'RESTANTE',  w: Math.floor(totalW * 0.15), align: 'right' as const },
-  ];
+    const cols = [
+      { key: 'name',    title: 'CONCEPTO',  w: Math.floor(totalW * 0.40), align: 'left' as const },
+      { key: 'date',    title: 'FECHA',     w: Math.floor(totalW * 0.15), align: 'left' as const },
+      { key: 'amount',  title: 'MONTO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
+      { key: 'used',    title: 'USADO',     w: Math.floor(totalW * 0.15), align: 'right' as const },
+      { key: 'rem',     title: 'RESTANTE',  w: Math.floor(totalW * 0.15), align: 'right' as const },
+    ];
 
-  const x: number[] = [];
-  let currentX = left;
-  cols.forEach((c, idx) => {
-    x.push(currentX);
-    currentX += c.w;
-  });
+    const x: number[] = [];
+    let currentX = left;
+    cols.forEach((c, idx) => {
+      x.push(currentX);
+      currentX += c.w;
+    });
 
-  let y = doc.y + 6;
+    let y = doc.y + 6;
 
-  // Header
-  doc.roundedRect(left, y, totalW, 28, 12)
-     .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-  doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
-  cols.forEach((c, i) =>
-    doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
-  );
-  y += 34;
+    // Header
+    doc.roundedRect(left, y, totalW, 28, 12)
+      .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+    doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
+    cols.forEach((c, i) =>
+      doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
+    );
+    y += 34;
 
-  const bottom = () => doc.page.height - doc.page.margins.bottom;
-  const ensure = (rowH = 22) => {
-    if (y + rowH > bottom()) {
-      doc.addPage();
-      y = doc.page.margins.top;
+    const bottom = () => doc.page.height - doc.page.margins.bottom - 28;
+    const ensure = (rowH = 22) => {
+      if (y + rowH > bottom()) {
+        doc.addPage();
+        y = doc.page.margins.top;
 
-      // Redibujar header en nueva página
-      doc.roundedRect(left, y, totalW, 28, 12)
-         .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
-      doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
-      cols.forEach((c, i) =>
-        doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
-      );
-      y += 34;
+        // Redibujar header en nueva página
+        doc.roundedRect(left, y, totalW, 28, 12)
+          .fillColor('#F9FAFB').strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+        doc.font('NotoSansBold').fontSize(9).fillColor(this.UI.gray);
+        cols.forEach((c, i) =>
+          doc.text(c.title, x[i] + 10, y + 9, { width: c.w - 20, align: c.align })
+        );
+        y += 34;
+      }
+    };
+
+    if (table.length === 0) {
+      ensure(40);
+      doc.font('NotoSans').fontSize(10).fillColor('#EF4444')
+        .text('Sin resultados con los filtros aplicados.', left, y + 6);
+      doc.y = y + 40;
+      return;
     }
-  };
 
-  if (table.length === 0) {
-    ensure(40);
-    doc.font('NotoSans').fontSize(10).fillColor('#EF4444')
-       .text('Sin resultados con los filtros aplicados.', left, y + 6);
-    doc.y = y + 40;
-    return;
+    const paddingY = 6;
+
+    table.forEach((row, idx) => {
+      const name   = row.name ?? '—';
+      const date   = row.date
+        ? new Date(row.date).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })
+        : '—';
+      const amount = row.amount.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+      const used   = row.used.toLocaleString('es-CR',   { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+      const rem    = row.remaining.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
+
+      const vals = { name, date, amount, used, rem };
+
+      // 1) Calcular altura de cada celda
+      doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
+
+      const cellHeights: number[] = [];
+      cols.forEach((c, i) => {
+        const txt = String((vals as any)[c.key]);
+        const h = doc.heightOfString(txt, {
+          width: c.w - 20,
+          align: c.align,
+        });
+        cellHeights[i] = h;
+      });
+
+      const contentHeight = Math.max(...cellHeights, 10);
+      const rowHeight = contentHeight + paddingY * 2;
+
+      // 2) Paginación
+      ensure(rowHeight);
+
+      // 3) Fondo
+      doc.rect(left, y, totalW, rowHeight)
+        .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+        .fill();
+
+      // 4) Texto (permitiendo varias líneas)
+      doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
+      cols.forEach((c, i) => {
+        const txt = String((vals as any)[c.key]);
+        doc.text(txt, x[i] + 10, y + paddingY, {
+          width: c.w - 20,
+          align: c.align,
+        });
+      });
+
+      // 5) Línea inferior
+      y += rowHeight;
+      doc.moveTo(left, y).lineTo(right, y)
+        .strokeColor(this.UI.line).lineWidth(0.5).stroke();
+    });
+
+    doc.y = y + 8;
   }
-
-  const paddingY = 6;
-
-  table.forEach((row, idx) => {
-    const name   = row.name ?? '—';
-    const date   = row.date
-      ? new Date(row.date).toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })
-      : '—';
-    const amount = row.amount.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
-    const used   = row.used.toLocaleString('es-CR',   { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
-    const rem    = row.remaining.toLocaleString('es-CR', { style:'currency', currency:'CRC', minimumFractionDigits: 2 });
-
-    const vals = { name, date, amount, used, rem };
-
-    // 1) Calcular altura de cada celda
-    doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
-
-    const cellHeights: number[] = [];
-    cols.forEach((c, i) => {
-      const txt = String((vals as any)[c.key]);
-      const h = doc.heightOfString(txt, {
-        width: c.w - 20,
-        align: c.align,
-      });
-      cellHeights[i] = h;
-    });
-
-    const contentHeight = Math.max(...cellHeights, 10);
-    const rowHeight = contentHeight + paddingY * 2;
-
-    // 2) Paginación
-    ensure(rowHeight);
-
-    // 3) Fondo
-    doc.rect(left, y, totalW, rowHeight)
-       .fillColor(idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
-       .fill();
-
-    // 4) Texto (permitiendo varias líneas)
-    doc.font('NotoSans').fontSize(9).fillColor(this.UI.ink);
-    cols.forEach((c, i) => {
-      const txt = String((vals as any)[c.key]);
-      doc.text(txt, x[i] + 10, y + paddingY, {
-        width: c.w - 20,
-        align: c.align,
-      });
-    });
-
-    // 5) Línea inferior
-    y += rowHeight;
-    doc.moveTo(left, y).lineTo(right, y)
-       .strokeColor(this.UI.line).lineWidth(0.5).stroke();
-  });
-
-  doc.y = y + 8;
-}
 
 
   private addFooter(doc: PDFDoc) {
-    const y = doc.page.height - 32;
-    doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8)
-       .strokeColor(this.UI.line).lineWidth(1).stroke();
+    const left = 50;
+    const right = doc.page.width - 50;
+    const y = doc.page.height - doc.page.margins.bottom - 14;
 
-    doc.font('NotoSans').fontSize(8).fillColor(this.UI.gray)
-       .text('Sistema de Presupuesto — Reporte de Extraordinario',
-             50, y, { width: doc.page.width - 100, align: 'center' });
+    doc.moveTo(left, y - 8)
+      .lineTo(right, y - 8)
+      .strokeColor(this.UI.line)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font('NotoSans');
+    doc.fontSize(8);
+    doc.fillColor(this.UI.gray);
+    doc.text(
+      'Sistema de Presupuesto — Reporte de Extraordinario',
+      left,
+      y,
+      {
+        width: right - left,
+        align: 'center',
+      },
+    );
   }
 
   

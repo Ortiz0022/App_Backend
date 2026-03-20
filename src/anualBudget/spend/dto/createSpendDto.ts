@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsNotEmpty, IsNumberString } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsNumberString, IsOptional } from 'class-validator';
 
 export class CreateSpendDto {
   @Type(() => Number)
@@ -13,4 +13,9 @@ export class CreateSpendDto {
   @IsNotEmpty()
   @IsDateString()
   date: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  fiscalYearId?: number;
 }

@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ServicesImage } from "./servicesImage.entity";
 
-@Entity()
+@Entity("services_informative")
 export class ServicesInformative {
   @PrimaryGeneratedColumn()
   id: number;
@@ -14,6 +15,9 @@ export class ServicesInformative {
   @Column()
   modalDescription: string;
 
-  @Column({ type: 'json' })
-  images: string[];
+  @OneToMany(
+    () => ServicesImage,
+    (serviceImage: ServicesImage) => serviceImage.serviceInformative
+  )
+  serviceImages: ServicesImage[];
 }

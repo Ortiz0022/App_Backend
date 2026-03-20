@@ -4,13 +4,12 @@ import { Repository } from 'typeorm';
 
 import { PSpend } from './entities/p-spend.entity';
 import { PSpendSubType } from '../pSpendSubType/entities/p-spend-sub-type.entity';
-import { FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
+import { FiscalState, FiscalYear } from '../fiscalYear/entities/fiscal-year.entity';
 
 import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
-import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 
 function toNumberAmount(v: any): number {
   // Ej.: "₡10 125,00" | "10,125.50" | "10125.50" -> 10125.5
@@ -24,7 +23,7 @@ export class PSpendService {
     @InjectRepository(PSpend) private repo: Repository<PSpend>,
     @InjectRepository(PSpendSubType) private subRepo: Repository<PSpendSubType>,
     private readonly auditBudgetService: AuditBudgetService,
-    private readonly fyService: FiscalYearService,
+    @InjectRepository(FiscalYear) private fyRepo: Repository<FiscalYear>,
   ) {}
 
   async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
@@ -32,8 +31,22 @@ export class PSpendService {
   const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
   if (!subType) throw new NotFoundException('SubType no existe');
 
- const fy = await this.fyService.getActiveOrCurrent();
+let fy: FiscalYear | null = null;
+
+if (dto.fiscalYearId) {
+  fy = await this.fyRepo.findOne({ where: { id: dto.fiscalYearId } });
+} else {
+  fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
+  if (!fy) {
+    fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
+  }
+}
+
 if (!fy) throw new NotFoundException('No hay un FiscalYear válido');
+
+if (fy.state === FiscalState.CLOSED) {
+  throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+}
 
   const amount = toNumberAmount(dto.amount);
   if (!Number.isFinite(amount) || amount <= 0) {

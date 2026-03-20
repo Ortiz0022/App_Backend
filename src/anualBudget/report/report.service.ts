@@ -343,69 +343,69 @@ export class ReportService {
     });
   }
 
-private addWatermark(doc: PDFDoc) {
-  try {
-    const logoBuffer = LogoHelper.getLogoSync();
-    if (!logoBuffer || logoBuffer.length === 0) return;
-
-    // 1) Abrir imagen con PDFKit (si falla, no se dibuja nada)
-    const img: any = (doc as any).openImage?.(logoBuffer);
-    if (!img || !img.width || !img.height) return; // <- si llega aquí, formato no soportado (PDFKit: PNG/JPEG)
-
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-
-    // 2) Escala máxima (ajusta si quieres más grande/pequeño)
-    const maxW = pageW * 0.55;
-    const maxH = pageH * 0.55;
-
-    const scale = Math.min(maxW / img.width, maxH / img.height);
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
-
-    // 3) Coordenadas exactamente centradas
-    const x = (pageW - drawW) / 2;
-    const y = (pageH - drawH) / 2 + 90;
-
-    doc.save();
-    doc.opacity(0.06);            // ⇦ súbelo temporalmente si “no se ve” (luego vuelves a 0.06)
-    doc.image(img, x, y, { width: drawW });
-    doc.restore();
-  } catch {
-    // ignorar
-  }
-}
-
 private addHeader(doc: PDFDoc, title: string) {
-  // ✅ Agregar marca de agua en cada página
-  this.addWatermark(doc);
+  const logoBuffer = LogoHelper.getLogoSync();
 
-  // ✅ TÍTULO (SIN logo, empieza en x=50)
+  const left = 50;
+  const right = doc.page.width - 50;
+
+  const topY = 32;
+  const logoW = 54;
+  const logoH = 34;
+  const gap = 12;
+
+  let textX = left;
+
+  // ✅ Logo al lado izquierdo del título
+  if (logoBuffer?.length) {
+    try {
+      doc.image(logoBuffer, left, topY + 2, {
+        fit: [logoW, logoH],
+        valign: 'center',
+      });
+      textX = left + logoW + gap;
+    } catch (error) {
+      console.error('Error dibujando logo en header:', error);
+    }
+  }
+
+  // ✅ Título
   this.fontBold(doc);
   doc.fontSize(16);
   doc.fillColor(this.UI.ink);
-  doc.text(title, 50, 40, { align: 'left' });
+  doc.text(title, textX, topY, {
+    align: 'left',
+    width: right - textX,
+  });
 
-  // ✅ FECHA
+  // ✅ Fecha
   this.fontRegular(doc);
   doc.fontSize(9);
   doc.fillColor(this.UI.gray);
   doc.text(
-    `Generado: ${new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'2-digit', year:'numeric' })} ${new Date().toLocaleTimeString('es-CR')}`,
-    50, 58, { align: 'right', width: doc.page.width - 100 }
+    `Generado: ${new Date().toLocaleDateString('es-CR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })} ${new Date().toLocaleTimeString('es-CR')}`,
+    textX,
+    topY + 22,
+    {
+      align: 'left',
+      width: right - textX,
+    },
   );
 
-  // ✅ LÍNEA
-  doc.moveTo(50, 70);
-  doc.lineTo(doc.page.width - 50, 70);
+  // ✅ Línea divisoria
+  const lineY = topY + 44;
+  doc.moveTo(left, lineY);
+  doc.lineTo(right, lineY);
   doc.strokeColor(this.UI.line);
   doc.lineWidth(1);
   doc.stroke();
 
-  doc.y = 86;
+  doc.y = lineY + 14;
 }
-
-// ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
 // ✅ IMPORTANTE: Agregar marca de agua también en la tabla cuando hay paginación
 private addTable(
   doc: PDFDoc,
@@ -448,16 +448,15 @@ private addTable(
   );
   y += 34;
 
-  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const bottom = () => doc.page.height - doc.page.margins.bottom - 28;
   const ensure = (rowH = 22) => {
     if (y + rowH > bottom()) {
-      this.addWatermark(doc);  // ✅ Sellar la página ACTUAL por encima de todo
       doc.addPage();
       y = doc.page.margins.top;
 
-      // Redibujar encabezado en nueva página
       doc.roundedRect(left, y, avail, 28, 12).fillColor('#F9FAFB')
         .strokeColor(this.UI.line).lineWidth(1).fillAndStroke();
+
       this.fontBold(doc);
       doc.fontSize(9).fillColor(this.UI.gray);
       cols.forEach((c,i) =>
@@ -706,14 +705,22 @@ private addSummaryCards(doc: PDFDoc, _title: string, summary: any) {
 
 
   private addFooter(doc: PDFDoc) {
-    const y = doc.page.height - 32;
-    doc.moveTo(50, y - 8).lineTo(doc.page.width - 50, y - 8)
-       .strokeColor(this.UI.line).lineWidth(1).stroke();
+    const left = 50;
+    const right = doc.page.width - 50;
+    const y = doc.page.height - doc.page.margins.bottom - 14;
+
+    doc.moveTo(left, y - 8)
+      .lineTo(right, y - 8)
+      .strokeColor(this.UI.line)
+      .lineWidth(1)
+      .stroke();
 
     this.fontRegular(doc);
-    this.addWatermark(doc);
     doc.fontSize(8).fillColor(this.UI.gray)
-       .text('Sistema de Presupuesto — Reporte', 50, y, { width: doc.page.width - 100, align: 'center' });
+      .text('Sistema de Presupuesto — Reporte', left, y, {
+        width: right - left,
+        align: 'center',
+      });
   }
     // =================== EXCEL ===================
   
