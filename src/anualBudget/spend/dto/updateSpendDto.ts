@@ -15,4 +15,9 @@ export class UpdateSpendDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  fiscalYearId?: number;
 }

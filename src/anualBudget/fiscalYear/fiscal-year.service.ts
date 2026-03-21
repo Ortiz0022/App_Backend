@@ -78,20 +78,40 @@ export class FiscalYearService {
     return row ?? null;
   }
 
-  async getActiveOrCurrent(): Promise<FiscalYear | null> {
-    // 1) Activo
-    const active = await this.repo.findOne({ where: { is_active: true } });
-    if (active) return active;
+  async getActiveOrCurrent(): Promise<FiscalYear> {
+      const fy = await this.repo.findOne({ where: { is_active: true } });
 
-    // 2) Abierto más reciente
-    const open = await this.repo.findOne({ where: { state: FiscalState.OPEN }, order: { year: 'DESC' } });
-    if (open) return open;
-
-    // 3) El más reciente
-    const last = await this.repo.findOne({ order: { year: 'DESC' } });
-    return last ?? null;
+  if (!fy) {
+    throw new BadRequestException('No hay año fiscal activo');
   }
 
+  return fy;
+  }
+
+   async assertSelectedOpenActiveFiscalYearByDate(
+    fiscalYearId: number,
+    date: string,
+  ): Promise<FiscalYear> {
+    const fy = await this.findOne(fiscalYearId);
+
+    if (!fy.is_active) {
+      throw new BadRequestException('El año fiscal seleccionado no está activo');
+    }
+
+    if (fy.state === FiscalState.CLOSED) {
+      throw new BadRequestException('El año fiscal seleccionado está cerrado');
+    }
+
+    const input = String(date).slice(0, 10);
+    const start = String(fy.start_date).slice(0, 10);
+    const end = String(fy.end_date).slice(0, 10);
+
+    if (input < start || input > end) {
+      throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
+    }
+
+    return fy;
+  }
   /**
    * Devuelve el FY para la fecha; si no hay, retorna el activo/actual.
    * Útil para "reales" (Income/Spend) y fallback para proyecciones.

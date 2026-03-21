@@ -9,4 +9,8 @@ export class UpdateIncomeDto {
 
   @IsOptional() @IsDateString()
   date?: string;
+
+  @IsOptional()
+  @IsInt()
+  fiscalYearId?: number;
 }

@@ -32,25 +32,14 @@ export class SpendService {
 async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
   const s = await this.getSubType(dto.spendSubTypeId);
 
-  const fy = dto.fiscalYearId
-    ? await this.fyService.findByIdSafe(dto.fiscalYearId)
-    : await this.fyService.resolveByDateOrActive(dto.date);
-
-  if (!fy) throw new BadRequestException('FiscalYear not found');
-
-  if (fy.state === FiscalState.CLOSED) {
-    throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+  if (!dto.fiscalYearId) {
+    throw new BadRequestException('fiscalYearId es requerido');
   }
 
-  if (dto.fiscalYearId && dto.date) {
-    const inputDate = new Date(dto.date);
-    const fyStart = new Date(fy.start_date);
-    const fyEnd = new Date(fy.end_date);
-
-    if (inputDate < fyStart || inputDate > fyEnd) {
-      throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
-    }
-  }
+  const fy = await this.fyService.assertSelectedOpenActiveFiscalYearByDate(
+    dto.fiscalYearId,
+    dto.date,
+  );
 
   const entity = this.repo.create({
     spendSubType: { id: s.id } as any,
@@ -101,7 +90,7 @@ async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
     return row;
   }
 
-  async update(id: number, dto: UpdateSpendDto, currentUser: CurrentUserData) {
+async update(id: number, dto: UpdateSpendDto, currentUser: CurrentUserData) {
   const row = await this.findOne(id);
 
   const before = {
@@ -114,7 +103,15 @@ async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
   const oldTypeId = row.spendSubType.spendType.id;
 
   const newDate = dto.date ?? row.date;
-  await this.fyService.assertOpenByDate(newDate);
+
+  if (!dto.fiscalYearId) {
+    throw new BadRequestException('fiscalYearId es requerido');
+  }
+
+  const fy = await this.fyService.assertSelectedOpenActiveFiscalYearByDate(
+    dto.fiscalYearId,
+    newDate,
+  );
 
   if (dto.spendSubTypeId !== undefined) {
     const s = await this.getSubType(dto.spendSubTypeId);
@@ -122,11 +119,8 @@ async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
   }
 
   if (dto.amount !== undefined) row.amount = dto.amount;
-  if (dto.date !== undefined) row.date = dto.date;
 
-  const fy = await this.fyService.resolveByDateOrActive(row.date);
-  if (!fy) throw new BadRequestException('No hay año fiscal para la fecha');
-
+  row.date = newDate;
   row.fiscalYear = fy;
 
   const saved = await this.repo.save(row);
@@ -153,6 +147,7 @@ async create(dto: CreateSpendDto, currentUser: CurrentUserData) {
 
   return saved;
 }
+
   async remove(id: number, currentUser: CurrentUserData) {
   const row = await this.findOne(id);
   await this.fyService.assertOpenByDate(row.date);
