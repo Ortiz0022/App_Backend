@@ -1,12 +1,28 @@
-import { IsOptional, IsString, IsDateString, IsNumberString, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsNumberString,
+  MaxLength,
+  IsInt,
+  IsPositive,
+} from 'class-validator';
 
 export class UpdateExtraordinaryDto {
-  @IsOptional() @IsString() @MaxLength(120)
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
   name?: string;
 
-  @IsOptional() @IsNumberString()
+  @IsOptional()
+  @IsNumberString()
   amount?: string;
 
-  @IsOptional() @IsDateString()
+  @IsOptional()
+  @IsDateString()
   date?: string;
+
+  @IsInt()
+  @IsPositive()
+  fiscalYearId: number;
 }
