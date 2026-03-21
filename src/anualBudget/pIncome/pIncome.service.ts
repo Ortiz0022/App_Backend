@@ -27,41 +27,37 @@ export class PIncomeService {
     return s;
   }
 
-async create(
-  dto: { pIncomeSubTypeId: number; amount: string; fiscalYearId?: number },
-  currentUser: CurrentUserData,
-) {
-  const s = await this.getSubType(dto.pIncomeSubTypeId);
+  async create(
+    dto: { pIncomeSubTypeId: number; amount: string; fiscalYearId: number },
+    currentUser: CurrentUserData,
+  ) {
+    const s = await this.getSubType(dto.pIncomeSubTypeId);
 
-  const fy = dto.fiscalYearId
-    ? await this.fyService.findByIdSafe(dto.fiscalYearId)
-    : await this.fyService.getActiveOrCurrent();
+    if (!dto.fiscalYearId) {
+      throw new BadRequestException('fiscalYearId es requerido');
+    }
 
-  if (!fy) throw new BadRequestException('FiscalYear not found');
+    const fy = await this.fyService.assertSelectedOpenActiveFiscalYear(dto.fiscalYearId);
 
-  if (fy.state === FiscalState.CLOSED) {
-    throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
+    const entity = this.repo.create({
+      pIncomeSubType: { id: s.id } as any,
+      amount: dto.amount,
+      fiscalYear: fy,
+    });
+
+    const saved = await this.repo.save(entity);
+
+    await this.pIncomeTypeService.recalcAmount(s.pIncomeType.id);
+
+    const savedFull = await this.findOne(saved.id);
+
+    await this.auditBudgetService.logPIncomeCreate({
+      actorUserId: currentUser.id,
+      pIncome: savedFull,
+    });
+
+    return saved;
   }
-
-  const entity = this.repo.create({
-    pIncomeSubType: { id: s.id } as any,
-    amount: dto.amount,
-    fiscalYear: fy,
-  });
-
-  const saved = await this.repo.save(entity);
-
-  await this.pIncomeTypeService.recalcAmount(s.pIncomeType.id);
-
-  const savedFull = await this.findOne(saved.id);
-
-  await this.auditBudgetService.logPIncomeCreate({
-    actorUserId: currentUser.id,
-    pIncome: savedFull,
-  });
-
-  return saved;
-}
 
   async findOne(id: number) {
   const row = await this.repo.findOne({
@@ -94,52 +90,57 @@ async findAll(pIncomeSubTypeId?: number, fiscalYearId?: number) {
   });
 }
 
-async update(
-  id: number,
-  dto: { pIncomeSubTypeId?: number; amount?: string },
-  currentUser: CurrentUserData,
-) {
-  const row = await this.findOne(id);
+  async update(
+    id: number,
+    dto: { pIncomeSubTypeId?: number; amount?: string; fiscalYearId: number },
+    currentUser: CurrentUserData,
+  ) {
+    const row = await this.findOne(id);
 
-  const before = {
-    ...row,
-    pIncomeSubType: row.pIncomeSubType ? { ...row.pIncomeSubType } : null,
-    fiscalYear: row.fiscalYear ? { ...row.fiscalYear } : null,
-  };
+    const before = {
+      ...row,
+      pIncomeSubType: row.pIncomeSubType ? { ...row.pIncomeSubType } : null,
+      fiscalYear: row.fiscalYear ? { ...row.fiscalYear } : null,
+    };
 
-  const oldTypeId = row.pIncomeSubType.pIncomeType.id;
+    const oldTypeId = row.pIncomeSubType.pIncomeType.id;
 
-  if (dto.pIncomeSubTypeId !== undefined) {
-    const s = await this.getSubType(dto.pIncomeSubTypeId);
-    row.pIncomeSubType = { id: s.id } as any;
+    if (!dto.fiscalYearId) {
+      throw new BadRequestException('fiscalYearId es requerido');
+    }
+
+    const fy = await this.fyService.assertSelectedOpenActiveFiscalYear(dto.fiscalYearId);
+
+    if (dto.pIncomeSubTypeId !== undefined) {
+      const s = await this.getSubType(dto.pIncomeSubTypeId);
+      row.pIncomeSubType = { id: s.id } as any;
+    }
+
+    if (dto.amount !== undefined) {
+      row.amount = dto.amount;
+    }
+
+    row.fiscalYear = fy;
+
+    const saved = await this.repo.save(row);
+
+    const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
+
+    await this.pIncomeTypeService.recalcAmount(oldTypeId);
+    if (newTypeId !== oldTypeId) {
+      await this.pIncomeTypeService.recalcAmount(newTypeId);
+    }
+
+    const savedFull = await this.findOne(saved.id);
+
+    await this.auditBudgetService.logPIncomeUpdate({
+      actorUserId: currentUser.id,
+      before: before as PIncome,
+      after: savedFull,
+    });
+
+    return saved;
   }
-
-  if (dto.amount !== undefined) row.amount = dto.amount;
-
-  if (!row.fiscalYear) {
-  const fy = await this.fyService.getActiveOrCurrent();
-  if (!fy) throw new BadRequestException('No hay año fiscal activo o disponible');
-  row.fiscalYear = fy;
-}
-
-  const saved = await this.repo.save(row);
-
-  const newTypeId = (await this.getSubType(row.pIncomeSubType.id)).pIncomeType.id;
-  await this.pIncomeTypeService.recalcAmount(oldTypeId);
-  if (newTypeId !== oldTypeId) {
-    await this.pIncomeTypeService.recalcAmount(newTypeId);
-  }
-
-  const savedFull = await this.findOne(saved.id);
-
-  await this.auditBudgetService.logPIncomeUpdate({
-    actorUserId: currentUser.id,
-    before: before as PIncome,
-    after: savedFull,
-  });
-
-  return saved;
-}
 
   async remove(id: number, currentUser: CurrentUserData) {
   const row = await this.findOne(id);

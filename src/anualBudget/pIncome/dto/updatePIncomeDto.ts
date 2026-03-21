@@ -1,6 +1,15 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsPositive } from 'class-validator';
 
 export class UpdatePIncomeDto {
-  @IsOptional() @IsInt() pIncomeSubTypeId?: number;
-  @IsOptional() @IsString() amount?: string;
+  @IsOptional()
+  @IsInt()
+  pIncomeSubTypeId?: number;
+
+  @IsOptional()
+  @IsString()
+  amount?: string;
+
+  @IsInt()
+  @IsPositive()
+  fiscalYearId: number;
 }

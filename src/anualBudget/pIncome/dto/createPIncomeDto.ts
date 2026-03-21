@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, IsPositive } from 'class-validator';
 
 export class CreatePIncomeDto {
   @IsInt()
@@ -8,7 +8,7 @@ export class CreatePIncomeDto {
   @IsString()
   amount: string;
 
-  @IsOptional()
   @IsInt()
-  fiscalYearId?: number;
+  @IsPositive()
+  fiscalYearId: number;
 }
