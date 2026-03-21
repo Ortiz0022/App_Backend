@@ -46,6 +46,7 @@ export class VoluntarioPdfService {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'America/Costa_Rica',
     })
   }
 
@@ -223,7 +224,7 @@ export class VoluntarioPdfService {
       .font('Helvetica')
       .fontSize(8)
       .fillColor(this.UI.gray)
-      .text(`Generado el ${new Date().toLocaleString('es-CR')}`, left, y, {
+      .text(`Generado el ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, y, {
         width: right - left,
         align: 'center',
       })

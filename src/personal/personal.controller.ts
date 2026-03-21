@@ -1,13 +1,12 @@
 import { Controller, Get, Post, Body, Put, Param, Delete, Query, Res } from '@nestjs/common'
 import type { Response } from 'express'
-
-import { PersonalService } from './personal.service'
 import { PersonalDto } from './dto/PersonalDto'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard'
 import { RolesGuard } from 'src/auth/roles.guard'
 import { Roles } from 'src/auth/roles.decorator'
 import { PersonalPdfService } from './pdf.service' // ✅ NUEVO
+import { PersonalService } from './personal.service'
 
 @Controller('personal')
 @UseGuards(JwtAuthGuard, RolesGuard)

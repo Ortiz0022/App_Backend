@@ -152,7 +152,8 @@ export class ReportProjectionsService {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
-      })} ${new Date().toLocaleTimeString('es-CR')}`,
+        timeZone: 'America/Costa_Rica',
+      })} ${new Date().toLocaleTimeString('es-CR', { timeZone: 'America/Costa_Rica' })}`,
       textX,
       topY + 22,
       {
