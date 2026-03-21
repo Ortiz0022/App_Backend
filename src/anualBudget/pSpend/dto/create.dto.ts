@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNumber, IsOptional } from 'class-validator';
+import { IsInt, IsNumber, IsPositive } from 'class-validator';
 
 export class CreatePSpendDto {
   @IsNumber()
@@ -7,11 +7,7 @@ export class CreatePSpendDto {
   @IsInt()
   subTypeId: number;
 
-  @IsOptional()
-  @IsDateString()
-  date?: string;
-
-  @IsOptional()
   @IsInt()
-  fiscalYearId?: number;
+  @IsPositive()
+  fiscalYearId: number;
 }

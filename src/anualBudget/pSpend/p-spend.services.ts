@@ -10,6 +10,7 @@ import { CreatePSpendDto } from './dto/create.dto';
 import { UpdatePSpendDto } from './dto/update.dto';
 import { AuditBudgetService } from 'src/audit/auditBudget/audit-budget.service';
 import { CurrentUserData } from 'src/auth/current-user.interface';
+import { FiscalYearService } from '../fiscalYear/fiscal-year.service';
 
 function toNumberAmount(v: any): number {
   // Ej.: "₡10 125,00" | "10,125.50" | "10125.50" -> 10125.5
@@ -23,60 +24,31 @@ export class PSpendService {
     @InjectRepository(PSpend) private repo: Repository<PSpend>,
     @InjectRepository(PSpendSubType) private subRepo: Repository<PSpendSubType>,
     private readonly auditBudgetService: AuditBudgetService,
-    @InjectRepository(FiscalYear) private fyRepo: Repository<FiscalYear>,
+    private readonly fiscalYearService: FiscalYearService,
   ) {}
 
-  async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
-
+    async create(dto: CreatePSpendDto, currentUser: CurrentUserData) {
   const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
   if (!subType) throw new NotFoundException('SubType no existe');
 
-let fy: FiscalYear | null = null;
-
-if (dto.fiscalYearId) {
-  fy = await this.fyRepo.findOne({ where: { id: dto.fiscalYearId } });
-} else {
-  fy = await this.fyRepo.findOne({ where: { state: FiscalState.OPEN } });
-  if (!fy) {
-    fy = await this.fyRepo.findOne({ order: { year: 'DESC' } });
+  if (!dto.fiscalYearId) {
+    throw new BadRequestException('fiscalYearId es requerido');
   }
-}
 
-if (!fy) throw new NotFoundException('No hay un FiscalYear válido');
-
-if (fy.state === FiscalState.CLOSED) {
-  throw new BadRequestException('Año fiscal CERRADO: no se permiten cambios');
-}
+  const fy = await this.fiscalYearService.assertSelectedOpenActiveFiscalYear(dto.fiscalYearId);
 
   const amount = toNumberAmount(dto.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new BadRequestException('Monto inválido');
   }
 
-  let date: string;
- if (dto.date) {
-  const inputDate = new Date(dto.date);
-  const fyStart = new Date(fy.start_date);
-  const fyEnd = new Date(fy.end_date);
-
-  if (!(inputDate >= fyStart && inputDate <= fyEnd)) {
-    throw new BadRequestException('La fecha no pertenece al año fiscal seleccionado');
-  }
-
-  date = dto.date;
-} else {
-  date = new Date().toISOString().split('T')[0];
-}
-
   const row = this.repo.create({
     amount,
-    date,
     subType,
     fiscalYear: fy,
   });
 
   const saved = await this.repo.save(row);
-
   const savedFull = await this.findOne(saved.id);
 
   await this.auditBudgetService.logPSpendCreate({
@@ -107,7 +79,7 @@ if (fy.state === FiscalState.CLOSED) {
     return item;
   }
 
-  async update(id: number, dto: UpdatePSpendDto, currentUser: CurrentUserData) {
+    async update(id: number, dto: UpdatePSpendDto, currentUser: CurrentUserData) {
   const item = await this.findOne(id);
 
   const before = {
@@ -116,7 +88,13 @@ if (fy.state === FiscalState.CLOSED) {
     fiscalYear: item.fiscalYear ? { ...item.fiscalYear } : null,
   };
 
-  if (dto.subTypeId) {
+  if (!dto.fiscalYearId) {
+    throw new BadRequestException('fiscalYearId es requerido');
+  }
+
+  const fy = await this.fiscalYearService.assertSelectedOpenActiveFiscalYear(dto.fiscalYearId);
+
+  if (dto.subTypeId !== undefined) {
     const subType = await this.subRepo.findOneBy({ id: dto.subTypeId });
     if (!subType) throw new NotFoundException('SubType no existe');
     item.subType = subType;
@@ -130,17 +108,7 @@ if (fy.state === FiscalState.CLOSED) {
     item.amount = amount;
   }
 
-  if (dto.date !== undefined) {
-  const nextDate = new Date(dto.date);
-  const fyStart = new Date(item.fiscalYear.start_date);
-  const fyEnd = new Date(item.fiscalYear.end_date);
-
-  if (!(nextDate >= fyStart && nextDate <= fyEnd)) {
-    throw new BadRequestException('La fecha no pertenece al año fiscal del registro');
-  }
-
-  item.date = nextDate;
-}
+  item.fiscalYear = fy;
 
   const saved = await this.repo.save(item);
   const savedFull = await this.findOne(saved.id);
