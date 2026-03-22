@@ -39,6 +39,7 @@ export class PersonalPdfService {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'America/Costa_Rica',
     })
   }
 
@@ -86,7 +87,7 @@ export class PersonalPdfService {
     doc.text(title, textX, subY, { align: 'left' })
 
     doc.font('Helvetica').fontSize(10).fillColor(this.UI.gray)
-    doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, left, titleY, {
+    doc.text(`Generado: ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, titleY, {
       width: right - left,
       align: 'right',
     })
@@ -115,7 +116,7 @@ export class PersonalPdfService {
       .stroke()
 
     doc.font('Helvetica').fontSize(8).fillColor(this.UI.gray)
-    doc.text(`Generado el ${new Date().toLocaleString('es-CR')}`, left, y, {
+    doc.text(`Generado el ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, y, {
       width: right - left,
       align: 'center',
     })

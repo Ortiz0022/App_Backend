@@ -3,13 +3,20 @@ import { Type, Transform } from 'class-transformer';
 
 export class QueryAssociateDto {
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => {
+    // ✅ Si no viene el parámetro, preservar undefined → sin filtro = devuelve todos
+    if (value === undefined || value === null || value === '') return undefined;
+    // ✅ Convertir string a booleano real para TypeORM
+    if (value === 'true'  || value === true)  return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
   @IsBoolean()
-  estado?: boolean; // filtrar por activos/inactivos
+  estado?: boolean;
 
   @IsOptional()
   @IsString()
-  search?: string; // búsqueda por nombre, cédula, email
+  search?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -26,5 +33,5 @@ export class QueryAssociateDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // ejemplo: 'createdAt:desc' | 'persona.nombre:asc'
+  sort?: string;
 }

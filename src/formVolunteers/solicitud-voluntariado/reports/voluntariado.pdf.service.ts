@@ -87,7 +87,7 @@ export class VoluntariosListadoPdfService {
 
     // fecha a la derecha (igual que Associate)
     doc.font('Helvetica').fontSize(10).fillColor(this.UI.gray)
-    doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, left, titleY, {
+    doc.text(`Generado: ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, titleY, {
       width: right - left,
       align: 'right',
     })
@@ -116,7 +116,7 @@ export class VoluntariosListadoPdfService {
       .stroke()
 
     doc.font('Helvetica').fontSize(8).fillColor(this.UI.gray)
-    doc.text(`Generado el ${new Date().toLocaleString('es-CR')}`, left, y, {
+    doc.text(`Generado el ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, y, {
       width: right - left,
       align: 'center',
     })

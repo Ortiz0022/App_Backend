@@ -37,7 +37,7 @@ export class SolicitudesVoluntariadoPdfService {
     if (!d) return '—'
     const dt = new Date(d)
     if (Number.isNaN(dt.getTime())) return String(d)
-    return dt.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return dt.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Costa_Rica' })
   }
 
   private asText(v: any): string {
@@ -99,7 +99,7 @@ export class SolicitudesVoluntariadoPdfService {
       .text(subtitle, textX, subY, { align: 'left' });
 
     doc.font('Helvetica').fontSize(9).fillColor(this.UI.gray);
-    doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, left, titleY, {
+    doc.text(`Generado: ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, titleY, {
       width: right - left,
       align: 'right',
     });
@@ -131,7 +131,7 @@ export class SolicitudesVoluntariadoPdfService {
       .font('Helvetica')
       .fontSize(8)
       .fillColor(this.UI.gray)
-      .text(`Generado el ${new Date().toLocaleString('es-CR')}`, left, y, {
+      .text(`Generado el ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, y, {
         width: right - left,
         align: 'center',
       })

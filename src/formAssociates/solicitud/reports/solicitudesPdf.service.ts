@@ -27,7 +27,7 @@ export class SolicitudesListPdfService {
     if (!d) return '—';
     const dt = new Date(d);
     if (isNaN(+dt)) return '—';
-    return dt.toLocaleDateString('es-CR');
+    return dt.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Costa_Rica' });
   }
 
   private async downloadLogo(): Promise<Buffer> {
@@ -79,7 +79,7 @@ export class SolicitudesListPdfService {
       .text(subtitle, textX, subY, { align: 'left' });
 
     doc.font('Helvetica').fontSize(9).fillColor(this.UI.gray);
-    doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, left, titleY, {
+    doc.text(`Generado: ${new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' })}`, left, titleY, {
       width: right - left,
       align: 'right',
     });

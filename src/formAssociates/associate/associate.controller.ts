@@ -17,6 +17,16 @@ import { AssociatePdfService } from './pdf.service'
 import { Roles } from 'src/auth/roles.decorator'
 import { Public } from 'src/auth/public.decorator'
 
+// ✅ Helper: convierte query string a boolean o undefined
+// NestJS recibe todos los query params como strings, nunca como booleanos.
+// Sin ValidationPipe global, @Transform no se ejecuta, así que lo hacemos aquí.
+function parseEstado(value?: string): boolean | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (value === 'true'  || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  return undefined;
+}
+
 @Controller('associates')
 export class AssociateController {
   constructor(
@@ -26,8 +36,23 @@ export class AssociateController {
 
   @Get()
   @Roles('ADMIN', 'JUNTA')
-  findAll(@Query() query: QueryAssociateDto) {
-    return this.associateService.findAll(query)
+  findAll(
+    @Query('estado') estado?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
+  ) {
+    // ✅ Construimos el query manualmente con tipos correctos
+    const query: QueryAssociateDto = {
+      estado: parseEstado(estado),
+      search: search || undefined,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      sort: sort || undefined,
+    };
+
+    return this.associateService.findAll(query);
   }
 
   @Get('active')
@@ -54,10 +79,6 @@ export class AssociateController {
     return this.associateService.findByCedula(cedula)
   }
 
-  // ============================
-  // ✅ PDF LIST (FORZAR DESCARGA)
-  // GET /associates/pdf-list?estado=&search=&sort=
-  // ============================
   @Get('pdf-list')
   @Roles('ADMIN', 'JUNTA')
   async pdfList(
@@ -66,22 +87,10 @@ export class AssociateController {
     @Query('search') search?: string,
     @Query('sort') sort?: string,
   ) {
-    // estado puede venir "" (vacío), "1"/"0", "true"/"false"
-    const estadoTrim = estado?.trim()
-    let estadoBool: boolean | undefined = undefined
-
-    if (estadoTrim) {
-      const v = estadoTrim.toLowerCase()
-      if (v === '1' || v === 'true') estadoBool = true
-      else if (v === '0' || v === 'false') estadoBool = false
-      else estadoBool = undefined
-    }
-
-    // Traer data filtrada para el PDF
     const { items } = await this.associateService.findAll({
       page: 1,
-      limit: 10_000, // suficiente para PDF
-      estado: estadoBool,
+      limit: 10_000,
+      estado: parseEstado(estado), // ✅ misma función helper
       search: search?.trim() || undefined,
       sort: sort?.trim() || undefined,
     } as QueryAssociateDto)
@@ -96,7 +105,6 @@ export class AssociateController {
     return res.send(buffer)
   }
 
-  // ✅ NUEVO: Endpoint básico (sin toda la info de fincas)
   @Get(':id/basic')
   @Roles('ADMIN', 'JUNTA')
   findOneBasic(@Param('id') id: string) {
