@@ -1,6 +1,7 @@
 
 import { Associate } from "src/formAssociates/associate/entities/associate.entity";
 import { Propietario } from "src/formAssociates/propietario/entities/propietario.entity";
+import { Personal } from "src/personal/entities/personal.entity";
 import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
   @Entity('personas')
@@ -50,5 +51,8 @@ import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Uni
     asociado?: Associate;
 
     @OneToOne(() => Propietario, (propietario) => propietario.persona)
-  propietario?: Propietario;
+    propietario?: Propietario;
+
+    @OneToOne(() => Personal, (personal) => personal.persona)
+    personal?: Personal;
   }

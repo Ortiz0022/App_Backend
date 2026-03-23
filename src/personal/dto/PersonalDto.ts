@@ -1,10 +1,16 @@
-import { IsBoolean, IsOptional, IsDateString, IsString, IsNumber } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsDateString,
+  IsString,
+  IsNumber,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PersonalDto {
   @IsString()
   IDE: string;
-  
+
   @IsString()
   name: string;
 
@@ -14,7 +20,7 @@ export class PersonalDto {
   @IsString()
   lastname2: string;
 
-  @IsString()
+  @IsDateString()
   birthDate: string;
 
   @IsString()
@@ -23,8 +29,9 @@ export class PersonalDto {
   @IsString()
   email: string;
 
+  @IsOptional()
   @IsString()
-  direction: string;
+  direction?: string;
 
   @IsString()
   occupation: string;
@@ -34,13 +41,14 @@ export class PersonalDto {
   isActive: boolean;
 
   @IsOptional()
-  @IsDateString()            //YYYY-MM-DD
+  @IsDateString()
   startWorkDate?: string;
 
   @IsOptional()
-  @IsDateString()            
+  @IsDateString()
   endWorkDate?: string | null;
 
+  @IsOptional()
   @IsNumber()
-  UserId?: number;
+  userId?: number;
 }

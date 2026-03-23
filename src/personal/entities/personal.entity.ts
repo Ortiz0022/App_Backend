@@ -1,33 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Persona } from 'src/formAssociates/persona/entities/persona.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 
-@Entity()
+@Entity('personal')
 export class Personal {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
-  IDE: string;
+  @OneToOne(() => Persona, (persona) => persona.personal, {
+    nullable: false,
+    eager: true,
+  })
+  @JoinColumn({ name: 'personaId' })
+  persona: Persona;
 
-  @Column({ nullable: false })
-  name: string;
-
-  @Column({ nullable: false })
-  lastname1: string;
-
-  @Column({ nullable: false })
-  lastname2: string;
-
-  @Column({ nullable: false })
-  birthDate: string;
-
-  @Column({ nullable: false })
-  phone: string;
-
-  @Column({ nullable: false })
-  email: string;
-
-  @Column({ nullable: false })
-  direction: string;
+  @Column({ unique: true })
+  personaId: number;
 
   @Column({ nullable: false })
   occupation: string;
@@ -36,18 +29,16 @@ export class Personal {
     type: 'tinyint',
     width: 1,
     default: true,
-    transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number) => !!v },
+    transformer: {
+      to: (v?: boolean) => (v ? 1 : 0),
+      from: (v: number) => !!v,
+    },
   })
   isActive: boolean;
 
-  // ✅ Nuevos campos (opcionales). Con type:'date' la DB guarda DATE y TypeORM te da string 'YYYY-MM-DD'
   @Column({ type: 'date', nullable: true })
   startWorkDate: string | null;
 
   @Column({ type: 'date', nullable: true })
   endWorkDate: string | null;
-
-  // @OneToOne(() => User, (user) => user.personal, { nullable: true })
-  // @JoinColumn()
-  // user: User;
 }
