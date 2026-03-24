@@ -53,103 +53,186 @@ export class SolicitudVoluntariadoService {
      private readonly solicitudesPdfService: SolicitudesVoluntariadoPdfService,
   ) {}
 
-  async create(
-    createSolicitudDto: CreateSolicitudVoluntariadoDto,
-  ): Promise<SolicitudVoluntariado> {
-    return this.dataSource.transaction(async (manager) => {
-      // 1) Validar antes de crear nada (misma lógica DRY)
-      await this.validateOrThrow(createSolicitudDto, manager);
+async create(
+  createSolicitudDto: CreateSolicitudVoluntariadoDto,
+): Promise<SolicitudVoluntariado> {
+  const savedSolicitud = await this.dataSource.transaction(async (manager) => {
+    await this.validateOrThrow(createSolicitudDto, manager)
 
-      let voluntario: VoluntarioIndividual | undefined;
-      let organizacion: Organizacion | undefined;
+    let voluntario: VoluntarioIndividual | undefined
+    let organizacion: Organizacion | undefined
 
-      const disponibilidades = createSolicitudDto.disponibilidades ?? [];
-      const areasInteres = createSolicitudDto.areasInteres ?? [];
-      const representantes = createSolicitudDto.representantes ?? [];
-      const razonesSociales = createSolicitudDto.razonesSociales ?? [];
+    const disponibilidades = createSolicitudDto.disponibilidades ?? []
+    const areasInteres = createSolicitudDto.areasInteres ?? []
+    const representantes = createSolicitudDto.representantes ?? []
+    const razonesSociales = createSolicitudDto.razonesSociales ?? []
 
-      if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
-        if (!createSolicitudDto.voluntario) {
-          throw new BadRequestException('Debe proporcionar los datos del voluntario individual');
-        }
-
-        voluntario = await this.voluntarioService.createInTransaction(
-          createSolicitudDto.voluntario,
-          manager,
-        );
-
-        if (disponibilidades.length > 0) {
-          await Promise.all(
-            disponibilidades.map((dto) =>
-              this.disponibilidadService.createForVoluntarioInTransaction(dto, voluntario!, manager),
-            ),
-          );
-        }
-
-        if (areasInteres.length > 0) {
-          await Promise.all(
-            areasInteres.map((dto) =>
-              this.areasInteresService.createForVoluntarioInTransaction(dto, voluntario!, manager),
-            ),
-          );
-        }
-      } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
-        if (!createSolicitudDto.organizacion) {
-          throw new BadRequestException('Debe proporcionar los datos de la organización');
-        }
-
-        organizacion = await this.organizacionService.createInTransaction(
-          createSolicitudDto.organizacion,
-          manager,
-        );
-
-        if (representantes.length > 0) {
-          await Promise.all(
-            representantes.map((dto) =>
-              this.representanteService.createInTransaction(dto, organizacion!, manager),
-            ),
-          );
-        }
-
-        if (razonesSociales.length > 0) {
-          await Promise.all(
-            razonesSociales.map((dto) =>
-              this.razonSocialService.createInTransaction(dto, organizacion!, manager),
-            ),
-          );
-        }
-
-        if (disponibilidades.length > 0) {
-          await Promise.all(
-            disponibilidades.map((dto) =>
-              this.disponibilidadService.createForOrganizacionInTransaction(dto, organizacion!, manager),
-            ),
-          );
-        }
-
-        if (areasInteres.length > 0) {
-          await Promise.all(
-            areasInteres.map((dto) =>
-              this.areasInteresService.createForOrganizacionInTransaction(dto, organizacion!, manager),
-            ),
-          );
-        }
-      } else {
-        throw new BadRequestException('Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION');
+    if (createSolicitudDto.tipoSolicitante === 'INDIVIDUAL') {
+      if (!createSolicitudDto.voluntario) {
+        throw new BadRequestException(
+          'Debe proporcionar los datos del voluntario individual',
+        )
       }
 
-      const solicitud = manager.create(SolicitudVoluntariado, {
-        tipoSolicitante: createSolicitudDto.tipoSolicitante,
-        voluntario,
-        organizacion,
-        fechaSolicitud: new Date(),
-        estado: SolicitudVoluntariadoStatus.PENDIENTE,
-      });
+      voluntario = await this.voluntarioService.createInTransaction(
+        createSolicitudDto.voluntario,
+        manager,
+      )
 
-      return manager.save(solicitud);
-    });
+      if (disponibilidades.length > 0) {
+        await Promise.all(
+          disponibilidades.map((dto) =>
+            this.disponibilidadService.createForVoluntarioInTransaction(
+              dto,
+              voluntario!,
+              manager,
+            ),
+          ),
+        )
+      }
+
+      if (areasInteres.length > 0) {
+        await Promise.all(
+          areasInteres.map((dto) =>
+            this.areasInteresService.createForVoluntarioInTransaction(
+              dto,
+              voluntario!,
+              manager,
+            ),
+          ),
+        )
+      }
+    } else if (createSolicitudDto.tipoSolicitante === 'ORGANIZACION') {
+      if (!createSolicitudDto.organizacion) {
+        throw new BadRequestException(
+          'Debe proporcionar los datos de la organización',
+        )
+      }
+
+      organizacion = await this.organizacionService.createInTransaction(
+        createSolicitudDto.organizacion,
+        manager,
+      )
+
+      if (representantes.length > 0) {
+        await Promise.all(
+          representantes.map((dto) =>
+            this.representanteService.createInTransaction(
+              dto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        )
+      }
+
+      if (razonesSociales.length > 0) {
+        await Promise.all(
+          razonesSociales.map((dto) =>
+            this.razonSocialService.createInTransaction(
+              dto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        )
+      }
+
+      if (disponibilidades.length > 0) {
+        await Promise.all(
+          disponibilidades.map((dto) =>
+            this.disponibilidadService.createForOrganizacionInTransaction(
+              dto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        )
+      }
+
+      if (areasInteres.length > 0) {
+        await Promise.all(
+          areasInteres.map((dto) =>
+            this.areasInteresService.createForOrganizacionInTransaction(
+              dto,
+              organizacion!,
+              manager,
+            ),
+          ),
+        )
+      }
+    } else {
+      throw new BadRequestException(
+        'Tipo de solicitante no válido. Debe ser INDIVIDUAL u ORGANIZACION',
+      )
+    }
+
+    const solicitud = manager.create(SolicitudVoluntariado, {
+      tipoSolicitante: createSolicitudDto.tipoSolicitante,
+      voluntario,
+      organizacion,
+      fechaSolicitud: new Date(),
+      estado: SolicitudVoluntariadoStatus.PENDIENTE,
+    })
+
+    return manager.save(solicitud)
+  })
+
+  const createdSolicitud = await this.findOne(
+    savedSolicitud.idSolicitudVoluntariado,
+  )
+
+  await this.sendCreationEmails(createdSolicitud)
+
+  return createdSolicitud
+}
+
+private async sendCreationEmails(
+  solicitud: SolicitudVoluntariado,
+): Promise<void> {
+  try {
+    let applicantEmail: string | undefined
+    let applicantName = ''
+    let applicantId = ''
+
+    if (
+      solicitud.tipoSolicitante === 'INDIVIDUAL' &&
+      solicitud.voluntario?.persona
+    ) {
+      applicantEmail = solicitud.voluntario.persona.email
+      applicantName =
+        `${solicitud.voluntario.persona.nombre || ''} ${solicitud.voluntario.persona.apellido1 || ''}`.trim()
+      applicantId = solicitud.voluntario.persona.cedula || 'No indicada'
+    } else if (
+      solicitud.tipoSolicitante === 'ORGANIZACION' &&
+      solicitud.organizacion
+    ) {
+      applicantEmail = solicitud.organizacion.email
+      applicantName = solicitud.organizacion.nombre || 'Organización'
+      applicantId = solicitud.organizacion.cedulaJuridica || 'No indicada'
+    }
+
+    if (applicantEmail) {
+      await this.emailService.sendVolunteerApplicationReceivedEmail(
+        applicantEmail,
+        applicantName,
+        solicitud.tipoSolicitante,
+      )
+    }
+
+    await this.emailService.sendNewVolunteerApplicationNotificationEmail({
+      tipoSolicitante: solicitud.tipoSolicitante,
+      applicantName: applicantName || 'Sin nombre',
+      applicantEmail: applicantEmail || 'Sin correo',
+      applicantId: applicantId || 'Sin identificación',
+    })
+  } catch (error) {
+    console.error(
+      'Error al enviar correos de creación de solicitud de voluntariado:',
+      error,
+    )
   }
-
+}
   async validateBeforeCreate(dto: ValidateSolicitudVoluntariadoDto) {
   await this.validateOrThrow(dto);
   return { ok: true };

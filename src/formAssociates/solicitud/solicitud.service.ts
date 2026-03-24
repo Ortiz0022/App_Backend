@@ -83,28 +83,27 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
   await this.validateOrThrow(dto);
   return { ok: true };
 }
-  async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
-   const queryRunner = this.dataSource.createQueryRunner()
+async create(createDto: CreateSolicitudDto): Promise<Solicitud> {
+  const queryRunner = this.dataSource.createQueryRunner()
   await queryRunner.connect()
   await queryRunner.startTransaction()
 
+  let createdId: number | null = null
+
   try {
-    // ✅ 1) SIEMPRE: buscar/crear Persona por cédula (y mergear campos vacíos)
-    // Esto es EXACTAMENTE el patrón que ya usaste para voluntarios.
     const personaAsociado = await this.personaService.createInTransaction(
       createDto.persona,
       queryRunner.manager,
     )
 
-    // ✅ 1.1) Evitar duplicar ASOCIADO (esto sí es conflicto real)
     const existingAsociado = await queryRunner.manager.findOne(Associate, {
       where: { persona: { idPersona: personaAsociado.idPersona } },
     })
+
     if (existingAsociado) {
-      throw new ConflictException("Ya existe un asociado con esta cédula.")
+      throw new ConflictException('Ya existe un asociado con esta cédula.')
     }
 
-    // 2) NucleoFamiliar (si viene)
     let nucleoFamiliar: NucleoFamiliar | null = null
     if (createDto.nucleoFamiliar) {
       nucleoFamiliar = await this.nucleoFamiliarService.createInTransaction(
@@ -116,7 +115,6 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
       )
     }
 
-    // 3) Crear Asociado
     const asociado = queryRunner.manager.create(Associate, {
       persona: personaAsociado,
       viveEnFinca: createDto.datosAsociado.viveEnFinca,
@@ -137,17 +135,20 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
       )
     }
 
-    // 4) Propietario (igual lo dejé como lo tenés)
     let propietario: Propietario | null = null
 
     if (createDto.propietario) {
-      const cedAsoc = (personaAsociado.cedula ?? "").trim()
-      const emailAsoc = (personaAsociado.email ?? "").trim().toLowerCase()
+      const cedAsoc = (personaAsociado.cedula ?? '').trim()
+      const emailAsoc = (personaAsociado.email ?? '').trim().toLowerCase()
 
-      const cedProp = (createDto.propietario.persona.cedula ?? "").trim()
-      const emailProp = (createDto.propietario.persona.email ?? "").trim().toLowerCase()
+      const cedProp = (createDto.propietario.persona.cedula ?? '').trim()
+      const emailProp = (createDto.propietario.persona.email ?? '')
+        .trim()
+        .toLowerCase()
 
-      const esLaMismaPersona = (cedProp && cedProp === cedAsoc) || (emailProp && emailProp === emailAsoc)
+      const esLaMismaPersona =
+        (cedProp && cedProp === cedAsoc) ||
+        (emailProp && emailProp === emailAsoc)
 
       if (esLaMismaPersona) {
         propietario = await this.propietarioService.createInTransaction(
@@ -155,7 +156,6 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
           queryRunner.manager,
         )
       } else {
-        // ✅ acá también es mejor usar createInTransaction para evitar choque por “persona ya existe”
         const personaPropietario = await this.personaService.createInTransaction(
           createDto.propietario.persona,
           queryRunner.manager,
@@ -168,22 +168,20 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
       }
     }
 
-    // 5) Geografía
     const geografia = await this.geografiaService.findOrCreateInTransaction(
       createDto.datosFinca.geografia,
       queryRunner.manager,
     )
 
-    // 5.1) Corriente (si viene)
     let corriente: CorrienteElectrica | null = null
     if (createDto.corrienteElectrica) {
-      corriente = await this.corrienteElectricaService.findOrCreateInTransaction(
-        createDto.corrienteElectrica,
-        queryRunner.manager,
-      )
+      corriente =
+        await this.corrienteElectricaService.findOrCreateInTransaction(
+          createDto.corrienteElectrica,
+          queryRunner.manager,
+        )
     }
 
-    // 6) Crear Finca
     const finca = await this.fincaService.createInTransaction(
       {
         nombre: createDto.datosFinca.nombre,
@@ -198,175 +196,193 @@ async validateBeforeCreate(dto: ValidateSolicitudDto) {
       },
       queryRunner.manager,
     )
-  
-      // 7. Crear Hato (si viene en el DTO)
-      if (createDto.hato) {
-        const hato = await this.hatoService.createInTransaction(
-          createDto.hato,
-          finca,
-          queryRunner.manager,
-        );
 
-        // 8. Crear Animales (si vienen)
-        if (createDto.animales && createDto.animales.length > 0) {
-          await this.animalService.createManyInTransaction(
-            createDto.animales,
-            hato,
-            queryRunner.manager,
-          );
-
-          // Recalcular total después de crear los animales
-          await this.hatoService.updateTotalInTransaction(hato, queryRunner.manager);
-        }
-      }
-
-      // 9. Crear Forraje (si vienen)
-      if (createDto.forrajes && createDto.forrajes.length > 0) {
-        await this.forrajeService.createManyInTransaction(
-          createDto.forrajes,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-      // 10. Crear Registros Productivos (si vienen)
-      if (createDto.registrosProductivos) {
-        await this.registrosProductivosService.createInTransaction(
-          createDto.registrosProductivos,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-      // 11. Crear Fuentes Agua (si vienen)
-      if (createDto.fuentesAgua && createDto.fuentesAgua.length > 0) {
-        await this.fuentesAguaService.createManyInTransaction(
-          createDto.fuentesAgua,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-      // 12. Crear Metodos Riego (si vienen)
-      if (createDto.metodosRiego && createDto.metodosRiego.length > 0) {
-        await this.metodoRiegoService.createManyInTransaction(
-          createDto.metodosRiego,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-      // 13. Crear Actividades Agropecuarias (si vienen)
-      if (createDto.actividades && createDto.actividades.length > 0) {
-        await this.actividadesAgropecuariasService.createManyInTransaction(
-          createDto.actividades,
-          finca,
-          queryRunner.manager,
-        );
-      } 
-
-        // 14. Crear Infraestructura de Producción (si viene)
-      if (createDto.infraestructuraProduccion) {
-        await this.infraestructuraProduccionService.createInTransaction(
-          createDto.infraestructuraProduccion,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-
-      // 15. Crear Otros Equipos (si vienen)
-      if (createDto.otrosEquipos && createDto.otrosEquipos.length > 0) {
-        await this.fincaOtroEquipoService.createManyInTransaction(
-          createDto.otrosEquipos,
-          finca,
-          queryRunner.manager,
-        );
-      }
-
-      if (createDto.accesos && createDto.accesos.length > 0) {
-        await this.accesoService.createManyInTransaction(
-          createDto.accesos,
-          finca,
-          queryRunner.manager,
-        );
-      }
-      
-       // 16. Crear Tipo de Cerca (si viene)
-      if (createDto.tipoCerca) {
-  const tiposCercaConfig = [
-    { key: 'alambrePuas', active: createDto.tipoCerca.alambrePuas },
-    { key: 'viva', active: createDto.tipoCerca.viva },
-    { key: 'electrica', active: createDto.tipoCerca.electrica },
-    { key: 'pMuerto', active: createDto.tipoCerca.pMuerto },
-  ];
-
-  // Procesar cada tipo de cerca que esté activo
-  for (const config of tiposCercaConfig) {
-    if (!config.active) continue;
-
-    // Crear objeto con solo este tipo activo
-    const tipoCercaData: any = {
-      alambrePuas: config.key === 'alambrePuas',
-      viva: config.key === 'viva',
-      electrica: config.key === 'electrica',
-      pMuerto: config.key === 'pMuerto',
-    };
-
-    try {
-      const tipoCerca = await this.tiposCercaService.findOrCreateInTransaction(
-        tipoCercaData,
-        queryRunner.manager,
-      );
-
-      await this.fincaTipoCercaService.linkInTransaction(
-        {
-          idFinca: finca.idFinca,
-          idTipoCerca: tipoCerca.idTipoCerca,
-        },
+    if (createDto.hato) {
+      const hato = await this.hatoService.createInTransaction(
+        createDto.hato,
         finca,
-        tipoCerca,
         queryRunner.manager,
-      );
-      
-      console.log(`✅ Tipo de cerca "${config.key}" vinculado correctamente`);
-    } catch (error) {
-      console.error(`❌ Error al vincular tipo de cerca "${config.key}":`, error);
-      // No lanzar error aquí para que continúe con los demás tipos
-    }
-  }
-}
+      )
 
-       // 17. Crear Infraestructuras (si vienen)
-         if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
-          
-          // ✅ USAR EL MÉTODO CORRECTO
-          await this.fincaInfraestructurasService.linkManyByNameInTransaction(
-            createDto.infraestructuras,  // Ya viene como { nombre: string }[]
-            finca,
-            queryRunner.manager,
-          );
-          
+      if (createDto.animales && createDto.animales.length > 0) {
+        await this.animalService.createManyInTransaction(
+          createDto.animales,
+          hato,
+          queryRunner.manager,
+        )
+
+        await this.hatoService.updateTotalInTransaction(
+          hato,
+          queryRunner.manager,
+        )
+      }
+    }
+
+    if (createDto.forrajes && createDto.forrajes.length > 0) {
+      await this.forrajeService.createManyInTransaction(
+        createDto.forrajes,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.registrosProductivos) {
+      await this.registrosProductivosService.createInTransaction(
+        createDto.registrosProductivos,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.fuentesAgua && createDto.fuentesAgua.length > 0) {
+      await this.fuentesAguaService.createManyInTransaction(
+        createDto.fuentesAgua,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.metodosRiego && createDto.metodosRiego.length > 0) {
+      await this.metodoRiegoService.createManyInTransaction(
+        createDto.metodosRiego,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.actividades && createDto.actividades.length > 0) {
+      await this.actividadesAgropecuariasService.createManyInTransaction(
+        createDto.actividades,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.infraestructuraProduccion) {
+      await this.infraestructuraProduccionService.createInTransaction(
+        createDto.infraestructuraProduccion,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.otrosEquipos && createDto.otrosEquipos.length > 0) {
+      await this.fincaOtroEquipoService.createManyInTransaction(
+        createDto.otrosEquipos,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.accesos && createDto.accesos.length > 0) {
+      await this.accesoService.createManyInTransaction(
+        createDto.accesos,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    if (createDto.tipoCerca) {
+      const tiposCercaConfig = [
+        { key: 'alambrePuas', active: createDto.tipoCerca.alambrePuas },
+        { key: 'viva', active: createDto.tipoCerca.viva },
+        { key: 'electrica', active: createDto.tipoCerca.electrica },
+        { key: 'pMuerto', active: createDto.tipoCerca.pMuerto },
+      ]
+
+      for (const config of tiposCercaConfig) {
+        if (!config.active) continue
+
+        const tipoCercaData: any = {
+          alambrePuas: config.key === 'alambrePuas',
+          viva: config.key === 'viva',
+          electrica: config.key === 'electrica',
+          pMuerto: config.key === 'pMuerto',
         }
 
-      // 18. Crear Solicitud
-       const solicitud = queryRunner.manager.create(Solicitud, {
+        try {
+          const tipoCerca =
+            await this.tiposCercaService.findOrCreateInTransaction(
+              tipoCercaData,
+              queryRunner.manager,
+            )
+
+          await this.fincaTipoCercaService.linkInTransaction(
+            {
+              idFinca: finca.idFinca,
+              idTipoCerca: tipoCerca.idTipoCerca,
+            },
+            finca,
+            tipoCerca,
+            queryRunner.manager,
+          )
+        } catch (error) {
+          console.error(
+            `❌ Error al vincular tipo de cerca "${config.key}":`,
+            error,
+          )
+        }
+      }
+    }
+
+    if (createDto.infraestructuras && createDto.infraestructuras.length > 0) {
+      await this.fincaInfraestructurasService.linkManyByNameInTransaction(
+        createDto.infraestructuras,
+        finca,
+        queryRunner.manager,
+      )
+    }
+
+    const solicitud = queryRunner.manager.create(Solicitud, {
       persona: personaAsociado,
       asociado,
       fechaSolicitud: new Date(),
       estado: SolicitudStatus.PENDIENTE,
     })
+
     await queryRunner.manager.save(solicitud)
+    createdId = solicitud.idSolicitud
 
     await queryRunner.commitTransaction()
-    return this.findOne(solicitud.idSolicitud)
   } catch (error) {
     await queryRunner.rollbackTransaction()
     throw error
   } finally {
     await queryRunner.release()
   }
+
+  const createdSolicitud = await this.findOne(createdId!)
+
+  await this.sendCreationEmails(createdSolicitud)
+
+  return createdSolicitud
+}
+
+private async sendCreationEmails(solicitud: Solicitud): Promise<void> {
+  try {
+    const email = solicitud.persona?.email
+    const nombre = `${solicitud.persona?.nombre || ''} ${solicitud.persona?.apellido1 || ''}`.trim()
+    const cedula = solicitud.persona?.cedula || 'No indicada'
+
+    if (email) {
+      await this.emailService.sendAssociateApplicationReceivedEmail(
+        email,
+        nombre,
+      )
+    }
+
+    await this.emailService.sendNewAssociateApplicationNotificationEmail({
+      applicantName: nombre || 'Sin nombre',
+      applicantEmail: email || 'Sin correo',
+      applicantId: cedula,
+    })
+  } catch (error) {
+    console.error(
+      'Error al enviar correos de creación de solicitud de asociado:',
+      error,
+    )
   }
+}
 
 private async validateOrThrow(
   dto: ValidateSolicitudDto,
